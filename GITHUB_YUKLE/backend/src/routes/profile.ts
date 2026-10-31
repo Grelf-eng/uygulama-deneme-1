@@ -6,7 +6,8 @@ import { normalizeKpssType } from '../constants/kpss';
 import { isPoolOnlyDepartmentLevel, resolveDepartmentFromPool } from '../constants/departments';
 import { db } from '../db';
 import { requireAuth } from '../middleware/auth';
-import { getProfile, saveProfile, setPushToken } from '../services/profileRepo';
+import { ensureProfile, getProfile, saveProfile, setPushToken } from '../services/profileRepo';
+import { syncCloudProfile } from '../services/cloudDb';
 import { EDUCATION_LEVELS, JOB_TYPES } from '../types';
 
 export const profileRouter = Router();
@@ -45,12 +46,13 @@ const profileSchema = z.object({
 });
 
 profileRouter.get('/', (req, res) => {
+  ensureProfile(req.userId!);
   const profile = getProfile(req.userId!);
   const user = db.prepare('SELECT email, is_admin FROM users WHERE id = ?').get(req.userId!) as {
     email: string;
     is_admin: number;
-  };
-  res.json({ email: user.email, username: user.email, isAdmin: user.is_admin === 1, profile });
+  } | undefined;
+  res.json({ email: user?.email || '', username: user?.email || '', isAdmin: user?.is_admin === 1, profile: profile || {} });
 });
 
 profileRouter.put('/', (req, res) => {
@@ -75,7 +77,12 @@ profileRouter.put('/', (req, res) => {
     }
     data.department = resolved;
   }
+  ensureProfile(req.userId!);
   saveProfile(req.userId!, data);
+  const user = db.prepare('SELECT email FROM users WHERE id = ?').get(req.userId!) as { email: string } | undefined;
+  if (user?.email) {
+    syncCloudProfile(user.email, data).catch((e: any) => console.error('[cloud-db] Profil senkronizasyon hatası:', e.message));
+  }
   res.json({ profile: getProfile(req.userId!) });
 });
 

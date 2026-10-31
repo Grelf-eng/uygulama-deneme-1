@@ -424,7 +424,71 @@
     let isRegister = false;
     let currentTab = 'jobs';
     let kpssFilter = '';
-    let meta = { cities: [], educationLevels: [], jobTypes: [], certificates: [], noDepartmentLevels: ['ilkokul', 'ortaokul', 'lise'] };
+    const DEFAULT_CITIES = ["Adana","Adıyaman","Afyonkarahisar","Ağrı","Aksaray","Amasya","Ankara","Antalya","Ardahan","Artvin","Aydın","Balıkesir","Bartın","Batman","Bayburt","Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa","Çanakkale","Çankırı","Çorum","Denizli","Diyarbakır","Düzce","Edirne","Elazığ","Erzincan","Erzurum","Eskişehir","Gaziantep","Giresun","Gümüşhane","Hakkari","Hatay","Iğdır","Isparta","İstanbul","İzmir","Kahramanmaraş","Karabük","Karaman","Kars","Kastamonu","Kayseri","Kırıkkale","Kırklareli","Kırşehir","Kilis","Kocaeli","Konya","Kütahya","Malatya","Manisa","Mardin","Mersin","Muğla","Muş","Nevşehir","Niğde","Ordu","Osmaniye","Rize","Sakarya","Samsun","Siirt","Sinop","Sivas","Şanlıurfa","Şırnak","Tekirdağ","Tokat","Trabzon","Tunceli","Uşak","Van","Yalova","Yozgat","Zonguldak"];
+    const DEFAULT_CERTIFICATES = [
+      "Bilgisayar İşletmenliği Sertifikası",
+      "Bilgisayar Programcılığı / Analist Programcı Belgesi",
+      "Bilgisayarlı Muhasebe Sertifikası",
+      "Bilgisayar Destekli Üst Düzey Sekreterlik Belgesi",
+      "Bilgisayar Operatörlüğü Sertifikası",
+      "ECDL / ICDL Bilgisayar Kullanım Sertifikası",
+      "Klavye (F/Q) Kullanma Belgesi",
+      "Özel Güvenlik Görevlisi Kimlik Kartı",
+      "Silah Taşıma Belgesi (Silahlı Özel Güvenlik)",
+      "B Sınıfı Sürücü Belgesi",
+      "C Sınıfı Sürücü Belgesi",
+      "D Sınıfı Sürücü Belgesi",
+      "E Sınıfı Sürücü Belgesi",
+      "SRC Belgesi",
+      "Psikoteknik Belgesi",
+      "Forklift Operatörü Belgesi",
+      "Vinç Operatörü Belgesi",
+      "İş Makinesi Operatörü Belgesi",
+      "Havuz Suyu Operatörü Belgesi",
+      "Kalorifer Ateşçisi / Kazan Operatörü Belgesi",
+      "Kaynakçı Belgesi",
+      "Elektrik Tesisatçılığı / Ustalık Belgesi",
+      "Sıhhi Tesisatçı Belgesi",
+      "Doğalgaz Tesisat Sertifikası",
+      "Mesleki Yeterlilik Belgesi (MYK)",
+      "Ustalık Belgesi",
+      "Kalfalık Belgesi",
+      "Aşçılık Belgesi",
+      "Gassallık Belgesi",
+      "Dalgıç Belgesi",
+      "Meslek Odası Kayıt / Sicil Belgesi",
+      "İlkyardım Sertifikası",
+      "Hasta / Yaşlı Bakım Sertifikası",
+      "Gıda Hijyen Sertifikası",
+      "Yangın Eğitimi Sertifikası",
+      "İş Güvenliği Uzmanlık Belgesi",
+      "Cankurtaran Belgesi",
+      "Antrenörlük / Yüzme Eğitmenliği Belgesi",
+      "Yabancı Dil Belgesi (YDS / YÖKDİL)"
+    ];
+    const DEFAULT_EDUCATION_LEVELS = [
+      { value: 'ilkokul', label: 'İlkokul' },
+      { value: 'ortaokul', label: 'Ortaokul' },
+      { value: 'lise', label: 'Lise' },
+      { value: 'onlisans', label: 'Ön Lisans' },
+      { value: 'lisans', label: 'Lisans' },
+      { value: 'yuksek_lisans', label: 'Yüksek Lisans' },
+      { value: 'doktora', label: 'Doktora' }
+    ];
+    const DEFAULT_JOB_TYPES = [
+      { value: 'memur', label: 'Memur' },
+      { value: 'sozlesmeli', label: 'Sözleşmeli (4/B)' },
+      { value: 'isci', label: 'İşçi' },
+      { value: 'akademik', label: 'Akademik' },
+      { value: 'diger', label: 'Diğer' }
+    ];
+    let meta = {
+      cities: DEFAULT_CITIES,
+      educationLevels: DEFAULT_EDUCATION_LEVELS,
+      jobTypes: DEFAULT_JOB_TYPES,
+      certificates: DEFAULT_CERTIFICATES,
+      noDepartmentLevels: ['ilkokul', 'ortaokul', 'lise']
+    };
     let profileCerts = [];
     let profileCities = [];
     let profileJobTypes = ['memur', 'sozlesmeli', 'isci', 'akademik'];
@@ -655,7 +719,30 @@
       });
     }
 
+    function setupDefaultMetaUi() {
+      const citySel = document.getElementById('citySelect');
+      if (citySel) {
+        citySel.innerHTML = '<option value="">📍 Tüm Şehirler</option>' + meta.cities.map(c => `<option value="${c}">${c}</option>`).join('');
+      }
+      const typeSel = document.getElementById('typeSelect');
+      if (typeSel) {
+        typeSel.innerHTML = '<option value="">Tüm Türler</option>' + meta.jobTypes.map(t => `<option value="${t.value}">${t.label}</option>`).join('');
+      }
+      const eduSel = document.getElementById('profEdu');
+      if (eduSel) {
+        eduSel.innerHTML = '<option value="">Seçiniz</option>' + meta.educationLevels.map(e => `<option value="${e.value}">${e.label}</option>`).join('');
+      }
+      const certSel = document.getElementById('certFilterSelect');
+      if (certSel && meta.certificates) {
+        certSel.innerHTML = '<option value="">📜 Tüm Sertifikalar / Belgeler</option>' + meta.certificates.map(c => `<option value="${c}">${c}</option>`).join('');
+      }
+      renderCityChips();
+      renderCertChips();
+      renderJobTypeChips();
+    }
+
     async function initApp() {
+      setupDefaultMetaUi();
       try {
         const [me, m] = await Promise.all([api('/profile'), api('/jobs/meta')]);
         meta = m;
@@ -700,7 +787,7 @@
     }
 
     function fillProfileForm(p) {
-      if (!p) return;
+      p = p || {};
       document.getElementById('profName').value = p.fullName || '';
       document.getElementById('profBirth').value = p.birthYear || '';
       document.getElementById('profEdu').value = p.educationLevel || '';
@@ -767,8 +854,10 @@
 
     function renderJobTypeChips() {
       const box = document.getElementById('jobTypeChips');
+      if (!box) return;
       box.innerHTML = '';
-      (meta.jobTypes || []).forEach(t => {
+      const types = (meta.jobTypes && meta.jobTypes.length) ? meta.jobTypes : DEFAULT_JOB_TYPES;
+      types.forEach(t => {
         const chip = document.createElement('span');
         chip.className = 'chip' + (profileJobTypes.includes(t.value) ? ' active' : '');
         chip.textContent = t.label;
@@ -783,10 +872,12 @@
     }
 
     function renderCityChips() {
-      const q = document.getElementById('cityFilter').value.trim().toLocaleLowerCase('tr');
       const box = document.getElementById('cityChips');
+      if (!box) return;
+      const q = (document.getElementById('cityFilter')?.value || '').trim().toLocaleLowerCase('tr');
       box.innerHTML = '';
-      const sorted = [...(meta.cities || [])].sort((a, b) => (profileCities.includes(b) ? 1 : 0) - (profileCities.includes(a) ? 1 : 0));
+      const baseCities = (meta.cities && meta.cities.length) ? meta.cities : DEFAULT_CITIES;
+      const sorted = [...baseCities].sort((a, b) => (profileCities.includes(b) ? 1 : 0) - (profileCities.includes(a) ? 1 : 0));
       sorted.filter(c => c.toLocaleLowerCase('tr').includes(q)).forEach(city => {
         const chip = document.createElement('span');
         chip.className = 'chip' + (profileCities.includes(city) ? ' active' : '');
@@ -804,9 +895,11 @@
 
     function renderCertChips() {
       const box = document.getElementById('certChips');
+      if (!box) return;
       box.innerHTML = '';
-      const custom = profileCerts.filter(c => !(meta.certificates || []).includes(c));
-      const all = [...(meta.certificates || []), ...custom].sort((a, b) => (profileCerts.includes(b) ? 1 : 0) - (profileCerts.includes(a) ? 1 : 0));
+      const baseCerts = (meta.certificates && meta.certificates.length) ? meta.certificates : DEFAULT_CERTIFICATES;
+      const custom = profileCerts.filter(c => !baseCerts.includes(c));
+      const all = [...baseCerts, ...custom].sort((a, b) => (profileCerts.includes(b) ? 1 : 0) - (profileCerts.includes(a) ? 1 : 0));
       all.forEach(name => {
         const chip = document.createElement('span');
         chip.className = 'chip' + (profileCerts.includes(name) ? ' active' : '');
@@ -887,6 +980,12 @@
       });
       document.getElementById(name + 'Screen').classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'instant' });
+      if (name === 'profile') {
+        renderCityChips();
+        renderCertChips();
+        renderJobTypeChips();
+        updateDeptVisibility();
+      }
       if (name === 'cv') loadSavedCv();
       if (name === 'applications') loadApplications();
       if (name === 'notifications') loadNotifications();
@@ -1361,6 +1460,7 @@
       `).join('') || '<div class="card">Henüz bildirim yok.</div>';
     }
 
+    setupDefaultMetaUi();
     if (token) initApp();
   </script>
 </body>

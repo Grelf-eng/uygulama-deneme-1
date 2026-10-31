@@ -1005,6 +1005,7 @@
     }
 
     function fillProfileForm(p) {
+      p = p || {};
       document.getElementById('profName').value = p.fullName || '';
       document.getElementById('profBirth').value = p.birthYear || '';
       document.getElementById('profEdu').value = p.educationLevel || '';
@@ -1181,6 +1182,12 @@
       });
       document.getElementById(name + 'Screen').classList.remove('hidden');
       window.scrollTo(0, 0);
+      if (name === 'profile') {
+        renderCityChips();
+        renderCertChips();
+        renderJobTypeChips();
+        updateDeptVisibility();
+      }
       if (name === 'cv') loadSavedOfflineCv();
       if (name === 'applications') loadApplications();
       if (name === 'notifications') loadNotifications();

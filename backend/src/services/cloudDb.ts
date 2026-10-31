@@ -1,4 +1,5 @@
 import { db } from '../db';
+import { ensureProfile } from './profileRepo';
 
 let pool: any = null;
 
@@ -58,6 +59,22 @@ export async function initCloudSync(): Promise<void> {
         job_id INTEGER NOT NULL,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (user_id, job_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS cloud_profiles (
+        user_email TEXT PRIMARY KEY,
+        full_name TEXT,
+        birth_year INTEGER,
+        education_level TEXT,
+        department TEXT,
+        certificates TEXT NOT NULL DEFAULT '[]',
+        kpss_score REAL,
+        kpss_type TEXT,
+        experience_years REAL DEFAULT 0,
+        cities TEXT NOT NULL DEFAULT '[]',
+        job_types TEXT NOT NULL DEFAULT '["memur","sozlesmeli","isci","akademik"]',
+        notifications_enabled INTEGER DEFAULT 1,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE TABLE IF NOT EXISTS cloud_jobs (
@@ -144,7 +161,38 @@ export async function initCloudSync(): Promise<void> {
 
     for (const u of usersRes.rows) {
       insertUser.run(u.id, u.email, u.password_hash, u.is_admin, u.is_verified, String(u.created_at));
+      ensureProfile(u.id);
       importedUsers++;
+    }
+
+    // 3.5. Neon'daki kayıtlı profilleri yerel SQLite'a aktar
+    const profRes = await p.query('SELECT * FROM cloud_profiles');
+    for (const cp of profRes.rows) {
+      const u = db.prepare('SELECT id FROM users WHERE email = ?').get(cp.user_email) as { id: number } | undefined;
+      if (u) {
+        db.prepare(`
+          INSERT INTO profiles (
+            user_id, full_name, birth_year, education_level, department,
+            certificates, kpss_score, kpss_type, experience_years, cities, job_types, notifications_enabled
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(user_id) DO UPDATE SET
+            full_name = excluded.full_name,
+            birth_year = excluded.birth_year,
+            education_level = excluded.education_level,
+            department = excluded.department,
+            certificates = excluded.certificates,
+            kpss_score = excluded.kpss_score,
+            kpss_type = excluded.kpss_type,
+            experience_years = excluded.experience_years,
+            cities = excluded.cities,
+            job_types = excluded.job_types,
+            notifications_enabled = excluded.notifications_enabled
+        `).run(
+          u.id, cp.full_name || '', cp.birth_year, cp.education_level, cp.department || '',
+          cp.certificates || '[]', cp.kpss_score, cp.kpss_type, cp.experience_years ?? 0,
+          cp.cities || '[]', cp.job_types || '["memur","sozlesmeli","isci","akademik"]', cp.notifications_enabled ?? 1
+        );
+      }
     }
 
     // 3. Neon'daki aktif doğrulama kodlarını aktar
@@ -297,5 +345,49 @@ export async function syncLocalJobsToCloud(): Promise<void> {
     console.log(`[cloud-db] 💾 ${localJobs.length} gerçek kamu ilanı Neon PostgreSQL bulutuna kalıcı olarak yedeklendi.`);
   } catch (err: any) {
     console.error(`[cloud-db] İlanlar Neon'a yedeklenirken hata:`, err.message);
+  }
+}
+
+/**
+ * Kullanıcı profilini Neon bulutuna kalıcı olarak senkronize eder.
+ */
+export async function syncCloudProfile(email: string, p: any): Promise<void> {
+  const pool = getPool();
+  if (!pool || !email) return;
+  try {
+    await pool.query(`
+      INSERT INTO cloud_profiles (
+        user_email, full_name, birth_year, education_level, department,
+        certificates, kpss_score, kpss_type, experience_years, cities, job_types, notifications_enabled, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_email) DO UPDATE SET
+        full_name = EXCLUDED.full_name,
+        birth_year = EXCLUDED.birth_year,
+        education_level = EXCLUDED.education_level,
+        department = EXCLUDED.department,
+        certificates = EXCLUDED.certificates,
+        kpss_score = EXCLUDED.kpss_score,
+        kpss_type = EXCLUDED.kpss_type,
+        experience_years = EXCLUDED.experience_years,
+        cities = EXCLUDED.cities,
+        job_types = EXCLUDED.job_types,
+        notifications_enabled = EXCLUDED.notifications_enabled,
+        updated_at = CURRENT_TIMESTAMP
+    `, [
+      email.toLowerCase(),
+      p.fullName || '',
+      p.birthYear || null,
+      p.educationLevel || null,
+      p.department || '',
+      JSON.stringify(p.certificates || []),
+      p.kpssScore ?? null,
+      p.kpssType || null,
+      p.experienceYears ?? 0,
+      JSON.stringify(p.cities || []),
+      JSON.stringify(p.jobTypes || ['memur', 'sozlesmeli', 'isci', 'akademik']),
+      p.notificationsEnabled ? 1 : 0
+    ]);
+  } catch (err: any) {
+    console.error(`[cloud-db] Profil buluta yedeklenirken hata:`, err.message);
   }
 }
