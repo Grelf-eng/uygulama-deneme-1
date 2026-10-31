@@ -5,6 +5,7 @@ import { db } from '../db';
 import { signToken } from '../middleware/auth';
 import { generateRandomCode, sendVerificationEmail } from '../services/mailer';
 import { ensureProfile } from '../services/profileRepo';
+import { removeCloudVerification, syncCloudUser, syncCloudVerification } from '../services/cloudDb';
 
 export const authRouter = Router();
 
@@ -73,6 +74,7 @@ authRouter.post('/register', async (req, res) => {
        VALUES (?, ?, ?, datetime('now'))
        ON CONFLICT(email) DO UPDATE SET code = excluded.code, expires_at = excluded.expires_at, created_at = excluded.created_at`
     ).run(identifier, newCode, expiresAt);
+    syncCloudVerification(identifier, newCode, expiresAt);
 
     await sendVerificationEmail(identifier, newCode);
 
@@ -100,6 +102,10 @@ authRouter.post('/register', async (req, res) => {
      VALUES (?, ?, ?, datetime('now'))
      ON CONFLICT(email) DO UPDATE SET code = excluded.code, expires_at = excluded.expires_at, created_at = excluded.created_at`
   ).run(identifier, code, expiresAt);
+
+  // Neon PostgreSQL kalıcı buluta eşitle (Render yeniden başlasa da hesap kaybolmaz)
+  syncCloudUser(identifier, hash, 0, 0);
+  syncCloudVerification(identifier, code, expiresAt);
 
   await sendVerificationEmail(identifier, code);
 
@@ -203,6 +209,10 @@ authRouter.post('/verify-email', (req, res) => {
   db.prepare('UPDATE users SET is_verified = 1 WHERE id = ?').run(user.id);
   db.prepare('DELETE FROM email_verifications WHERE LOWER(email) = LOWER(?)').run(email);
 
+  const updatedUser = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(user.id) as any;
+  syncCloudUser(user.email, updatedUser?.password_hash || '', user.is_admin, 1);
+  removeCloudVerification(email);
+
   res.json({
     message: 'E-posta adresiniz başarıyla doğrulandı! Sisteme giriş yapıldı.',
     token: signToken(user.id),
@@ -245,6 +255,7 @@ authRouter.post('/resend-code', async (req, res) => {
      VALUES (?, ?, ?, datetime('now'))
      ON CONFLICT(email) DO UPDATE SET code = excluded.code, expires_at = excluded.expires_at, created_at = excluded.created_at`
   ).run(user.email, newCode, expiresAt);
+  syncCloudVerification(user.email, newCode, expiresAt);
 
   await sendVerificationEmail(user.email, newCode);
 

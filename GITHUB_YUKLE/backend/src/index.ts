@@ -3,6 +3,10 @@ import { app } from './app';
 import { config } from './config';
 import { runAllScrapers } from './scrapers';
 import { seedSampleJobs } from './seed';
+import { initCloudSync } from './services/cloudDb';
+
+// Neon PostgreSQL kalıcı veritabanı eşitlemesi
+initCloudSync().catch((e) => console.error('[cloud-db] Başlatma hatası:', e.message));
 
 if (config.seedSample) {
   const n = seedSampleJobs();
