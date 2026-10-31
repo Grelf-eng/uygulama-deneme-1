@@ -4,8 +4,10 @@ let pool: any = null;
 
 function getPool() {
   if (pool) return pool;
-  const dbUrl = process.env.DATABASE_URL;
+  let dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) return null;
+  // Node-postgres için channel_binding parametresini temizle (Neon hatasını kesin çözer)
+  dbUrl = dbUrl.replace(/&?channel_binding=[^&]+/g, '');
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { Pool } = require('pg');

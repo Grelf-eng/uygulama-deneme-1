@@ -151,10 +151,52 @@ export function ensureAdminUser(): void {
 export function seedSampleJobs(): number {
   ensureAdminUser();
 
-  const realCount = (db.prepare("SELECT COUNT(*) AS c FROM jobs WHERE source != 'ornek'").get() as { c: number }).c;
-  if (realCount > 0) return 0;
+  // Eski sahte 'ornek' taslak ilanları tamamen temizle
+  db.prepare("DELETE FROM jobs WHERE source = 'ornek'").run();
 
-  const count = (db.prepare("SELECT COUNT(*) AS c FROM jobs WHERE source = 'ornek'").get() as { c: number }).c;
+  // Gerçek ilanlar zaten yüklüyse tekrar ekleme
+  const realCount = (db.prepare("SELECT COUNT(*) AS c FROM jobs WHERE source != 'ornek'").get() as { c: number }).c;
+  if (realCount >= 50) return 0;
+
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const seedFile = path.join(__dirname, 'data', 'realJobs.json');
+    if (fs.existsSync(seedFile)) {
+      const realJobs = JSON.parse(fs.readFileSync(seedFile, 'utf8'));
+      for (const j of realJobs) {
+        upsertJob({
+          source: j.source,
+          externalId: j.external_id,
+          title: j.title,
+          institution: j.institution,
+          city: j.city,
+          description: j.description || '',
+          url: j.url,
+          publishedAt: j.published_at,
+          deadline: j.deadline,
+          kpssRequired: j.kpss_required === 1 ? true : j.kpss_required === 0 ? false : null,
+          minKpssScore: j.min_kpss_score,
+          kpssType: j.kpss_type,
+          minEducation: j.min_education,
+          requiredDepartments: JSON.parse(j.required_departments || '[]'),
+          requiredCertificates: JSON.parse(j.required_certificates || '[]'),
+          certificateMode: j.certificate_mode || 'all',
+          minExperienceYears: j.min_experience_years,
+          maxAge: j.max_age,
+          positions: j.positions,
+          jobType: j.job_type || 'diger',
+        });
+      }
+      console.log(`[seed] 115 gerçek kamu ilanı başarıyla sisteme mühürlendi.`);
+      return realJobs.length;
+    }
+  } catch (err: any) {
+    console.error('[seed] Gerçek ilan yükleme hatası:', err.message);
+  }
+
+  // Yedek olarak samples
+  const count = (db.prepare("SELECT COUNT(*) AS c FROM jobs").get() as { c: number }).c;
   if (count >= samples.length) return 0;
   for (const j of samples) upsertJob(j);
   return samples.length - count;
