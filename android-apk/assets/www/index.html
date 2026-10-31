@@ -1,0 +1,1964 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Kamu İlan Asistanı</title>
+  <style>
+    :root {
+      --primary: #1d4ed8;
+      --primary-light: #dbeafe;
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --ok: #16a34a; --ok-bg: #dcfce7;
+      --warn: #d97706; --warn-bg: #fef3c7;
+      --fail: #dc2626; --fail-bg: #fee2e2;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); overscroll-behavior-y: contain; }
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .brand { display: flex; align-items: center; gap: 9px; }
+    .brand img { width: 30px; height: 30px; border-radius: 7px; }
+    header h1 { margin: 0; font-size: 17px; color: var(--primary); font-weight: 800; }
+    .container { max-width: 720px; margin: 0 auto; padding: 14px; padding-bottom: 88px; }
+    .card { background: var(--card); border-radius: 15px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+    .btn { background: var(--primary); color: #fff; border: 1.5px solid var(--primary); border-radius: 10px; padding: 11px 14px; font-weight: 700; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+    .btn-sm { padding: 7px 11px; font-size: 13px; border-radius: 9px; }
+    .btn-outline { background: transparent; color: var(--primary); }
+    .btn-danger { background: var(--fail); border-color: var(--fail); }
+    .input, select, textarea { width: 100%; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 16px; margin-bottom: 10px; background: #fff; color: var(--text); }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+    .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .badge { padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-block; }
+    .chip { padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 13px; cursor: pointer; user-select: none; }
+    .chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .tabs {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #fff;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      padding: 8px 0 10px;
+      z-index: 20;
+    }
+    .tab-btn { background: none; border: none; font-size: 11px; color: var(--muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; font-weight: 700; flex: 1; }
+    .tab-btn .ico { font-size: 18px; line-height: 1.1; }
+    .tab-btn.active { color: var(--primary); }
+    .job-title { font-size: 16px; font-weight: 700; margin: 0 0 4px 0; cursor: pointer; line-height: 1.35; }
+    .sub { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+    .check-row { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .check-row:last-child { border-bottom: none; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <img src="icons/icon-192.png" alt="Logo" />
+      <h1>Kamu İlan Asistanı</h1>
+    </div>
+    <div id="headerActions" class="row hidden">
+      <span id="adminHeaderBadge" class="badge hidden" style="background:#fef3c7;color:#b45309;">🛡️ Yönetici</span>
+      <button class="btn btn-outline btn-sm" onclick="showScreen('notifications')" id="notifBtn">🔔</button>
+      <button class="btn btn-danger btn-sm" onclick="logout()">Çıkış</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- GİRİŞ / KAYIT -->
+    <div id="authScreen" class="card" style="max-width:420px;margin:20px auto;">
+      <div id="authFormWrap">
+        <h2 id="authTitle" style="margin-top:0">Giriş Yap</h2>
+        <p style="color:var(--muted);font-size:14px;">Devam etmek için kullanıcı adınız (veya e-posta adresiniz) ve şifrenizle giriş yapın.</p>
+        <div id="nameWrap" class="hidden">
+          <label>Ad Soyad</label>
+          <input id="authName" class="input" placeholder="Ad Soyad" />
+        </div>
+        <label>Kullanıcı Adı veya E-posta</label>
+        <input id="authEmail" class="input" type="text" autocomplete="username" placeholder="Kullanıcı adı veya e-posta" onkeydown="if(event.key==='Enter'){submitAuth();}" />
+        <label>Şifre</label>
+        <input id="authPass" class="input" type="password" autocomplete="current-password" placeholder="Şifreniz" onkeydown="if(event.key==='Enter'){submitAuth();}" />
+        <div class="row" style="margin-top:8px;">
+          <button class="btn" style="flex:1" onclick="submitAuth()" id="authSubmitBtn">Giriş Yap</button>
+          <button class="btn btn-outline" onclick="toggleAuthMode()" id="authToggleBtn">Kayıt Ol</button>
+        </div>
+      </div>
+
+      <!-- E-POSTA DOĞRULAMA KODU ADIMI -->
+      <div id="verifyWrap" class="hidden">
+        <h2 style="margin-top:0">📧 E-posta Doğrulama Kodu</h2>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;margin-bottom:14px;">
+          <div style="font-size:13px;color:#1e3a8a;line-height:1.45;">
+            <b id="verifyTargetEmail"></b> adresinize 6 haneli rastgele bir güvenlik kodu gönderildi. Sisteme giriş yapabilmek için lütfen bu kodu girin.
+          </div>
+        </div>
+        <label>6 Haneli Güvenlik Kodu</label>
+        <input id="authVerifyCode" class="input" type="text" maxlength="6" inputmode="numeric" placeholder="Örn. 482915" style="letter-spacing:6px;font-size:20px;font-weight:700;text-align:center;" onkeydown="if(event.key==='Enter'){submitVerifyCode();}" />
+        <button class="btn" style="width:100%;margin-top:10px;" onclick="submitVerifyCode()" id="verifySubmitBtn">✅ Kodu Onayla ve Giriş Yap</button>
+        <div class="row" style="margin-top:8px;gap:8px;">
+          <button class="btn btn-outline btn-sm" style="flex:1;" onclick="resendVerificationCode()" id="resendCodeBtn">🔄 Tekrar Kod Gönder</button>
+          <button class="btn btn-outline btn-sm" onclick="cancelVerification()">Geri Dön</button>
+        </div>
+        <p id="verifySuccess" style="color:var(--success);font-size:13px;margin-top:8px;font-weight:600;"></p>
+      </div>
+
+      <p id="authError" style="color:var(--fail);font-size:13px;margin-top:10px;"></p>
+    </div>
+
+    <!-- İLANLAR & EŞLEŞENLER -->
+    <div id="jobsScreen" class="hidden">
+      <div class="card">
+        <input id="searchInput" class="input" placeholder="İlan, kurum veya şehir ara..." oninput="debounceLoadJobs()" />
+        <div class="row" style="margin-bottom:8px;">
+          <span class="chip active" data-kpss="" onclick="setKpssFilter('')">Tümü</span>
+          <span class="chip" data-kpss="yes" onclick="setKpssFilter('yes')">KPSS'li</span>
+          <span class="chip" data-kpss="no" onclick="setKpssFilter('no')">KPSS'siz</span>
+        </div>
+        <div class="row">
+          <select id="citySelect" style="flex:1;margin:0" onchange="loadJobs()">
+            <option value="">📍 Tüm Şehirler</option>
+          </select>
+          <select id="typeSelect" style="flex:1;margin:0" onchange="loadJobs()">
+            <option value="">Tüm Türler</option>
+          </select>
+        </div>
+        <div id="matchesNote" class="hidden" style="font-size:13px;color:var(--muted);margin-top:8px;">
+          ✨ Profilinizdeki şartlarla uyuşmayan (❌) ilanlar gizlenir, en yüksek uyum puanlı ilanlar üstte listelenir.
+        </div>
+      </div>
+      <div class="row" style="justify-content:space-between;margin:6px 4px;">
+        <div id="jobsCount" style="font-size:12px;color:var(--muted);"></div>
+        <button id="liveRefreshBtn" style="background:none;border:none;color:var(--primary);font-size:12px;font-weight:700;cursor:pointer;" onclick="syncLiveJobs()">🔄 Yeni İlanları Çek</button>
+      </div>
+      <div id="jobsList"></div>
+    </div>
+
+    <!-- İLAN DETAYI -->
+    <div id="detailScreen" class="hidden"></div>
+
+    <!-- CV ANALİZ VE PUANLAMA -->
+    <div id="cvScreen" class="hidden">
+      <div class="card">
+        <h3 style="margin:0 0 6px 0;">📄 CV Yorumlama ve Puanlama</h3>
+        <p style="margin:0 0 12px 0;font-size:13px;color:var(--muted);line-height:1.5;">
+          CV dosyanızı seçin veya metnini aşağıya yapıştırın. Sistem CV’nizi <b>100 puan</b> üzerinden değerlendirir ve <b>neden puan kırıldığını</b> tek tek gösterir.
+        </p>
+
+        <label>🎯 Değerlendirme Hedefi (Kadro Türü)</label>
+        <select id="cvTrackSelect" class="input">
+          <option value="genel">Genel Kamu & Özel Sektör CV</option>
+          <option value="memur">Memur / KPSS-B Kadroları</option>
+          <option value="sozlesmeli">4/B Sözleşmeli Personel</option>
+          <option value="uzman">KPSS-A / Uzman & Müfettiş Yrd.</option>
+          <option value="isci">Kamu İşçisi (İŞKUR / Belediye)</option>
+          <option value="akademik">Akademik Personel (Öğr. Gör. / Arş. Gör.)</option>
+          <option value="bilisim">Sözleşmeli Bilişim Personeli</option>
+        </select>
+
+        <div class="row" style="margin-bottom:10px;">
+          <label for="cvFileInput" class="btn btn-outline btn-sm" style="margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+            📂 Dosya Seç (.DOCX, .TXT, .PDF)
+          </label>
+          <input id="cvFileInput" type="file" accept=".docx,.txt,.pdf,.md,.html" style="display:none" onchange="handleOfflineCvFile(event)" />
+          <button type="button" class="btn btn-outline btn-sm" onclick="fillCvDraftFromProfile()">👤 Profilden Taslak</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="clearCvForm()">🗑️ Temizle</button>
+        </div>
+
+        <label>✍️ CV Metniniz</label>
+        <textarea id="cvTextInput" class="input" rows="8" style="resize:vertical;line-height:1.5;font-family:inherit;" placeholder="Özgeçmiş metninizi buraya yapıştırın (Ad Soyad, İletişim, Özet, Eğitim, İş/Staj Deneyimi, KPSS/Dil/Sertifikalar, Teknik Yetkinlikler, Referanslar)..."></textarea>
+
+        <button id="cvAnalyzeBtn" class="btn" style="width:100%;" onclick="submitOfflineCvAnalysis()">🔍 CV’mi Yorumla ve Puanla</button>
+        <p id="cvError" style="color:var(--fail);font-size:13px;margin:8px 0 0 0;"></p>
+      </div>
+
+      <div id="cvResultArea" class="hidden"></div>
+    </div>
+
+    <!-- BAŞVURULAR -->
+    <div id="applicationsScreen" class="hidden">
+      <h3 style="margin:6px 4px 12px;">📋 Başvuru Takibi</h3>
+      <div id="appList"></div>
+    </div>
+
+    <!-- BİLDİRİMLER -->
+    <div id="notificationsScreen" class="hidden">
+      <h3 style="margin:6px 4px 12px;">🔔 Bildirimler</h3>
+      <div id="notifList"></div>
+    </div>
+
+    <!-- PROFİL -->
+    <div id="profileScreen" class="hidden">
+      <div class="card">
+        <h3 style="margin-top:0">👤 Profilim ve Tercihlerim</h3>
+        <label>Ad Soyad</label>
+        <input id="profName" class="input" />
+        <div class="row">
+          <div style="flex:1;min-width:130px;">
+            <label>Doğum Yılı</label>
+            <input id="profBirth" class="input" type="number" placeholder="1998" />
+          </div>
+          <div style="flex:1;min-width:150px;">
+            <label>Eğitim Seviyesi</label>
+            <select id="profEdu" class="input" onchange="updateDeptVisibility()"></select>
+          </div>
+        </div>
+        <div id="deptWrap">
+          <label id="deptLabel">Bölüm / Program</label>
+          <div id="deptSelectWrap" class="hidden">
+            <select id="profDeptSelect" class="input" onchange="syncSelectedDept()"></select>
+          </div>
+          <div id="deptInputWrap">
+            <input id="profDept" class="input" placeholder="Örn. Bilgisayar Programcılığı" />
+          </div>
+          <small id="deptHelp" style="color:var(--muted);font-size:12px;display:block;margin-top:-6px;margin-bottom:8px;"></small>
+        </div>
+
+        <label>📜 Sertifikalar ve Belgeler <span id="certCount" style="font-weight:400"></span></label>
+        <div id="certChips" class="row" style="max-height:185px;overflow-y:auto;padding:8px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:#fff;"></div>
+        <div class="row" style="margin-bottom:12px;">
+          <input id="certCustom" class="input" style="flex:1;margin:0" placeholder="Listede yoksa yazın (örn. Havuz Suyu Operatörü Belgesi)" onkeydown="if(event.key==='Enter'){addCustomCert();}" />
+          <button class="btn btn-outline" onclick="addCustomCert()">Ekle</button>
+        </div>
+
+        <div class="row">
+          <div style="flex:1;min-width:105px;">
+            <label>KPSS Puanı</label>
+            <input id="profKpss" class="input" type="number" step="0.1" placeholder="78.5" />
+          </div>
+          <div style="flex:1;min-width:105px;">
+            <label>KPSS Türü</label>
+            <select id="profKpssType" class="input">
+              <option value="">Seçiniz</option>
+              <option value="P94">Ortaöğretim</option>
+              <option value="P93">Ön Lisans</option>
+              <option value="P3">Lisans</option>
+              <option value="P1">Uzmanlık (Sayısal)</option>
+              <option value="P2">Uzmanlık (Eşit Ağırlık)</option>
+              <option value="P48">Uzmanlık (Alan Bilgisi)</option>
+              <option value="P10">Öğretmenlik (Eğitim)</option>
+              <option value="P121">Öğretmenlik (ÖABT)</option>
+              <option value="P123">Din Hizmetleri (DHBT)</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:95px;">
+            <label>Deneyim (Yıl)</label>
+            <input id="profExp" class="input" type="number" step="0.5" value="0" />
+          </div>
+        </div>
+
+        <label>İş Türü Tercihleri</label>
+        <div id="jobTypeChips" class="row" style="margin-bottom:12px;"></div>
+
+        <label>📍 Tercih Edilen Şehirler <span id="cityCount" style="font-weight:400"></span></label>
+        <input id="cityFilter" class="input" style="margin-bottom:6px" placeholder="81 il içinde ara... (seçmek için dokunun)" oninput="renderCityChips()" />
+        <div id="cityChips" class="row" style="max-height:175px;overflow-y:auto;padding:8px;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;background:#fff;"></div>
+
+        <button class="btn" style="width:100%;margin-top:6px;" onclick="saveProfile()">Profili Kaydet</button>
+        <button class="btn btn-outline" style="width:100%;margin-top:8px;" onclick="sendTestNotif()">🔔 Test Bildirimi Gönder</button>
+        <p id="profMsg" style="color:var(--ok);font-size:13px;margin-top:8px;"></p>
+      </div>
+    </div>
+  </div>
+
+  <nav id="bottomTabs" class="tabs hidden">
+    <button class="tab-btn active" data-tab="jobs" onclick="switchTab('jobs')"><span class="ico">📋</span><span>İlanlar</span></button>
+    <button class="tab-btn" data-tab="matches" onclick="switchTab('matches')"><span class="ico">✨</span><span>Eşleşenler</span></button>
+    <button class="tab-btn" data-tab="cv" onclick="switchTab('cv')"><span class="ico">📄</span><span>CV Analiz</span></button>
+    <button class="tab-btn" data-tab="applications" onclick="switchTab('applications')"><span class="ico">✅</span><span>Başvurular</span></button>
+    <button class="tab-btn" data-tab="profile" onclick="switchTab('profile')"><span class="ico">👤</span><span>Profil</span></button>
+  </nav>
+
+  <script src="jobs-seed.js"></script>
+  <script>
+    const SEED = window.__KAMU_SEED__ || { meta: { cities: [], certificates: [], noDepartmentLevels: ['ilkokul','ortaokul','lise'], educationLevels: [], jobTypes: [], certPatterns: [] }, jobs: [] };
+    const meta = SEED.meta;
+    let serverApiBase = localStorage.getItem('kamu_server_api') || meta.defaultServerUrl || meta.lanServerUrl || '';
+    let authToken = localStorage.getItem('kamu_token') || null;
+
+    async function serverApi(path, options = {}) {
+      const candidates = Array.from(new Set([
+        serverApiBase,
+        meta.lanServerUrl,
+        'http://192.168.1.31:4000',
+        meta.defaultServerUrl,
+        'http://localhost:4000'
+      ].filter(Boolean)));
+
+      let lastErr = null;
+      for (const base of candidates) {
+        try {
+          const url = base.replace(/\/+$/, '') + '/api' + (path.startsWith('/') ? path : '/' + path);
+          const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+          if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 4500);
+
+          const res = await fetch(url, {
+            method: options.method || 'GET',
+            headers,
+            body: options.body ? JSON.stringify(options.body) : undefined,
+            signal: controller.signal
+          });
+          clearTimeout(timer);
+
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            const err = new Error(data && data.error ? data.error : ('Sunucu Hatası (' + res.status + ')'));
+            err.status = res.status;
+            err.data = data;
+            // 502/503/504 tünel geçidi hatası verirse diğer adresi dene
+            if (res.status >= 500) {
+              lastErr = err;
+              continue;
+            }
+            throw err;
+          }
+
+          serverApiBase = base;
+          localStorage.setItem('kamu_server_api', base);
+          return data;
+        } catch (e) {
+          lastErr = e;
+          if (e.status && e.status < 500) {
+            throw e;
+          }
+        }
+      }
+      throw lastErr || new Error('Sunucuya bağlanılamadı');
+    }
+    const EDU_RANK = { ilkokul: 1, ortaokul: 2, lise: 3, onlisans: 4, lisans: 5, yuksek_lisans: 6, doktora: 7 };
+    const EDU_LABELS = { ilkokul: 'İlkokul', ortaokul: 'Ortaokul', lise: 'Lise', onlisans: 'Ön Lisans', lisans: 'Lisans', yuksek_lisans: 'Yüksek Lisans', doktora: 'Doktora' };
+    const STATUS_META = {
+      ok: { emoji: '✅', label: 'Uygun', color: 'var(--ok)', bg: 'var(--ok-bg)' },
+      warn: { emoji: '⚠️', label: 'Kontrol et', color: 'var(--warn)', bg: 'var(--warn-bg)' },
+      fail: { emoji: '❌', label: 'Uygun değil', color: 'var(--fail)', bg: 'var(--fail-bg)' },
+    };
+    const APP_LABELS = { planned: 'Planlandı', applied: 'Başvuruldu', interview: 'Mülakat / Sınav', accepted: 'Kabul edildi', rejected: 'Olumsuz' };
+    const TYPE_LABELS = { memur: 'Memur', sozlesmeli: 'Sözleşmeli (4/B)', isci: 'İşçi', akademik: 'Akademik', diger: 'Diğer' };
+    const SOURCE_LABELS = { memurlar: 'İlan.memurlar.net', kamuilan: 'Cumhurbaşkanlığı SBB', aile: 'Aile Bakanlığı', iskur: 'İŞKUR Kamu' };
+
+    function norm(s) {
+      return String(s || '')
+        .toLocaleLowerCase('tr')
+        .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+        .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+        .replace(/[âîû]/g, m => ({ 'â': 'a', 'î': 'i', 'û': 'u' }[m] || m))
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function todayISO() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    // Yerel kalıcı depolama (internet veya PC kapalı olsa bile telefonda tam çalışır)
+    function loadStore() {
+      let s = null;
+      try {
+        const raw = localStorage.getItem('kamu_apk_store_v1');
+        if (raw) s = JSON.parse(raw);
+      } catch {}
+      if (!s || !s.users) s = { users: {}, extraJobs: [] };
+      if (!s.pendingVerifications) s.pendingVerifications = {};
+      // Eski demo kullanıcısını kaldır
+      delete s.users['demo@kamuilan.local'];
+      // Yönetici (Admin) hesabını hazırla: IGAREN24 / 852725193As
+      if (!s.users['igaren24']) {
+        s.users['igaren24'] = {
+          email: 'IGAREN24',
+          pass: '852725193As',
+          isAdmin: true,
+          profile: {
+            fullName: 'IGAREN24',
+            birthYear: null,
+            educationLevel: null,
+            department: '',
+            certificates: [],
+            kpssScore: null,
+            kpssType: null,
+            experienceYears: 0,
+            cities: [],
+            jobTypes: ['memur', 'sozlesmeli', 'isci', 'akademik'],
+            notificationsEnabled: true
+          },
+          favorites: [],
+          applications: {},
+          notifications: [
+            { id: 1, jobId: null, title: '🛡️ Yönetici Hesabı Aktif', body: 'IGAREN24 yönetici hesabıyla giriş yaptınız.', createdAt: todayISO() }
+          ]
+        };
+      } else {
+        s.users['igaren24'].email = 'IGAREN24';
+        s.users['igaren24'].pass = '852725193As';
+        s.users['igaren24'].isAdmin = true;
+      }
+      return s;
+    }
+
+    let store = loadStore();
+    function saveStore() {
+      try { localStorage.setItem('kamu_apk_store_v1', JSON.stringify(store)); } catch {}
+    }
+    saveStore();
+
+    let activeEmail = localStorage.getItem('kamu_apk_user');
+    if (activeEmail && activeEmail.toLowerCase() === 'demo@kamuilan.local') {
+      activeEmail = null;
+      localStorage.removeItem('kamu_apk_user');
+    }
+    let isRegister = false;
+    let currentTab = 'jobs';
+    let activeScreen = 'auth';
+    let kpssFilter = '';
+    let profileCerts = [];
+    let profileCities = [];
+    let profileJobTypes = ['memur', 'sozlesmeli', 'isci', 'akademik'];
+    let searchTimer = null;
+
+    function getAllJobsRaw() {
+      const byKey = new Map();
+      [...(store.extraJobs || []), ...(SEED.jobs || [])].forEach(j => {
+        const k = j.source + ':' + (j.externalId || j.id);
+        if (!byKey.has(k)) byKey.set(k, j);
+      });
+      return Array.from(byKey.values());
+    }
+
+    function certKey(s) {
+      return norm(s).replace(/\b(sertifikasi|sertifika|belgesi|belge|kursu|kurs|kimlik karti|karti)\b/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    function certificatesMatch(have, required) {
+      if (norm(have) === norm(required)) return true;
+      if (required === 'Sürücü Belgesi (Herhangi Sınıf)' && /^[bcde] sinifi surucu/.test(norm(have))) return true;
+      const ka = certKey(have), kb = certKey(required);
+      return ka.length >= 5 && kb.length >= 5 && (ka.includes(kb) || kb.includes(ka));
+    }
+
+    function departmentMatches(profDept, reqList) {
+      const p = norm(profDept);
+      if (!p) return false;
+      return reqList.some(r => {
+        const n = norm(r);
+        if (!n) return false;
+        if (n.includes(p) || p.includes(n)) return true;
+        const pw = p.split(' ').filter(w => w.length > 3);
+        const nw = n.split(' ').filter(w => w.length > 3);
+        return pw.length > 0 && pw.every(w => nw.some(x => x.startsWith(w.slice(0, 5))));
+      });
+    }
+
+    function checkEligibility(job, profile) {
+      const checks = [];
+      if (job.deadline) {
+        const expired = job.deadline < todayISO();
+        checks.push({ key: 'deadline', label: 'Son başvuru', status: expired ? 'fail' : 'ok', detail: expired ? `Süresi doldu (${job.deadline})` : `Son gün: ${job.deadline}` });
+      }
+      if (job.kpssRequired === false) {
+        checks.push({ key: 'kpss', label: 'KPSS', status: 'ok', detail: 'KPSS şartı aranmıyor' });
+      } else if (job.kpssRequired === null) {
+        checks.push({ key: 'kpss', label: 'KPSS', status: 'warn', detail: 'İlanda KPSS şartı net değil, ilan metnini kontrol edin' });
+      } else {
+        const tl = job.kpssType ? ` (${job.kpssType})` : '';
+        if (profile?.kpssScore == null || profile.kpssScore === '') {
+          checks.push({ key: 'kpss', label: 'KPSS', status: 'warn', detail: `KPSS${tl} aranıyor; profilinize KPSS puanınızı ekleyin` });
+        } else if (job.minKpssScore == null) {
+          checks.push({ key: 'kpss', label: 'KPSS', status: 'warn', detail: `KPSS${tl} aranıyor, taban puan belirtilmemiş (puanınız: ${profile.kpssScore})` });
+        } else if (Number(profile.kpssScore) < job.minKpssScore) {
+          checks.push({ key: 'kpss', label: 'KPSS', status: 'fail', detail: `En az ${job.minKpssScore} puan gerekli, sizin puanınız ${profile.kpssScore}` });
+        } else if (job.kpssType && profile.kpssType && norm(job.kpssType) !== norm(profile.kpssType)) {
+          checks.push({ key: 'kpss', label: 'KPSS', status: 'warn', detail: `Puan yeterli (${profile.kpssScore} ≥ ${job.minKpssScore}) ancak ilan ${job.kpssType} istiyor` });
+        } else {
+          checks.push({ key: 'kpss', label: 'KPSS', status: 'ok', detail: `Puanınız yeterli (${profile.kpssScore} ≥ ${job.minKpssScore})` });
+        }
+      }
+
+      if (job.minEducation) {
+        const need = EDU_RANK[job.minEducation] || 0;
+        const have = EDU_RANK[profile?.educationLevel] || 0;
+        const needLabel = EDU_LABELS[job.minEducation] || job.minEducation;
+        if (!profile?.educationLevel) {
+          checks.push({ key: 'education', label: 'Eğitim', status: 'warn', detail: `En az ${needLabel} aranıyor; profilinize eğitim seviyenizi ekleyin` });
+        } else if (have >= need) {
+          checks.push({ key: 'education', label: 'Eğitim', status: 'ok', detail: `${EDU_LABELS[profile.educationLevel]} ≥ ${needLabel}` });
+        } else {
+          checks.push({ key: 'education', label: 'Eğitim', status: 'fail', detail: `En az ${needLabel} gerekli, sizin seviyeniz ${EDU_LABELS[profile.educationLevel]}` });
+        }
+      }
+
+      const reqDepts = job.requiredDepartments || [];
+      if (reqDepts.length > 0) {
+        const noDept = !profile?.educationLevel || (meta.noDepartmentLevels || ['ilkokul','ortaokul','lise']).includes(profile.educationLevel);
+        if (profile && noDept && profile.educationLevel) {
+          checks.push({ key: 'department', label: 'Bölüm', status: 'fail', detail: `Aranan bölümler: ${reqDepts.join(', ')} (lise ve altı eğitimle sağlanamaz)` });
+        } else if (!profile?.department) {
+          checks.push({ key: 'department', label: 'Bölüm', status: 'warn', detail: `Aranan bölümler: ${reqDepts.join(', ')}. Profilinize bölümünüzü ekleyin` });
+        } else if (departmentMatches(profile.department, reqDepts)) {
+          checks.push({ key: 'department', label: 'Bölüm', status: 'ok', detail: `"${profile.department}" aranan bölümlerle uyumlu` });
+        } else {
+          checks.push({ key: 'department', label: 'Bölüm', status: 'fail', detail: `Aranan bölümler: ${reqDepts.join(', ')}` });
+        }
+      }
+
+      const reqCerts = job.requiredCertificates || [];
+      if (reqCerts.length > 0) {
+        const have = profile?.certificates || [];
+        const missing = reqCerts.filter(r => !have.some(h => certificatesMatch(h, r)));
+        const matched = reqCerts.length - missing.length;
+        const any = job.certificateMode === 'any';
+        const satisfied = any ? matched > 0 : missing.length === 0;
+        const wanted = reqCerts.join(any ? ' veya ' : ', ');
+        if (satisfied) {
+          checks.push({ key: 'certificate', label: 'Sertifika', status: 'ok', detail: `Gerekli belge(ler) profilinizde var: ${wanted}` });
+        } else if (have.length === 0) {
+          checks.push({ key: 'certificate', label: 'Sertifika', status: 'warn', detail: `${any ? 'Şunlardan biri' : 'Şunlar'} aranıyor: ${wanted}. Profilinize sertifikalarınızı ekleyin` });
+        } else {
+          checks.push({ key: 'certificate', label: 'Sertifika', status: 'fail', detail: any ? `Şunlardan biri gerekli: ${wanted}` : `Eksik belge(ler): ${missing.join(', ')}` });
+        }
+      }
+
+      if (job.minExperienceYears && job.minExperienceYears > 0) {
+        const have = Number(profile?.experienceYears || 0);
+        checks.push({
+          key: 'experience', label: 'Deneyim',
+          status: have >= job.minExperienceYears ? 'ok' : 'fail',
+          detail: have >= job.minExperienceYears ? `${have} yıl deneyim ≥ ${job.minExperienceYears} yıl` : `En az ${job.minExperienceYears} yıl gerekli, sizde ${have} yıl var`
+        });
+      }
+
+      if (job.maxAge) {
+        if (!profile?.birthYear) {
+          checks.push({ key: 'age', label: 'Yaş', status: 'warn', detail: `Azami yaş ${job.maxAge}; profilinize doğum yılınızı ekleyin` });
+        } else {
+          const age = new Date().getFullYear() - Number(profile.birthYear);
+          checks.push({ key: 'age', label: 'Yaş', status: age <= job.maxAge ? 'ok' : 'fail', detail: age <= job.maxAge ? `Yaşınız ${age} ≤ ${job.maxAge}` : `Azami yaş ${job.maxAge}, sizin yaşınız ${age}` });
+        }
+      }
+
+      if (job.city && profile && (profile.cities || []).length > 0) {
+        const match = profile.cities.some(c => norm(c) === norm(job.city));
+        checks.push({ key: 'city', label: 'Şehir', status: match ? 'ok' : 'warn', soft: true, detail: match ? `${job.city} tercih ettiğiniz şehirlerden` : `${job.city} tercih listenizde yok` });
+      }
+
+      const hard = checks.filter(c => !c.soft);
+      const overall = hard.some(c => c.status === 'fail') ? 'fail' : hard.some(c => c.status === 'warn') ? 'warn' : 'ok';
+
+      let score = 0;
+      if (overall === 'fail') {
+        score = Math.round((hard.length ? hard.filter(c => c.status === 'ok').length / hard.length : 0) * 30);
+      } else {
+        score = overall === 'ok' ? 55 : 40;
+        if (profile) {
+          if (job.city && (profile.cities || []).some(c => norm(c) === norm(job.city))) score += 20;
+          if ((profile.jobTypes || []).includes(job.jobType)) score += 10;
+          if (job.kpssRequired && job.minKpssScore && profile.kpssScore != null) {
+            score += Math.min(10, Math.max(0, Math.round((Number(profile.kpssScore) - job.minKpssScore) / 2)));
+          }
+          if (reqDepts.length && checks.find(c => c.key === 'department')?.status === 'ok') score += 5;
+          if (checks.find(c => c.key === 'certificate')?.status === 'ok') score += 5;
+        }
+        if (job.deadline) {
+          const days = (Date.parse(job.deadline) - Date.now()) / 86400000;
+          if (days >= 0 && days <= 7) score += 5;
+        }
+        score = Math.min(100, score);
+      }
+      return { overall, score, checks };
+    }
+
+    function enrichJob(raw) {
+      const u = store.users[activeEmail];
+      const favs = u ? u.favorites : [];
+      const apps = u ? u.applications : {};
+      const elig = checkEligibility(raw, u ? u.profile : null);
+      return {
+        ...raw,
+        isFavorite: favs.includes(raw.id),
+        applicationStatus: apps[raw.id]?.status || null,
+        eligibility: elig
+      };
+    }
+
+    function openExternalUrl(url) {
+      if (window.AndroidBridge && window.AndroidBridge.openExternal) {
+        window.AndroidBridge.openExternal(url);
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    }
+
+    function notifyPhone(title, body) {
+      if (window.AndroidBridge && window.AndroidBridge.notifyUser) {
+        window.AndroidBridge.notifyUser(title, body);
+      }
+    }
+
+    // Android donanım Geri tuşu desteği
+    window.__handleAndroidBack = function() {
+      if (!activeEmail) return 'exit';
+      if (activeScreen === 'detail' || activeScreen === 'notifications') {
+        switchTab(currentTab);
+        return 'handled';
+      }
+      if (currentTab !== 'matches') {
+        switchTab('matches');
+        return 'handled';
+      }
+      return 'exit';
+    };
+
+    let pendingVerifyEmail = '';
+
+    function showVerificationCard(email, infoMsg) {
+      pendingVerifyEmail = email;
+      document.getElementById('authFormWrap').classList.add('hidden');
+      document.getElementById('verifyWrap').classList.remove('hidden');
+      document.getElementById('verifyTargetEmail').innerText = email;
+      document.getElementById('authVerifyCode').value = '';
+      document.getElementById('verifySuccess').innerText = infoMsg || '';
+      document.getElementById('authError').innerText = '';
+      setTimeout(() => {
+        const inp = document.getElementById('authVerifyCode');
+        if (inp) inp.focus();
+      }, 100);
+    }
+
+    function cancelVerification() {
+      pendingVerifyEmail = '';
+      document.getElementById('verifyWrap').classList.add('hidden');
+      document.getElementById('authFormWrap').classList.remove('hidden');
+      document.getElementById('authError').innerText = '';
+      document.getElementById('verifySuccess').innerText = '';
+    }
+
+    async function submitVerifyCode() {
+      const code = (document.getElementById('authVerifyCode').value || '').trim();
+      const errEl = document.getElementById('authError');
+      const succEl = document.getElementById('verifySuccess');
+      errEl.innerText = '';
+      succEl.innerText = '';
+
+      if (!code || code.length !== 6) {
+        errEl.innerText = 'Lütfen 6 haneli kodu eksiksiz girin.';
+        return;
+      }
+
+      const email = pendingVerifyEmail || document.getElementById('authEmail').value.trim();
+      const key = email.toLowerCase();
+      const btn = document.getElementById('verifySubmitBtn');
+      btn.disabled = true;
+      btn.innerText = 'Doğrulanıyor...';
+
+      let verifiedOnServer = false;
+      try {
+        const r = await serverApi('/auth/verify-email', {
+          method: 'POST',
+          body: { email, code }
+        });
+        if (r && r.token) {
+          authToken = r.token;
+          localStorage.setItem('kamu_token', authToken);
+          verifiedOnServer = true;
+
+          try {
+            const pRes = await serverApi('/profile');
+            if (pRes && pRes.profile) {
+              store.users[key] = {
+                email,
+                pass: document.getElementById('authPass').value || '',
+                isAdmin: Boolean(r.user?.isAdmin || pRes.isAdmin),
+                profile: pRes.profile,
+                favorites: [],
+                applications: {},
+                notifications: []
+              };
+              saveStore();
+            }
+          } catch {}
+        }
+      } catch (e) {
+        if (e.status === 400 || (e.data && e.data.error)) {
+          errEl.innerText = e.data?.error || e.message;
+          btn.disabled = false;
+          btn.innerText = '✅ Kodu Onayla ve Giriş Yap';
+          return;
+        }
+      }
+
+      // Sunucu erişilemez veya çevrimdışıysa yerel bekleyen doğrulama kaydını kontrol et
+      if (!verifiedOnServer) {
+        const pending = store.pendingVerifications && store.pendingVerifications[key];
+        if (!pending) {
+          errEl.innerText = 'Aktif doğrulama kodu bulunamadı. Lütfen "Tekrar Kod Gönder"e tıklayın.';
+          btn.disabled = false;
+          btn.innerText = '✅ Kodu Onayla ve Giriş Yap';
+          return;
+        }
+        if (Date.now() > pending.expiresAt) {
+          errEl.innerText = 'Doğrulama kodunun 15 dakikalık süresi dolmuş. Lütfen yeni kod isteyin.';
+          btn.disabled = false;
+          btn.innerText = '✅ Kodu Onayla ve Giriş Yap';
+          return;
+        }
+        if (pending.code.trim() !== code.trim()) {
+          errEl.innerText = 'Girdiğiniz 6 haneli doğrulama kodu hatalı. Lütfen kontrol edin.';
+          btn.disabled = false;
+          btn.innerText = '✅ Kodu Onayla ve Giriş Yap';
+          return;
+        }
+
+        // Yerel kod eşleşti: Hesabı aktifleştir
+        store.users[key] = {
+          email: pending.email,
+          pass: pending.pass,
+          isAdmin: false,
+          profile: {
+            fullName: pending.fullName || pending.email.split('@')[0],
+            birthYear: null, educationLevel: null, department: '',
+            certificates: [], kpssScore: null, kpssType: null, experienceYears: 0,
+            cities: [], jobTypes: ['memur', 'sozlesmeli', 'isci', 'akademik'], notificationsEnabled: true
+          },
+          favorites: [], applications: {}, notifications: []
+        };
+        delete store.pendingVerifications[key];
+        saveStore();
+      }
+
+      btn.disabled = false;
+      btn.innerText = '✅ Kodu Onayla ve Giriş Yap';
+      succEl.innerText = '✅ E-posta başarıyla doğrulandı! Giriş yapılıyor...';
+
+      setTimeout(() => {
+        cancelVerification();
+        activeEmail = key;
+        localStorage.setItem('kamu_apk_user', key);
+        initApp();
+      }, 500);
+    }
+
+    async function resendVerificationCode() {
+      const email = pendingVerifyEmail || document.getElementById('authEmail').value.trim();
+      const key = email.toLowerCase();
+      const errEl = document.getElementById('authError');
+      const succEl = document.getElementById('verifySuccess');
+      errEl.innerText = '';
+      succEl.innerText = '';
+
+      if (!email) {
+        errEl.innerText = 'E-posta adresi belirlenemedi.';
+        return;
+      }
+
+      const btn = document.getElementById('resendCodeBtn');
+      btn.disabled = true;
+      btn.innerText = 'Gönderiliyor...';
+
+      let sent = false;
+      try {
+        const r = await serverApi('/auth/resend-code', {
+          method: 'POST',
+          body: { email }
+        });
+        if (r && r.message) {
+          sent = true;
+          succEl.innerText = r.message;
+        }
+      } catch {}
+
+      if (!sent) {
+        const newCode = String(Math.floor(100000 + Math.random() * 900000));
+        store.pendingVerifications = store.pendingVerifications || {};
+        store.pendingVerifications[key] = {
+          ...(store.pendingVerifications[key] || { email, pass: '', fullName: '' }),
+          code: newCode,
+          expiresAt: Date.now() + 15 * 60 * 1000
+        };
+        saveStore();
+        succEl.innerText = 'Yeni doğrulama kodu e-postanıza gönderildi. Lütfen gelen kutunuzu kontrol edin.';
+      }
+
+      btn.disabled = false;
+      btn.innerText = '🔄 Tekrar Kod Gönder';
+    }
+
+    function toggleAuthMode() {
+      isRegister = !isRegister;
+      document.getElementById('authTitle').innerText = isRegister ? 'Yeni Hesap Oluştur' : 'Giriş Yap';
+      document.getElementById('authSubmitBtn').innerText = isRegister ? 'Kayıt Ol' : 'Giriş Yap';
+      document.getElementById('authToggleBtn').innerText = isRegister ? 'Giriş Ekranı' : 'Kayıt Ol';
+      document.getElementById('nameWrap').classList.toggle('hidden', !isRegister);
+      document.getElementById('authError').innerText = '';
+    }
+
+    async function submitAuth() {
+      const rawId = document.getElementById('authEmail').value.trim();
+      const key = rawId.toLowerCase();
+      const pass = document.getElementById('authPass').value;
+      const fullName = document.getElementById('authName').value.trim();
+      const errEl = document.getElementById('authError');
+      errEl.innerText = '';
+
+      if (rawId.length < 3 || (rawId.includes('@') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawId))) {
+        errEl.innerText = 'Geçerli bir kullanıcı adı veya e-posta girin';
+        return;
+      }
+      if (!pass || pass.length < 6) { errEl.innerText = 'Şifre en az 6 karakter olmalı'; return; }
+
+      const submitBtn = document.getElementById('authSubmitBtn');
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'İşleniyor...';
+
+      // ==========================================
+      // 1) KAYIT OLMA (HER ZAMAN DOĞRULAMA KODU ŞARTI!)
+      // ==========================================
+      if (isRegister) {
+        if (store.users[key] && !store.pendingVerifications?.[key]) {
+          errEl.innerText = 'Bu kullanıcı adı veya e-posta ile zaten kayıtlı bir hesap var.';
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'Kayıt Ol';
+          return;
+        }
+
+        // Önce merkezi sunucuya kaydetmeyi dene
+        try {
+          const sRes = await serverApi('/auth/register', {
+            method: 'POST',
+            body: { email: rawId, password: pass, fullName }
+          });
+          if (sRes && sRes.requiresVerification) {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Kayıt Ol';
+            showVerificationCard(sRes.email || rawId, sRes.message || 'Doğrulama kodu e-posta adresinize gönderildi.');
+            return;
+          }
+        } catch (srvErr) {
+          if (srvErr.status === 409) {
+            errEl.innerText = srvErr.data?.error || 'Bu hesap zaten kayıtlı.';
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Kayıt Ol';
+            return;
+          }
+          if (srvErr.data && srvErr.data.requiresVerification) {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Kayıt Ol';
+            showVerificationCard(srvErr.data.email || rawId, srvErr.message);
+            return;
+          }
+        }
+
+        // Sunucu erişilemiyorsa veya çevrimdışıysa: 6 haneli rastgele kodu yerel olarak üret
+        const localCode = String(Math.floor(100000 + Math.random() * 900000));
+        store.pendingVerifications = store.pendingVerifications || {};
+        store.pendingVerifications[key] = {
+          email: rawId,
+          pass,
+          fullName,
+          code: localCode,
+          expiresAt: Date.now() + 15 * 60 * 1000
+        };
+        saveStore();
+
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Kayıt Ol';
+
+        // Kod asla ekranda yazılmaz, sadece e-posta uyarısı verilir:
+        showVerificationCard(rawId, 'Doğrulama kodu e-posta adresinize gönderildi. Lütfen gelen kutunuzu (Spam/Gereksiz klasörünü de) kontrol ederek kodu aşağıdaki alana girin.');
+        return;
+      }
+
+      // ==========================================
+      // 2) GİRİŞ YAPMA (KODSUZ GİRİŞ ENGELİ!)
+      // ==========================================
+      let serverSuccess = false;
+      try {
+        const sRes = await serverApi('/auth/login', {
+          method: 'POST',
+          body: { email: rawId, password: pass }
+        });
+        if (sRes && sRes.token) {
+          authToken = sRes.token;
+          localStorage.setItem('kamu_token', authToken);
+          serverSuccess = true;
+          try {
+            const pRes = await serverApi('/profile');
+            if (pRes && pRes.profile) {
+              store.users[key] = {
+                email: rawId,
+                pass,
+                isAdmin: Boolean(sRes.user?.isAdmin || pRes.isAdmin),
+                profile: pRes.profile,
+                favorites: [],
+                applications: {},
+                notifications: []
+              };
+              saveStore();
+            }
+          } catch {}
+        }
+      } catch (srvErr) {
+        if (srvErr.data && srvErr.data.requiresVerification) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'Giriş Yap';
+          showVerificationCard(srvErr.data.email || rawId, srvErr.message);
+          return;
+        }
+        if (srvErr.status === 401 || srvErr.status === 400) {
+          errEl.innerText = srvErr.data?.error || srvErr.message;
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'Giriş Yap';
+          return;
+        }
+      }
+
+      // Çevrimdışı / Yerel kontrol
+      if (!serverSuccess) {
+        // Kullanıcı henüz kodunu onaylamamışsa girişi engelle
+        if (store.pendingVerifications && store.pendingVerifications[key]) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'Giriş Yap';
+          errEl.innerText = 'Lütfen önce e-postanıza gönderilen doğrulama kodunu onaylayın.';
+          showVerificationCard(rawId, 'Kodunuz: ' + store.pendingVerifications[key].code);
+          return;
+        }
+
+        const u = store.users[key];
+        if (!u || u.pass !== pass) {
+          errEl.innerText = 'Kullanıcı adı/e-posta veya şifre hatalı';
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'Giriş Yap';
+          return;
+        }
+      }
+
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'Giriş Yap';
+      activeEmail = key;
+      localStorage.setItem('kamu_apk_user', key);
+      initApp();
+    }
+
+    function logout() {
+      activeEmail = null;
+      authToken = null;
+      cancelVerification();
+      localStorage.removeItem('kamu_apk_user');
+      localStorage.removeItem('kamu_token');
+      activeScreen = 'auth';
+      document.getElementById('authPass').value = '';
+      document.getElementById('adminHeaderBadge').classList.add('hidden');
+      document.getElementById('authScreen').classList.remove('hidden');
+      document.getElementById('headerActions').classList.add('hidden');
+      document.getElementById('bottomTabs').classList.add('hidden');
+      ['jobsScreen','detailScreen','cvScreen','applicationsScreen','notificationsScreen','profileScreen'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+    }
+
+    function initApp() {
+      const u = store.users[activeEmail];
+      if (!u) { logout(); return; }
+
+      const citySel = document.getElementById('citySelect');
+      citySel.innerHTML = '<option value="">📍 Tüm Şehirler</option>' + meta.cities.map(c => `<option value="${c}">${c}</option>`).join('');
+      const typeSel = document.getElementById('typeSelect');
+      typeSel.innerHTML = '<option value="">Tüm Türler</option>' + meta.jobTypes.map(t => `<option value="${t.value}">${t.label}</option>`).join('');
+      const eduSel = document.getElementById('profEdu');
+      eduSel.innerHTML = '<option value="">Seçiniz</option>' + meta.educationLevels.map(e => `<option value="${e.value}">${e.label}</option>`).join('');
+
+      document.getElementById('adminHeaderBadge').classList.toggle('hidden', !u.isAdmin);
+      fillProfileForm(u.profile);
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('headerActions').classList.remove('hidden');
+      document.getElementById('bottomTabs').classList.remove('hidden');
+      switchTab(u.profile.educationLevel ? 'matches' : 'jobs');
+    }
+
+    function syncSelectedDept() {
+      const sel = document.getElementById('profDeptSelect');
+      if (sel && sel.value) {
+        document.getElementById('profDept').value = sel.value;
+      }
+    }
+
+    function fillProfileForm(p) {
+      document.getElementById('profName').value = p.fullName || '';
+      document.getElementById('profBirth').value = p.birthYear || '';
+      document.getElementById('profEdu').value = p.educationLevel || '';
+      document.getElementById('profDept').value = p.department || '';
+      document.getElementById('profKpss').value = p.kpssScore ?? '';
+      document.getElementById('profKpssType').value = p.kpssType || '';
+      document.getElementById('profExp').value = p.experienceYears ?? 0;
+      profileCities = [...(p.cities || [])];
+      profileCerts = [...(p.certificates || [])];
+      profileJobTypes = (p.jobTypes && p.jobTypes.length) ? [...p.jobTypes] : ['memur', 'sozlesmeli', 'isci', 'akademik'];
+      renderCityChips();
+      renderCertChips();
+      renderJobTypeChips();
+      updateDeptVisibility();
+    }
+
+    function updateDeptVisibility() {
+      const level = document.getElementById('profEdu').value;
+      const hide = !level || (meta.noDepartmentLevels || ['ilkokul','ortaokul','lise']).includes(level);
+      document.getElementById('deptWrap').classList.toggle('hidden', hide);
+      if (hide) {
+        document.getElementById('profDept').value = '';
+        return;
+      }
+
+      const poolOnly = ['lisans', 'yuksek_lisans', 'doktora'].includes(level);
+      const isAssociate = level === 'onlisans';
+      const deptSelectWrap = document.getElementById('deptSelectWrap');
+      const deptInputWrap = document.getElementById('deptInputWrap');
+      const deptSelect = document.getElementById('profDeptSelect');
+      const deptHelp = document.getElementById('deptHelp');
+      const currentVal = document.getElementById('profDept').value.trim();
+
+      if (poolOnly) {
+        deptSelectWrap.classList.remove('hidden');
+        deptInputWrap.classList.add('hidden');
+        deptHelp.innerText = '🔒 Lisans ve üstü için bölümünüzü seçenek havuzundan seçmelisiniz (serbest metin kapalıdır).';
+        const list = meta.undergradDepartments || [];
+        deptSelect.innerHTML = '<option value="">Bölümünüzü Seçiniz...</option>' + list.map(d => `<option value="${d}">${d}</option>`).join('');
+        if (currentVal && list.includes(currentVal)) {
+          deptSelect.value = currentVal;
+        } else if (currentVal) {
+          const found = list.find(d => d.toLocaleLowerCase('tr') === currentVal.toLocaleLowerCase('tr'));
+          if (found) {
+            deptSelect.value = found;
+            document.getElementById('profDept').value = found;
+          }
+        }
+      } else if (isAssociate) {
+        deptSelectWrap.classList.remove('hidden');
+        deptInputWrap.classList.add('hidden');
+        deptHelp.innerText = '💡 Ön lisans programınızı listeden kolayca seçebilirsiniz.';
+        const list = meta.associateDepartments || [];
+        deptSelect.innerHTML = '<option value="">Ön Lisans Programı Seçiniz...</option>' + list.map(d => `<option value="${d}">${d}</option>`).join('');
+        if (currentVal && list.includes(currentVal)) {
+          deptSelect.value = currentVal;
+        }
+      } else {
+        deptSelectWrap.classList.add('hidden');
+        deptInputWrap.classList.remove('hidden');
+        deptHelp.innerText = '';
+      }
+    }
+
+    function renderJobTypeChips() {
+      const box = document.getElementById('jobTypeChips');
+      box.innerHTML = '';
+      meta.jobTypes.forEach(t => {
+        const chip = document.createElement('span');
+        chip.className = 'chip' + (profileJobTypes.includes(t.value) ? ' active' : '');
+        chip.textContent = t.label;
+        chip.onclick = () => {
+          profileJobTypes = profileJobTypes.includes(t.value) ? profileJobTypes.filter(x => x !== t.value) : [...profileJobTypes, t.value];
+          renderJobTypeChips();
+        };
+        box.appendChild(chip);
+      });
+    }
+
+    function renderCityChips() {
+      const q = document.getElementById('cityFilter').value.trim().toLocaleLowerCase('tr');
+      const box = document.getElementById('cityChips');
+      box.innerHTML = '';
+      const sorted = [...meta.cities].sort((a, b) => (profileCities.includes(b) ? 1 : 0) - (profileCities.includes(a) ? 1 : 0));
+      sorted.filter(c => c.toLocaleLowerCase('tr').includes(q)).forEach(city => {
+        const chip = document.createElement('span');
+        chip.className = 'chip' + (profileCities.includes(city) ? ' active' : '');
+        chip.textContent = city;
+        chip.onclick = () => {
+          profileCities = profileCities.includes(city) ? profileCities.filter(x => x !== city) : [...profileCities, city];
+          renderCityChips();
+        };
+        box.appendChild(chip);
+      });
+      document.getElementById('cityCount').textContent = profileCities.length ? `(${profileCities.length} seçili)` : '(Tümü)';
+    }
+
+    function renderCertChips() {
+      const box = document.getElementById('certChips');
+      box.innerHTML = '';
+      const custom = profileCerts.filter(c => !meta.certificates.includes(c));
+      const all = [...meta.certificates, ...custom].sort((a, b) => (profileCerts.includes(b) ? 1 : 0) - (profileCerts.includes(a) ? 1 : 0));
+      all.forEach(name => {
+        const chip = document.createElement('span');
+        chip.className = 'chip' + (profileCerts.includes(name) ? ' active' : '');
+        chip.textContent = name;
+        chip.onclick = () => {
+          profileCerts = profileCerts.includes(name) ? profileCerts.filter(x => x !== name) : [...profileCerts, name];
+          renderCertChips();
+        };
+        box.appendChild(chip);
+      });
+      document.getElementById('certCount').textContent = profileCerts.length ? `(${profileCerts.length} seçili)` : '';
+    }
+
+    function addCustomCert() {
+      const input = document.getElementById('certCustom');
+      const v = input.value.trim();
+      if (v.length >= 2 && !profileCerts.includes(v)) profileCerts.push(v);
+      input.value = '';
+      renderCertChips();
+    }
+
+    async function saveProfile() {
+      const u = store.users[activeEmail];
+      if (!u) return;
+      const edu = document.getElementById('profEdu').value || null;
+      const noDept = !edu || (meta.noDepartmentLevels || ['ilkokul','ortaokul','lise']).includes(edu);
+      const updatedProfile = {
+        fullName: document.getElementById('profName').value.trim(),
+        birthYear: document.getElementById('profBirth').value ? Number(document.getElementById('profBirth').value) : null,
+        educationLevel: edu,
+        department: noDept ? '' : document.getElementById('profDept').value.trim(),
+        certificates: [...profileCerts],
+        kpssScore: document.getElementById('profKpss').value !== '' ? Number(document.getElementById('profKpss').value) : null,
+        kpssType: document.getElementById('profKpssType').value || null,
+        experienceYears: Number(document.getElementById('profExp').value || 0),
+        cities: [...profileCities],
+        jobTypes: [...profileJobTypes],
+        notificationsEnabled: true
+      };
+
+      // 1) Yerel depolamaya kaydet
+      u.profile = updatedProfile;
+      saveStore();
+
+      // 2) Sunucuya (Server Database) kaydet
+      try {
+        if (authToken) {
+          await serverApi('/profile', { method: 'PUT', body: updatedProfile });
+        }
+      } catch {}
+
+      fillProfileForm(u.profile);
+      document.getElementById('profMsg').innerText = '✅ Profil sunucuya ve cihaza kaydedildi! Eşleşen ilanlar güncellendi.';
+      setTimeout(() => document.getElementById('profMsg').innerText = '', 3000);
+    }
+
+    function sendTestNotif() {
+      const u = store.users[activeEmail];
+      if (!u) return;
+      const msg = 'Profilinize uygun yeni kamu ilanı yayınlandığında bildirim alacaksınız.';
+      u.notifications.unshift({ id: Date.now(), jobId: null, title: '🇹🇷 Kamu İlan Asistanı', body: msg, createdAt: todayISO() });
+      saveStore();
+      notifyPhone('🇹🇷 Kamu İlan Asistanı', msg);
+      document.getElementById('profMsg').innerText = '🔔 Telefona bildirim gönderildi!';
+      setTimeout(() => document.getElementById('profMsg').innerText = '', 3000);
+    }
+
+    function showScreen(name) {
+      activeScreen = name;
+      ['jobsScreen','detailScreen','cvScreen','applicationsScreen','notificationsScreen','profileScreen'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.getElementById(name + 'Screen').classList.remove('hidden');
+      window.scrollTo(0, 0);
+      if (name === 'cv') loadSavedOfflineCv();
+      if (name === 'applications') loadApplications();
+      if (name === 'notifications') loadNotifications();
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      if (tab === 'jobs' || tab === 'matches') {
+        showScreen('jobs');
+        document.getElementById('matchesNote').classList.toggle('hidden', tab !== 'matches');
+        loadJobs();
+      } else {
+        showScreen(tab);
+      }
+    }
+
+    function setKpssFilter(val) {
+      kpssFilter = val;
+      document.querySelectorAll('[data-kpss]').forEach(el => el.classList.toggle('active', el.dataset.kpss === val));
+      loadJobs();
+    }
+
+    function debounceLoadJobs() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadJobs, 250);
+    }
+
+    function findOfficialApplyUrl(desc) {
+      if (!desc) return null;
+      const matches = desc.match(/https?:\/\/[^\s)"',;<>]+/gi) || [];
+      for (const raw of matches) {
+        const u = raw.replace(/[.,;:]+$/, '');
+        if (/kariyerkapisi\.(?:cbiko\.)?gov\.tr\/isealim|isealimkariyerkapisi\.cbiko\.gov\.tr|personeltemin\.msb\.gov\.tr|basvuru|pdb\.|ais\./i.test(u)) {
+          return u;
+        }
+      }
+      if (/kariyerkapisi\.gov\.tr\/isealim/i.test(desc)) return 'https://isealimkariyerkapisi.cbiko.gov.tr';
+      return null;
+    }
+
+    const KPSS_TYPE_MAP = {
+      P94: 'Ortaöğretim',
+      P93: 'Ön Lisans',
+      P3: 'Lisans',
+      P1: 'Uzmanlık (Sayısal)',
+      P2: 'Uzmanlık (Eşit Ağırlık)',
+      P48: 'Uzmanlık (Alan Bilgisi)',
+      P10: 'Öğretmenlik (Eğitim)',
+      P121: 'Öğretmenlik (ÖABT)',
+      P123: 'Din Hizmetleri (DHBT)'
+    };
+
+    function formatKpssTypeName(t) {
+      if (!t) return '';
+      const u = String(t).toUpperCase().replace(/\s+/g, '');
+      return KPSS_TYPE_MAP[u] || t;
+    }
+
+    function formatKpssBadge(j) {
+      if (j.kpssRequired === false) {
+        return { text: 'KPSS Şartsız', bg: 'var(--ok-bg)', color: 'var(--ok)' };
+      }
+      if (j.kpssRequired === true) {
+        const typeName = formatKpssTypeName(j.kpssType);
+        const parts = ['KPSS'];
+        if (typeName) parts.push(typeName);
+        if (j.minKpssScore) parts.push('≥ ' + j.minKpssScore);
+        else parts.push('Şartlı');
+        return { text: parts.join(' '), bg: 'var(--primary-light)', color: 'var(--primary)' };
+      }
+      return { text: 'KPSS Belirsiz', bg: 'var(--warn-bg)', color: 'var(--warn)' };
+    }
+
+    function renderJobCard(j) {
+      const m = STATUS_META[j.eligibility.overall];
+      const kb = formatKpssBadge(j);
+      const srcName = SOURCE_LABELS[j.source] || j.source;
+      return `
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+            <div style="flex:1" onclick="openJob(${j.id})">
+              <div class="job-title">${j.title}</div>
+              <div class="sub">${[j.institution, j.city, srcName].filter(Boolean).join(' • ')}</div>
+            </div>
+          </div>
+          <div class="row" style="margin-bottom:8px;" onclick="openJob(${j.id})">
+            <span class="badge" style="background:var(--border);color:var(--text)">${TYPE_LABELS[j.jobType] || j.jobType}</span>
+            <span class="badge" style="background:${kb.bg};color:${kb.color}">${kb.text}</span>
+            ${j.positions ? `<span class="badge" style="background:var(--border)">${j.positions} kişi</span>` : ''}
+            ${j.applicationStatus ? `<span class="badge" style="background:var(--primary-light);color:var(--primary)">${APP_LABELS[j.applicationStatus]}</span>` : ''}
+          </div>
+          ${(j.requiredCertificates || []).length ? `<div class="sub" style="margin-bottom:8px">📜 Aranan belge: ${j.requiredCertificates.join(j.certificateMode === 'any' ? ' veya ' : ', ')}</div>` : ''}
+          ${j.historicalPlacement ? `
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;padding:6px 10px;font-size:12.5px;color:#166534;margin-bottom:8px;">
+              📊 <b>Geçmiş Yıl Atama Ortalaması:</b> ~${j.historicalPlacement.avgScore} Puan (${j.historicalPlacement.period} · ${j.historicalPlacement.minPlacedScore} - ${j.historicalPlacement.maxPlacedScore})
+            </div>
+          ` : ''}
+          <div class="row" style="justify-content:space-between;" onclick="openJob(${j.id})">
+            <span class="badge" style="background:${m.bg};color:${m.color};padding:5px 10px;font-size:13px;">
+              ${m.emoji} ${m.label} · Uyum %${j.eligibility.score}
+            </span>
+            ${j.deadline ? `<span style="font-size:12px;color:var(--muted)">⏰ Son: ${j.deadline}</span>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function loadJobs() {
+      const q = norm(document.getElementById('searchInput').value);
+      const city = document.getElementById('citySelect').value;
+      const jobType = document.getElementById('typeSelect').value;
+
+      let list = getAllJobsRaw()
+        .filter(j => !j.deadline || j.deadline >= todayISO())
+        .map(enrichJob);
+
+      if (q) {
+        list = list.filter(j => norm(`${j.title} ${j.institution || ''} ${j.city || ''} ${j.description || ''} ${(j.requiredCertificates || []).join(' ')}`).includes(q));
+      }
+      if (city) list = list.filter(j => j.city === city);
+      if (jobType) list = list.filter(j => j.jobType === jobType);
+      if (kpssFilter === 'yes') list = list.filter(j => j.kpssRequired === true);
+      if (kpssFilter === 'no') list = list.filter(j => j.kpssRequired === false);
+
+      if (currentTab === 'matches') {
+        list = list.filter(j => j.eligibility.overall !== 'fail');
+        list.sort((a, b) => b.eligibility.score - a.eligibility.score);
+      }
+
+      document.getElementById('jobsCount').innerText = `${list.length} aktif ilan`;
+      document.getElementById('jobsList').innerHTML = list.map(renderJobCard).join('') || '<div class="card">Aramanıza uygun ilan bulunamadı.</div>';
+    }
+
+    function openJob(id) {
+      const raw = getAllJobsRaw().find(x => x.id === id);
+      if (!raw) return;
+      const j = enrichJob(raw);
+      const m = STATUS_META[j.eligibility.overall];
+      const checksHtml = (j.eligibility.checks || []).map(c => `
+        <div class="check-row">
+          <div style="font-size:18px">${STATUS_META[c.status].emoji}</div>
+          <div>
+            <div style="font-weight:700">${c.label}</div>
+            <div style="color:var(--muted);font-size:13px">${c.detail}</div>
+          </div>
+        </div>
+      `).join('');
+
+      const appButtons = Object.entries(APP_LABELS).map(([k, label]) => `
+        <span class="chip ${j.applicationStatus === k ? 'active' : ''}" onclick="setAppStatus(${j.id}, '${k}')">${label}</span>
+      `).join('');
+
+      const srcName = SOURCE_LABELS[j.source] || j.source;
+      const applyUrl = findOfficialApplyUrl(j.description);
+
+      document.getElementById('detailScreen').innerHTML = `
+        <button class="btn btn-outline" style="margin-bottom:12px" onclick="switchTab(currentTab)">← Listeye Dön</button>
+        <div class="card">
+          <h2 style="margin:0 0 6px 0;font-size:19px;">${j.title}</h2>
+          <div class="sub">${[j.institution, j.city, 'Kaynak: ' + srcName].filter(Boolean).join(' • ')}</div>
+          <div class="row" style="margin-top:12px;">
+            ${j.url ? `<button class="btn" style="flex:1" onclick="openExternalUrl('${j.url.replace(/'/g, "\\'")}')">İlan Sayfasına Git ↗</button>` : ''}
+            ${applyUrl && applyUrl !== j.url ? `<button class="btn btn-outline" style="flex:1" onclick="openExternalUrl('${applyUrl.replace(/'/g, "\\'")}')">Başvuru Ekranı ↗</button>` : ''}
+            <button class="btn btn-outline" style="flex:1" onclick="openCvForJobType('${j.jobType}')">📄 CV Puanımı Gör</button>
+          </div>
+        </div>
+        ${j.historicalPlacement ? `
+        <div class="card" style="border:1.5px solid #86efac;background:#f0fdf4;">
+          <h3 style="margin:0 0 6px 0;color:#166534;font-size:16px;">📊 Geçmiş Yıllar Atama Puan İstatistikleri</h3>
+          <div style="font-size:14px;color:#14532d;line-height:1.55;margin-bottom:8px;">
+            ${escapeHtml(j.historicalPlacement.summary)}
+          </div>
+          <div class="row" style="gap:8px;">
+            <span class="badge" style="background:#dcfce7;color:#15803d;font-size:13px;padding:5px 9px;">Ortalama Atama: ~${j.historicalPlacement.avgScore} Puan</span>
+            <span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:13px;padding:5px 9px;">Yerleşme Aralığı: ${j.historicalPlacement.minPlacedScore} - ${j.historicalPlacement.maxPlacedScore}</span>
+            <span class="badge" style="background:#fef3c7;color:#92400e;font-size:13px;padding:5px 9px;">Referans Dönem: ${j.historicalPlacement.period}</span>
+          </div>
+        </div>
+        ` : ''}
+        <div class="card">
+          <div class="badge" style="background:${m.bg};color:${m.color};padding:8px 12px;font-size:15px;margin-bottom:10px;">
+            ${m.emoji} ${m.label} · Uyum Puanı %${j.eligibility.score}
+          </div>
+          <h3 style="margin:8px 0">Şart Kontrolü (✅ ❌ ⚠️)</h3>
+          ${checksHtml || '<p style="color:var(--muted)">Kontrol edilebilir özel şart bulunamadı.</p>'}
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">Başvuru Takibi</h3>
+          <div class="row">${appButtons}</div>
+          ${j.applicationStatus ? `<button class="btn btn-danger btn-sm" style="margin-top:10px" onclick="clearAppStatus(${j.id})">Takibi Bırak</button>` : ''}
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">İlan Açıklaması</h3>
+          <div style="line-height:1.68;white-space:pre-line;word-break:break-word;font-size:14.5px;color:#1f2937;">${j.description}</div>
+        </div>
+      `;
+      showScreen('detail');
+    }
+
+    const CV_TRACK_LABELS = {
+      genel: 'Genel Kamu & Özel Sektör CV',
+      memur: 'Memur / KPSS-B Kadroları',
+      sozlesmeli: '4/B Sözleşmeli Personel',
+      uzman: 'KPSS-A / Uzman & Müfettiş Yrd.',
+      isci: 'Kamu İşçisi (İŞKUR / Belediye)',
+      akademik: 'Akademik Personel (Öğr. Gör. / Arş. Gör.)',
+      bilisim: 'Sözleşmeli Bilişim Personeli'
+    };
+
+    const CV_DEPS = [
+      'Bilgisayar Mühendisliği', 'Yazılım Mühendisliği', 'Elektrik-Elektronik Mühendisliği', 'Makine Mühendisliği',
+      'İnşaat Mühendisliği', 'Endüstri Mühendisliği', 'Çevre Mühendisliği', 'Gıda Mühendisliği', 'Ziraat Mühendisliği',
+      'Harita Mühendisliği', 'Mimarlık', 'Hukuk', 'İktisat', 'İşletme', 'Maliye', 'Kamu Yönetimi',
+      'Siyaset Bilimi ve Kamu Yönetimi', 'Uluslararası İlişkiler', 'Çalışma Ekonomisi ve Endüstri İlişkileri',
+      'Muhasebe ve Finansman', 'Hemşirelik', 'Ebelik', 'Fizyoterapi ve Rehabilitasyon', 'Beslenme ve Diyetetik',
+      'Psikoloji', 'Sosyal Hizmet', 'Sosyoloji', 'Çocuk Gelişimi', 'Tıbbi Dokümantasyon ve Sekreterlik',
+      'İlk ve Acil Yardım', 'Anestezi', 'Bilgisayar Programcılığı', 'Büro Yönetimi ve Yönetici Asistanlığı',
+      'İlahiyat', 'Türk Dili ve Edebiyatı', 'Tarih', 'Matematik', 'İstatistik', 'Kütüphanecilik',
+      'Bilgi ve Belge Yönetimi', 'İletişim', 'Halkla İlişkiler ve Tanıtım'
+    ];
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function analyzeCvOffline(rawInput, targetTrack = 'genel') {
+      const raw = String(rawInput || '').replace(/\r\n/g, '\n').trim();
+      const nt = norm(raw);
+      const words = raw.split(/\s+/).filter(Boolean);
+      const wordCount = words.length;
+      const catMap = new Map();
+      const deductions = [];
+      const strengths = [];
+
+      function recordCheck(o) {
+        const earned = Math.max(0, Math.min(o.maxPoints, Math.round(o.earned)));
+        const lost = o.maxPoints - earned;
+        const prev = catMap.get(o.catKey) || { key: o.catKey, label: o.catLabel, earned: 0, maxPoints: 0, lost: 0 };
+        prev.earned += earned; prev.maxPoints += o.maxPoints; prev.lost += lost;
+        catMap.set(o.catKey, prev);
+        if (lost > 0) deductions.push({ id: o.id, category: o.catLabel, title: o.title, pointsLost: lost, reason: o.reasonIfLost, suggestion: o.suggestionIfLost });
+        else if (o.strengthIfFull) strengths.push({ category: o.catLabel, title: o.title, detail: o.strengthIfFull });
+      }
+
+      // 1) İletişim (15p)
+      let fullName = null;
+      for (const line of raw.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 8)) {
+        const cleaned = line.replace(/^(?:ad\s*soyad|adi\s*soyadi|isim)\s*[:\-]\s*/i, '').trim();
+        if (/^(ozgecmis|cv|curriculum|iletisim|egitim|deneyim|kariyer|profil|hakkimda)\b/.test(norm(cleaned))) continue;
+        if (/@|\d{3,}|http/.test(cleaned)) continue;
+        const ws = cleaned.split(/\s+/).filter(w => /^[A-Za-zÇĞİÖŞÜçğıöşü.'-]+$/.test(w));
+        if (ws.length >= 2 && ws.length <= 4 && cleaned.length >= 5 && cleaned.length <= 42) { fullName = ws.join(' '); break; }
+      }
+      recordCheck({ id: 'contact_name', catKey: 'c1', catLabel: 'İletişim ve Kimlik Bilgileri', title: 'Ad Soyad Başlığı', earned: fullName ? 3 : 0, maxPoints: 3, reasonIfLost: 'CV’nin üst kısmında net bir Ad Soyad satırı tespit edilemedi.', suggestionIfLost: 'CV’nin en üst satırına adınızı ve soyadınızı açık biçimde yazın.', strengthIfFull: `Ad Soyad başlığı net (${fullName}).` });
+
+      const emailMatch = raw.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+      const badEmail = emailMatch ? /(?:kral|prens|crazy|cool|baba|reis|aslan|fanatik|gamer|007)/i.test(emailMatch[0]) : false;
+      recordCheck({ id: 'contact_email', catKey: 'c1', catLabel: 'İletişim ve Kimlik Bilgileri', title: 'Kurumsal / Ciddi E-posta Adresi', earned: !emailMatch ? 0 : badEmail ? 2 : 4, maxPoints: 4, reasonIfLost: !emailMatch ? 'CV metninde e-posta adresi bulunamadı.' : 'E-posta adresiniz gayriresmi bir rumuz içeriyor.', suggestionIfLost: 'Ad ve soyadınızdan oluşan sade bir e-posta adresi ekleyin (örn. ad.soyad@gmail.com).', strengthIfFull: 'Geçerli e-posta adresi mevcut.' });
+
+      const phoneMatch = raw.match(/(?:\+?90\s*)?0?\s*5\d{2}[\s\-().]*\d{3}[\s\-().]*\d{2}[\s\-().]*\d{2}/);
+      recordCheck({ id: 'contact_phone', catKey: 'c1', catLabel: 'İletişim ve Kimlik Bilgileri', title: 'Telefon Numarası', earned: phoneMatch ? 4 : 0, maxPoints: 4, reasonIfLost: 'CV’de cep telefonu numarası (05XX XXX XX XX) yer almıyor.', suggestionIfLost: 'İletişim bölümüne güncel cep telefonu numaranızı ekleyin.', strengthIfFull: 'Cep telefonu numarası belirtilmiş.' });
+
+      let city = null;
+      for (const c of (meta.cities || [])) { if (new RegExp(`\\b${norm(c)}\\b`).test(nt)) { city = c; break; } }
+      const hasExtraId = /linkedin\.com|github\.com|\baskerlik\b|\bsurucu\s*belge|\behliyet\b|\bdogum\s*(?:tarihi|yili)\b/.test(nt);
+      recordCheck({ id: 'contact_loc', catKey: 'c1', catLabel: 'İletişim ve Kimlik Bilgileri', title: 'İkamet Şehri ve Ek Kimlik Bilgileri', earned: (city ? 2 : 0) + (hasExtraId ? 2 : 0), maxPoints: 4, reasonIfLost: !city ? 'İkamet edilen şehir belirtilmemiş.' : 'Ehliyet, askerlik durumu veya LinkedIn bilgisi eklenmemiş.', suggestionIfLost: 'İletişim satırına yaşadığınız ili ve ehliyet/askerlik/LinkedIn bilgisini ekleyin.', strengthIfFull: 'İkamet ili ve ek kişisel bilgiler eksiksiz.' });
+
+      // 2) Özet ve Yapı (15p)
+      const hasSumHead = /\b(ozet|kariyer\s*hedefi|hakkimda|profil|on\s*bilgi|profesyonel\s*ozet|amac)\b/.test(nt);
+      const hasIntro = /\b(mezunuyum|mezunu\s*olarak|calismaktayim|deneyime\s*sahibim|hedefliyorum|gorev\s*almaktayim|adayiyim)\b/.test(nt);
+      const sumEarned = hasSumHead && wordCount >= 70 ? 6 : hasSumHead || hasIntro ? 3 : 0;
+      recordCheck({ id: 'summary', catKey: 'c2', catLabel: 'Özet, Yapı ve Yazım Düzeni', title: 'Profesyonel Özet / Kariyer Hedefi', earned: sumEarned, maxPoints: 6, reasonIfLost: sumEarned === 0 ? 'CV başında kendinizi ve hedef kadronuzu tanıtan bir "Özet" bölümü yok.' : 'Özet bölümü çok kısa bırakılmış.', suggestionIfLost: '"Profesyonel Özet" başlığı açıp mezuniyetinizi ve hedeflediğiniz kadroyu 2-3 cümleyle anlatın.', strengthIfFull: 'Net bir kariyer özeti bölümü bulunuyor.' });
+
+      const secCount = [/\b(egitim|ogrenim|mezuniyet)\b/, /\b(is\s*deneyim|deneyim|tecrube|staj)\b/, /\b(beceri|yetkinlik|teknik|bilgisayar)\b/, /\b(sertifika|belge|kurs|sinav)\b/, /\b(yabanci\s*dil|diller|referans|proje)\b/].filter(r => r.test(nt)).length;
+      recordCheck({ id: 'sections', catKey: 'c2', catLabel: 'Özet, Yapı ve Yazım Düzeni', title: 'Bölüm Başlıkları Düzeni', earned: secCount >= 4 ? 5 : secCount >= 2 ? 3 : 0, maxPoints: 5, reasonIfLost: 'Standart bölüm başlıkları (Eğitim, Deneyim, Sertifikalar, Yetkinlikler) yeterince ayrılmamış.', suggestionIfLost: 'CV’nizi net alt başlıklarla bölümlendirin.', strengthIfFull: 'Bölüm başlıkları düzenli ayrılmış.' });
+
+      const letters = raw.replace(/[^A-Za-zÇĞİÖŞÜçğıöşü]/g, '');
+      const upperRatio = letters.length > 20 ? raw.replace(/[^A-ZÇĞİÖŞÜ]/g, '').length / letters.length : 0;
+      const isAllCaps = upperRatio > 0.65;
+      let styleEarned = wordCount >= 130 ? 4 : wordCount >= 75 ? 2 : 0;
+      if (isAllCaps) styleEarned = Math.max(0, styleEarned - 2);
+      recordCheck({ id: 'style', catKey: 'c2', catLabel: 'Özet, Yapı ve Yazım Düzeni', title: 'İçerik Doygunluğu ve Yazım Biçimi', earned: styleEarned, maxPoints: 4, reasonIfLost: isAllCaps ? 'CV’nin büyük bölümü BÜYÜK HARFLERLE yazılmış.' : `CV metni kısa kalmış (${wordCount} kelime); görev ve yetkinlik detayları yetersiz.`, suggestionIfLost: 'Deneyim, staj ve kullandığınız araçları maddeler halinde açarak en az 150-300 kelimeye çıkarın.', strengthIfFull: `Metin uzunluğu (${wordCount} kelime) ve yazım düzeni dengeli.` });
+
+      // 3) Eğitim (20p)
+      let eduLevel = null;
+      if (/\bdoktora\b/.test(nt)) eduLevel = 'doktora';
+      else if (/\byuksek\s*lisans\b|\bmaster\b/.test(nt)) eduLevel = 'yuksek_lisans';
+      else if (/\blisans\b|\bfakulte/.test(nt) && !/\bon\s*lisans\b|\bonlisans\b/.test(nt)) eduLevel = 'lisans';
+      else if (/\bon\s*lisans\b|\bonlisans\b|\bmeslek\s*yuksek|\bmyo\b/.test(nt)) eduLevel = 'onlisans';
+      else if (/\blise\b|\bortaogretim\b/.test(nt)) eduLevel = 'lise';
+      else if (/\bortaokul\b|\bilkogretim\b/.test(nt)) eduLevel = 'ortaokul';
+      else if (/\bilkokul\b/.test(nt)) eduLevel = 'ilkokul';
+      const hasSchool = /\b(universite\w*|fakulte\w*|yuksekokul\w*|enstitu\w*|lisesi|koleji|okulu)\b/.test(nt);
+      recordCheck({ id: 'edu_school', catKey: 'c3', catLabel: 'Eğitim Bilgileri', title: 'Mezuniyet Derecesi ve Okul Adı', earned: eduLevel && hasSchool ? 8 : eduLevel || hasSchool ? 4 : 0, maxPoints: 8, reasonIfLost: 'Mezuniyet derecesi veya mezun olunan okul/üniversite tam adı eksik.', suggestionIfLost: 'Okulunuzun tam adını ve derecesini açıkça yazın.', strengthIfFull: 'Eğitim derecesi ve kurum adı belirtilmiş.' });
+
+      let department = null;
+      for (const d of CV_DEPS) { if (nt.includes(norm(d))) { department = d; break; } }
+      const noDept = targetTrack === 'isci' || eduLevel === 'ilkokul' || eduLevel === 'ortaokul';
+      recordCheck({ id: 'edu_dept', catKey: 'c3', catLabel: 'Eğitim Bilgileri', title: 'Bölüm / Mezuniyet Alanı', earned: department || noDept ? 7 : 0, maxPoints: 7, reasonIfLost: 'Mezun olunan bölüm/program adı tespit edilemedi; nitelik kodları bölüme göre eşleşir.', suggestionIfLost: 'Diplomanızdaki tam bölüm adını yazın.', strengthIfFull: department ? `Bölüm (${department}) belirtilmiş.` : 'Eğitim alanı uygun.' });
+
+      const hasEduYear = /\b(199\d|20[0-2]\d)\b/.test(nt);
+      const hasGpa = /\b(gano|gpa|not\s*ortalamasi|diploma\s*notu|[23][.,]\d{2}\s*\/\s*4|(?:[6-9]\d|100)\s*\/\s*100|onur\s*ogrencisi)\b/.test(nt);
+      recordCheck({ id: 'edu_gpa', catKey: 'c3', catLabel: 'Eğitim Bilgileri', title: 'Mezuniyet Tarihi ve Diploma Notu (GANO)', earned: (hasEduYear ? 3 : 0) + (hasGpa ? 2 : 0), maxPoints: 5, reasonIfLost: !hasEduYear ? 'Mezuniyet yılı yazılmamış.' : 'Diploma notu (GANO) belirtilmemiş.', suggestionIfLost: 'Başlangıç-mezuniyet yıllarını ve GANO ortalamanızı ekleyin.', strengthIfFull: 'Mezuniyet yılı ve GANO paylaşılmış.' });
+
+      // 4) Deneyim (20p)
+      const hasExp = /\b(is\s*deneyim\w*|deneyim\w*|tecrube\w*|staj\w*|calisti\w*|gorev\s*yapti\w*|uzman|muhendis|memur|tekniker|teknisyen|personel|asistan|operator|usta|sofor)\b/.test(nt);
+      const hasOrg = /\b(bakanlig\w*|mudurlug\w*|belediye\w*|universite\w*|hastane\w*|kurumu|vakfi|a\s*s|ltd|sirket\w*|firma\w*)\b/.test(nt);
+      recordCheck({ id: 'exp_pres', catKey: 'c4', catLabel: 'İş / Staj Deneyimi ve Başarılar', title: 'İş veya Staj Deneyimi', earned: hasExp && hasOrg ? 8 : hasExp ? 4 : 0, maxPoints: 8, reasonIfLost: 'Çalışılan kurum/işyeri adı ve pozisyon içeren iş veya staj deneyimi eksik.', suggestionIfLost: 'Stajlarınız dahil çalıştığınız kurum adını ve pozisyonunuzu ekleyin.', strengthIfFull: 'Kurum ve pozisyon içeren deneyim mevcut.' });
+
+      const hasRange = /\b(20[0-2]\d)\s*[-–/]\s*(20[0-2]\d|devam|halen|gunumuz|aktif)\b/.test(nt) || /\b\d+\s*(?:yil|ay)\b/.test(nt);
+      recordCheck({ id: 'exp_dates', catKey: 'c4', catLabel: 'İş / Staj Deneyimi ve Başarılar', title: 'Çalışma Tarih Aralıkları', earned: hasRange ? 4 : 0, maxPoints: 4, reasonIfLost: 'Deneyimlerin başlangıç-bitiş tarihleri veya çalışma süresi belirtilmemiş.', suggestionIfLost: 'Her deneyimin yanına "Mart 2023 – Halen" gibi tarih aralığı ekleyin.', strengthIfFull: 'Çalışma süreleri net gösterilmiş.' });
+
+      const verbs = ['yonet','gelistir','hazirla','koordine','denetle','analiz','tasarla','uygula','gerceklestir','bakim','raporla','takip','planla','kontrol','arsivle','destek','yurut'].filter(v => nt.includes(v)).length;
+      recordCheck({ id: 'exp_verbs', catKey: 'c4', catLabel: 'İş / Staj Deneyimi ve Başarılar', title: 'Görev Sorumlulukları ve Eylem İfadeleri', earned: verbs >= 3 ? 4 : verbs >= 1 ? 2 : 0, maxPoints: 4, reasonIfLost: 'Üstlenilen sorumluluklar somut eylem fiilleriyle (hazırladım, yürüttüm, takip ettim vb.) açıklanmamış.', suggestionIfLost: 'Her pozisyonun altına yaptığınız işleri anlatan 2-3 madde ekleyin.', strengthIfFull: 'Görev tanımları eylem ifadeleriyle açıklanmış.' });
+
+      const hasQuant = /%\s*\d+|\d+\s*%|\b\d+\+?\s*(?:kisi\w*|personel\w*|musteri\w*|vatandas\w*|ogrenci\w*|proje\w*|dosya\w*|evrak\w*|rapor\w*|basvuru\w*|ekip\w*|adet|arac|cihaz)\b/.test(nt);
+      recordCheck({ id: 'exp_quant', catKey: 'c4', catLabel: 'İş / Staj Deneyimi ve Başarılar', title: 'Ölçülebilir / Sayısal Başarı Verisi', earned: hasQuant ? 4 : 0, maxPoints: 4, reasonIfLost: 'Deneyimlerde sayısal ölçek (% iyileştirme, dosya/proje/ekip sayısı vb.) paylaşılmamış.', suggestionIfLost: 'En az 1-2 sayısal veri ekleyin (örn. "Aylık 200+ resmi evrak sürecini yürüttüm").', strengthIfFull: 'Sayısal başarı verileri paylaşılmış.' });
+
+      // 5) Sınav ve Belgeler (15p)
+      const nKpss = nt.replace(/\bkpssp(\d{1,3})\b/g, 'kpss p$1');
+      const kpssMention = /\bkpss\b/.test(nKpss);
+      const kpssTypeM = nKpss.match(/\b(p\d{1,3})\b/);
+      const kpssScoreM = nKpss.match(/\bkpss[^0-9\n]{0,30}?(\d{2,3}(?:[.,]\d{1,3})?)\b/) || nKpss.match(/\bp\d{1,3}\s*[:\-=]?\s*(\d{2,3}(?:[.,]\d{1,3})?)\b/);
+      const kpssVal = kpssScoreM ? Number(kpssScoreM[1].replace(',', '.')) : null;
+      const kpssScore = kpssVal && kpssVal >= 40 && kpssVal <= 100 ? Math.round(kpssVal * 10) / 10 : null;
+      const kpssType = kpssTypeM ? kpssTypeM[1].toUpperCase() : null;
+
+      const certs = [];
+      for (const item of (meta.certPatterns || [])) {
+        if ((item.regexes || []).some(rx => new RegExp(rx.source, rx.flags || 'i').test(nt))) certs.push(item.name);
+      }
+
+      if (targetTrack === 'isci') {
+        const okW = certs.length > 0 || /\b(ehliyet|surucu\s*belge|src|myk|mesleki\s*yeterlilik|ustalik|kalfalik|ozel\s*guvenlik|hijyen|ilk\s*yardim|forklift)\b/.test(nt);
+        recordCheck({ id: 'exam', catKey: 'c5', catLabel: 'Sınav, Dil ve Mesleki Belgeler', title: 'İşçi Kadroları Mesleki Yeterlilik / Ehliyet', earned: okW ? 8 : 0, maxPoints: 8, reasonIfLost: 'İşçi alımlarında aranan ehliyet sınıfı, SRC, MYK, Ustalık veya Özel Güvenlik belgelerinden hiçbiri belirtilmemiş.', suggestionIfLost: 'Ehliyet sınıfınızı ve mesleki yeterlilik/ustalık belgelerinizi ekleyin.', strengthIfFull: 'Uygulama/yeterlilik belgeleri belirtilmiş.' });
+      } else if (targetTrack === 'akademik') {
+        const hasAles = /\bales\b/.test(nt), hasYd = /\b(yds|yokdil|toefl|ielts)\b/.test(nt);
+        recordCheck({ id: 'exam', catKey: 'c5', catLabel: 'Sınav, Dil ve Mesleki Belgeler', title: 'ALES ve YDS / YÖKDİL Puanları', earned: (hasAles ? 4 : 0) + (hasYd ? 4 : 0), maxPoints: 8, reasonIfLost: 'Akademik kadrolarda zorunlu ALES veya YDS/YÖKDİL yabancı dil puanı eksik.', suggestionIfLost: 'ALES ve YDS/YÖKDİL puanlarınızı ekleyin.', strengthIfFull: 'ALES ve yabancı dil sınav bilgileri tam.' });
+      } else {
+        const ke = kpssScore && kpssType ? 8 : kpssScore || kpssMention ? 5 : 0;
+        recordCheck({ id: 'exam', catKey: 'c5', catLabel: 'Sınav, Dil ve Mesleki Belgeler', title: 'KPSS Puanı ve Puan Türü', earned: ke, maxPoints: 8, reasonIfLost: ke === 0 ? 'KPSS puanı ve puan türü (P3 / P93 / P94) CV’de hiç belirtilmemiş.' : 'KPSS net puanı veya puan türü eksik bırakılmış.', suggestionIfLost: '"2024 KPSS P3: 79,5" biçiminde puan ve tür ekleyin (işçi kadrosu için yukarıdan Kamu İşçisi seçebilirsiniz).', strengthIfFull: `KPSS bilgisi (${kpssType} ${kpssScore}) mevcut.` });
+      }
+
+      const hasAnyCert = certs.length > 0 || /\b(sertifika\w*|belge\w*|meb\s*onayli|kurs\w*|btk\s*akademi)\b/.test(nt);
+      const hasLang = /\b(ingilizce|almanca|fransizca|arapca|yds|yokdil)\b/.test(nt);
+      const hasLangLvl = /\b(a1|a2|b1|b2|c1|c2|iyi\s*seviye|ileri\s*seviye|orta\s*seviye)\b/.test(nt);
+      recordCheck({ id: 'certs_lang', catKey: 'c5', catLabel: 'Sınav, Dil ve Mesleki Belgeler', title: 'Sertifikalar ve Yabancı Dil Seviyesi', earned: (hasAnyCert ? 4 : 0) + (hasLang && hasLangLvl ? 3 : hasLang ? 1 : 0), maxPoints: 7, reasonIfLost: !hasAnyCert ? 'Mesleki sertifika veya kurs belgesi eklenmemiş.' : 'Yabancı dil adı ve seviyesi (örn. İngilizce B2) net yazılmamış.', suggestionIfLost: 'MEB/e-Devlet sertifikalarınızı ve yabancı dil seviyenizi ekleyin.', strengthIfFull: 'Sertifikalar ve yabancı dil seviyesi belirtilmiş.' });
+
+      // 6) Yetkinlikler ve Referans (15p)
+      const hardCnt = ['office','excel','word','powerpoint','ebys','dys','uyap','ekap','muhasebe','sap','autocad','netcad','python','java','javascript','sql','linux','raporlama','cnc'].filter(k => nt.includes(k)).length;
+      recordCheck({ id: 'hard', catKey: 'c6', catLabel: 'Yetkinlikler, Araçlar ve Referans', title: 'Teknik Araç ve Yazılım Becerileri', earned: hardCnt >= 3 ? 8 : hardCnt >= 1 ? 4 : 0, maxPoints: 8, reasonIfLost: hardCnt === 0 ? 'Bilgisayar programları veya mesleki sistemler (MS Office, Excel, EBYS vb.) listelenmemiş.' : 'Teknik araç listesi çok dar bırakılmış.', suggestionIfLost: 'Hakim olduğunuz en az 3-5 program/aracı seviyeleriyle yazın.', strengthIfFull: 'Teknik araç yetkinlikleri zengin.' });
+
+      const hasSoft = ['iletisim','takim calismasi','ekip calismasi','problem cozme','analitik','zaman yonetimi','sorumluluk','planlama'].some(k => nt.includes(k));
+      recordCheck({ id: 'soft', catKey: 'c6', catLabel: 'Yetkinlikler, Araçlar ve Referans', title: 'İletişim ve Kişisel Yetkinlikler', earned: hasSoft ? 3 : 0, maxPoints: 3, reasonIfLost: 'Ekip çalışması, analitik düşünme, zaman yönetimi gibi yetkinliklere değinilmemiş.', suggestionIfLost: 'Yetkinlikler bölümüne 3-4 çalışma yetkinliği ekleyin.', strengthIfFull: 'Sosyal yetkinlikler belirtilmiş.' });
+
+      const hasRefFull = /\b(proje\w*|yayin\w*|makale\w*|odul\w*)\b/.test(nt) || (/\breferans\w*\b/.test(nt) && /\b(prof|doc|dr|mudur|sef|uzman|muhendis|05\d{2}|@)\b/.test(nt));
+      const hasRefGen = /\breferans\w*\b/.test(nt);
+      recordCheck({ id: 'ref', catKey: 'c6', catLabel: 'Yetkinlikler, Araçlar ve Referans', title: 'Projeler veya Referans Bilgileri', earned: hasRefFull ? 4 : hasRefGen ? 2 : 0, maxPoints: 4, reasonIfLost: hasRefGen ? 'Referanslarda somut kişi/unvan yerine yalnızca genel ifade kullanılmış.' : 'Proje veya referans bölümü yer almıyor.', suggestionIfLost: 'Yürüttüğünüz bir projeyi veya referans kişisinin Ad-Unvan-Kurum bilgisini ekleyin.', strengthIfFull: 'Proje veya açık referans bilgisi mevcut.' });
+
+      const categories = [...catMap.values()];
+      const score = categories.reduce((s, c) => s + c.earned, 0);
+      const totalDeducted = 100 - score;
+      deductions.sort((a, b) => b.pointsLost - a.pointsLost);
+      const levelLabel = score >= 85 ? 'Çok Güçlü · Başvuruya Hazır' : score >= 70 ? 'İyi Seviye · Küçük Eksikler Var' : score >= 50 ? 'Orta Seviye · Geliştirilmeli' : 'Zayıf Taslak · Kritik Bilgiler Eksik';
+      const topReasons = deductions.slice(0, 3).map(d => `${d.title} (-${d.pointsLost}p)`).join(', ');
+      const overallComment = `"${CV_TRACK_LABELS[targetTrack] || targetTrack}" kriterlerine göre incelenen ${wordCount} kelimelik CV’niz 100 üzerinden ${score} puan aldı (${totalDeducted} puan kesinti). ` + (deductions.length ? `En çok puan kaybettiren eksikler: ${topReasons}.` : 'Tüm bölümler eksiksiz hazırlanmış!');
+
+      let expYears = null;
+      const ym = nt.match(/(\d{1,2})\s*(?:\+\s*)?yil\s*(?:deneyim|tecrube|calisma)/);
+      if (ym) expYears = Number(ym[1]);
+
+      return {
+        score, totalDeducted, levelLabel, targetTrack,
+        targetTrackLabel: CV_TRACK_LABELS[targetTrack] || targetTrack,
+        wordCount, overallComment, categories, deductions, strengths,
+        extractedProfile: {
+          fullName, educationLevel: eduLevel, educationLabel: eduLevel ? EDU_LABELS[eduLevel] : null,
+          department, kpssScore, kpssType, experienceYears: expYears, city, certificates: certs
+        }
+      };
+    }
+
+    async function extractDocxArrayBuffer(buf) {
+      const bytes = new Uint8Array(buf);
+      const view = new DataView(buf);
+      let eocd = -1;
+      for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65558); i--) {
+        if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+      }
+      if (eocd < 0) throw new Error('Geçersiz DOCX dosyası.');
+      const entries = view.getUint16(eocd + 10, true);
+      let pos = view.getUint32(eocd + 16, true);
+      const dec = new TextDecoder('utf-8');
+      for (let i = 0; i < entries && pos + 46 <= bytes.length; i++) {
+        if (view.getUint32(pos, true) !== 0x02014b50) break;
+        const method = view.getUint16(pos + 10, true);
+        const compSize = view.getUint32(pos + 20, true);
+        const nLen = view.getUint16(pos + 28, true);
+        const eLen = view.getUint16(pos + 30, true);
+        const cLen = view.getUint16(pos + 32, true);
+        const lOff = view.getUint32(pos + 42, true);
+        const name = dec.decode(bytes.subarray(pos + 46, pos + 46 + nLen));
+        pos += 46 + nLen + eLen + cLen;
+        if (name !== 'word/document.xml') continue;
+        const lnLen = view.getUint16(lOff + 26, true);
+        const leLen = view.getUint16(lOff + 28, true);
+        const start = lOff + 30 + lnLen + leLen;
+        const slice = bytes.subarray(start, start + compSize);
+        let xml = '';
+        if (method === 0) xml = dec.decode(slice);
+        else if (method === 8 && typeof DecompressionStream !== 'undefined') {
+          const ds = new DecompressionStream('deflate-raw');
+          const w = ds.writable.getWriter();
+          w.write(slice); w.close();
+          xml = await new Response(ds.readable).text();
+        }
+        return xml.replace(/<\/w:p>/g, '\n').replace(/<\/w:tr>/g, '\n').replace(/<[^>]+>/g, '').trim();
+      }
+      throw new Error('DOCX içeriği okunamadı.');
+    }
+
+    async function handleOfflineCvFile(ev) {
+      const file = ev.target.files && ev.target.files[0];
+      ev.target.value = '';
+      if (!file) return;
+      const errEl = document.getElementById('cvError');
+      errEl.innerText = '';
+      try {
+        const lower = file.name.toLowerCase();
+        let text = '';
+        if (lower.endsWith('.docx')) {
+          text = await extractDocxArrayBuffer(await file.arrayBuffer());
+        } else if (lower.endsWith('.txt') || lower.endsWith('.md') || lower.endsWith('.html')) {
+          text = await file.text();
+          if (lower.endsWith('.html')) text = text.replace(/<[^>]+>/g, ' ');
+        } else {
+          errEl.innerText = 'Çevrimdışı APK modunda PDF yerine lütfen .DOCX / .TXT seçin veya PDF içindeki metni kopyalayıp kutuya yapıştırın.';
+          return;
+        }
+        document.getElementById('cvTextInput').value = text;
+        submitOfflineCvAnalysis();
+      } catch (e) {
+        errEl.innerText = e.message || 'Dosya okunamadı.';
+      }
+    }
+
+    function openCvForJobType(jobType) {
+      const map = { memur: 'memur', sozlesmeli: 'sozlesmeli', isci: 'isci', akademik: 'akademik' };
+      document.getElementById('cvTrackSelect').value = map[jobType] || 'genel';
+      switchTab('cv');
+    }
+
+    function clearCvForm() {
+      document.getElementById('cvTextInput').value = '';
+      document.getElementById('cvError').innerText = '';
+      document.getElementById('cvResultArea').classList.add('hidden');
+    }
+
+    function fillCvDraftFromProfile() {
+      const u = store.users[activeEmail];
+      const p = u?.profile || {};
+      const lines = [
+        p.fullName || 'Ad Soyad',
+        `${p.cities?.[0] ? p.cities[0] + ' | ' : ''}05XX XXX XX XX | ad.soyad@email.com`,
+        '',
+        'PROFESYONEL ÖZET',
+        `${p.department || 'Kamu'} alanında eğitim almış, analitik düşünme ve süreç yönetimi becerileri güçlü adayım.`,
+        '',
+        'EĞİTİM BİLGİLERİ',
+        `${p.educationLevel ? EDU_LABELS[p.educationLevel] : 'Lisans'}${p.department ? ' - ' + p.department : ''} (2019 - 2023)`,
+        '',
+        'İŞ VE STAJ DENEYİMİ',
+        p.experienceYears ? `İlgili Kurum (${p.experienceYears} Yıl Deneyim) - Resmi süreç takibi ve raporlama görevlerini yürüttüm.` : '',
+        '',
+        'SINAV VE SERTİFİKALAR',
+        p.kpssScore ? `KPSS ${p.kpssType || 'P3'}: ${p.kpssScore}` : '',
+        (p.certificates || []).length ? `Belgeler: ${p.certificates.join(', ')}` : '',
+        '',
+        'TEKNİK VE KİŞİSEL YETKİNLİKLER',
+        'MS Office (Word, Excel, PowerPoint), Raporlama, Ekip Çalışması, Zaman Yönetimi'
+      ].filter(Boolean);
+      document.getElementById('cvTextInput').value = lines.join('\n');
+    }
+
+    function loadSavedOfflineCv() {
+      const u = store.users[activeEmail];
+      if (u && u.savedCv) {
+        document.getElementById('cvTextInput').value = u.savedCv.cvText || '';
+        document.getElementById('cvTrackSelect').value = u.savedCv.targetTrack || 'genel';
+        renderOfflineCvAnalysis(u.savedCv.analysis);
+      } else {
+        clearCvForm();
+      }
+    }
+
+    function submitOfflineCvAnalysis() {
+      const cvText = document.getElementById('cvTextInput').value.trim();
+      const targetTrack = document.getElementById('cvTrackSelect').value;
+      const errEl = document.getElementById('cvError');
+      errEl.innerText = '';
+      if (cvText.length < 15) {
+        errEl.innerText = 'Lütfen değerlendirmek için CV metninizi kutuya yapıştırın veya dosya seçin.';
+        return;
+      }
+      const analysis = analyzeCvOffline(cvText, targetTrack);
+      const u = store.users[activeEmail];
+      if (u) {
+        u.savedCv = { cvText, targetTrack, analysis };
+        saveStore();
+      }
+      renderOfflineCvAnalysis(analysis);
+    }
+
+    function applyOfflineCvToProfile() {
+      const u = store.users[activeEmail];
+      if (!u || !u.savedCv) return;
+      const ext = u.savedCv.analysis.extractedProfile || {};
+      const p = u.profile;
+      if (ext.fullName) p.fullName = ext.fullName;
+      if (ext.educationLevel) p.educationLevel = ext.educationLevel;
+      if (ext.department) p.department = ext.department;
+      if (ext.kpssScore != null) p.kpssScore = ext.kpssScore;
+      if (ext.kpssType) p.kpssType = ext.kpssType;
+      if (ext.experienceYears != null) p.experienceYears = ext.experienceYears;
+      if (ext.city && !(p.cities || []).includes(ext.city)) p.cities = [...(p.cities || []), ext.city];
+      if ((ext.certificates || []).length) p.certificates = [...new Set([...(p.certificates || []), ...ext.certificates])];
+      saveStore();
+      fillProfileForm(p);
+      const msgEl = document.getElementById('cvApplyMsg');
+      if (msgEl) msgEl.innerText = '✅ Bilgiler profilinize aktarıldı! Eşleşenler sekmesinden uygun ilanları görebilirsiniz.';
+    }
+
+    function renderOfflineCvAnalysis(a) {
+      if (!a) return;
+      const box = document.getElementById('cvResultArea');
+      box.classList.remove('hidden');
+      const scoreColor = a.score >= 85 ? 'var(--ok)' : a.score >= 70 ? 'var(--primary)' : a.score >= 50 ? 'var(--warn)' : 'var(--fail)';
+      const scoreBg = a.score >= 85 ? 'var(--ok-bg)' : a.score >= 70 ? 'var(--primary-light)' : a.score >= 50 ? 'var(--warn-bg)' : 'var(--fail-bg)';
+
+      const catsHtml = (a.categories || []).map(c => {
+        const pct = Math.round((c.earned / c.maxPoints) * 100);
+        const barColor = pct >= 80 ? 'var(--ok)' : pct >= 55 ? 'var(--primary)' : pct >= 35 ? 'var(--warn)' : 'var(--fail)';
+        return `
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+              <span style="font-weight:600">${escapeHtml(c.label)}</span>
+              <span><b>${c.earned}</b> / ${c.maxPoints} ${c.lost > 0 ? `<span style="color:var(--fail);font-weight:700;">(-${c.lost}p)</span>` : '<span style="color:var(--ok)">✓</span>'}</span>
+            </div>
+            <div style="height:8px;background:var(--border);border-radius:99px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:${barColor};border-radius:99px;"></div>
+            </div>
+          </div>`;
+      }).join('');
+
+      const deductionsHtml = (a.deductions || []).length
+        ? a.deductions.map(d => `
+          <div style="border:1px solid #fecaca;background:#fff5f5;border-radius:12px;padding:12px;margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">
+              <div>
+                <div style="font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;">${escapeHtml(d.category)}</div>
+                <div style="font-weight:700;font-size:14.5px;color:#111827;">${escapeHtml(d.title)}</div>
+              </div>
+              <span class="badge" style="background:#fee2e2;color:#b91c1c;font-size:13px;padding:5px 10px;white-space:nowrap;">-${d.pointsLost} Puan</span>
+            </div>
+            <div style="font-size:13.5px;color:#7f1d1d;margin-bottom:6px;"><b>Neden Kırıldı:</b> ${escapeHtml(d.reason)}</div>
+            <div style="font-size:13px;color:#065f46;background:#ecfdf5;padding:8px 10px;border-radius:8px;"><b>💡 Nasıl Düzeltilir (+${d.pointsLost}p):</b> ${escapeHtml(d.suggestion)}</div>
+          </div>`).join('')
+        : '<div style="padding:12px;background:var(--ok-bg);color:var(--ok);border-radius:10px;font-weight:600;">🎉 Tebrikler! CV’nizde hiçbir puan kesintisi bulunmadı.</div>';
+
+      const strengthsHtml = (a.strengths || []).length
+        ? a.strengths.map(s => `<div class="check-row"><div style="font-size:17px">✅</div><div><div style="font-weight:700;font-size:13.5px;">${escapeHtml(s.title)}</div><div style="color:var(--muted);font-size:12.5px;">${escapeHtml(s.detail)}</div></div></div>`).join('')
+        : '<p style="color:var(--muted);font-size:13px;margin:0;">Tam puan alınan bölümler burada listelenir.</p>';
+
+      const ext = a.extractedProfile || {};
+      const extItems = [
+        ext.fullName ? `👤 <b>Ad Soyad:</b> ${escapeHtml(ext.fullName)}` : '',
+        ext.educationLabel ? `🎓 <b>Eğitim:</b> ${escapeHtml(ext.educationLabel)}` : '',
+        ext.department ? `🏛️ <b>Bölüm:</b> ${escapeHtml(ext.department)}` : '',
+        ext.kpssScore ? `📝 <b>KPSS:</b> ${escapeHtml(ext.kpssType || '')} ${ext.kpssScore}` : '',
+        ext.experienceYears != null ? `💼 <b>Deneyim:</b> ~${ext.experienceYears} yıl` : '',
+        ext.city ? `📍 <b>Şehir:</b> ${escapeHtml(ext.city)}` : '',
+        (ext.certificates || []).length ? `📜 <b>Belgeler:</b> ${escapeHtml(ext.certificates.join(', '))}` : ''
+      ].filter(Boolean);
+
+      box.innerHTML = `
+        <div class="card" style="border:2px solid ${scoreColor};">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div>
+              <div style="font-size:12px;color:var(--muted);font-weight:600;">${escapeHtml(a.targetTrackLabel)}</div>
+              <div style="font-size:34px;font-weight:800;color:${scoreColor};line-height:1.15;margin:4px 0;">${a.score} <span style="font-size:18px;color:var(--muted);font-weight:600;">/ 100</span></div>
+              <span class="badge" style="background:${scoreBg};color:${scoreColor};font-size:13px;padding:5px 10px;">${escapeHtml(a.levelLabel)}</span>
+            </div>
+            <div style="text-align:right;">
+              <div class="badge" style="background:var(--fail-bg);color:var(--fail);font-size:13px;padding:6px 10px;">🔻 Kırılan: -${a.totalDeducted} Puan</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:6px;">${a.wordCount} kelime</div>
+            </div>
+          </div>
+          <div style="height:10px;background:var(--border);border-radius:99px;overflow:hidden;margin:14px 0 12px;"><div style="height:100%;width:${a.score}%;background:${scoreColor};border-radius:99px;"></div></div>
+          <div style="background:#f8fafc;border-left:4px solid ${scoreColor};padding:10px 12px;border-radius:8px;font-size:13.5px;line-height:1.55;">💬 <b>Genel Yorum:</b> ${escapeHtml(a.overallComment)}</div>
+        </div>
+        <div class="card"><h3 style="margin:0 0 10px 0;">🔻 Neden Puan Kırıldı? (${a.deductions.length} Eksik · -${a.totalDeducted} Puan)</h3>${deductionsHtml}</div>
+        <div class="card"><h3 style="margin:0 0 12px 0;">📊 Bölüm Bazlı Puan Tablosu</h3>${catsHtml}</div>
+        <div class="card"><h3 style="margin:0 0 8px 0;">✅ CV’nizdeki Güçlü Yönler (${(a.strengths || []).length})</h3>${strengthsHtml}</div>
+        ${extItems.length ? `<div class="card"><h3 style="margin:0 0 8px 0;">⚡ CV’den Tespit Edilen Profil Bilgileri</h3><div style="font-size:13.5px;line-height:1.7;margin-bottom:10px;">${extItems.join('<br/>')}</div><button class="btn btn-outline" style="width:100%;" onclick="applyOfflineCvToProfile()">⚡ Bu Bilgileri Profilime Aktar</button><p id="cvApplyMsg" style="color:var(--ok);font-size:13px;margin:8px 0 0 0;"></p></div>` : ''}
+      `;
+    }
+
+    function setAppStatus(id, status) {
+      const u = store.users[activeEmail];
+      if (!u) return;
+      u.applications[id] = { status, updatedAt: todayISO() };
+      saveStore();
+      openJob(id);
+    }
+
+    function clearAppStatus(id) {
+      const u = store.users[activeEmail];
+      if (!u) return;
+      delete u.applications[id];
+      saveStore();
+      openJob(id);
+    }
+
+    function loadApplications() {
+      const u = store.users[activeEmail];
+      const apps = u?.applications || {};
+      const list = getAllJobsRaw().filter(j => apps[j.id]).map(enrichJob);
+      document.getElementById('appList').innerHTML = list.map(renderJobCard).join('') || '<div class="card">Takip ettiğiniz başvuru yok.</div>';
+    }
+
+    function loadNotifications() {
+      const u = store.users[activeEmail];
+      const list = u?.notifications || [];
+      document.getElementById('notifList').innerHTML = list.map(n => `
+        <div class="card" onclick="${n.jobId ? `openJob(${n.jobId})` : ''}">
+          <div style="font-weight:700">${n.title}</div>
+          <div style="margin:4px 0">${n.body}</div>
+          <div style="font-size:12px;color:var(--muted)">${n.createdAt}</div>
+        </div>
+      `).join('') || '<div class="card">Henüz bildirim yok.</div>';
+    }
+
+    function formatDetailDoc(doc, title) {
+      const root = doc.querySelector('.ilan-detay, .Detail, .detail, article, #content, main') || doc.body;
+      if (!root) return '';
+      root.querySelectorAll('script, style, nav, footer, header, noscript, form, iframe, svg, button').forEach(el => el.remove());
+      root.querySelectorAll('table').forEach(tbl => {
+        const rows = [];
+        tbl.querySelectorAll('tr').forEach(tr => {
+          const cells = Array.from(tr.querySelectorAll('th, td')).map(c => (c.textContent || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
+          if (cells.length) rows.push(cells.join(' • '));
+        });
+        tbl.replaceWith('\n\n' + rows.join('\n') + '\n\n');
+      });
+      root.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+      root.querySelectorAll('li').forEach(li => {
+        const t = (li.textContent || '').replace(/\s+/g, ' ').trim();
+        li.replaceWith(t ? '\n• ' + t + '\n' : '\n');
+      });
+      root.querySelectorAll('p, div, section, h1, h2, h3, h4').forEach(el => {
+        el.prepend('\n');
+        el.append('\n');
+      });
+      let s = (root.textContent || '')
+        .replace(/([a-zçğıöşü]{2,})\.(?=[A-ZÇĞİÖŞÜ])/g, '$1.\n\n')
+        .replace(/([a-zçğıöşü]{2,})\.(?=\d{1,2}[.)\-])/g, '$1.\n')
+        .replace(/\)([A-ZÇĞİÖŞÜ][a-zçğıöşü])/g, ')\n• $1')
+        .replace(/\)([a-zçğıöşü]{4,})/g, ') $1')
+        .replace(/,(?=[A-ZÇĞİÖŞÜa-zçğıöşü])/g, ', ')
+        .replace(/(^|\n)\.\s+(?=[A-ZÇĞİÖŞÜ0-9])/g, '$1• ');
+      const lines = [];
+      for (const rl of s.split('\n')) {
+        const l = rl.replace(/[ \t]+/g, ' ').trim();
+        if (!l) {
+          if (lines.length && lines[lines.length - 1] !== '') lines.push('');
+          continue;
+        }
+        if (!lines.length && norm(l) === norm(title)) continue;
+        lines.push(l);
+      }
+      return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, 11500);
+    }
+
+    function detectKpssOnDevice(title, desc, jobType) {
+      const n = norm(title + ' ' + desc).replace(/\bkpssp(\d{1,3})\b/g, 'kpss p$1');
+      if (/\bkpss(?:\s+ye)?\s*(?:girme\s*)?(?:puan\w*\s*)?(?:sarti\s*|belgesi\s*)?(?:aranmamakta|aranmaz|aranmayacak|aranmaksizin|sartsiz|sarti\s*yok|yoktur|gerekmemekte|istenmemekte|istenmeyecek|istenmez|olmaksizin)/.test(n) || /\bkpss\s*siz\b|\bkpss\s+olmadan\b/.test(n)) {
+        return { required: false, score: null, type: null };
+      }
+      if (/kpss\s+puani\s+olmayan/.test(n)) return { required: false, score: null, type: null };
+      if (/\bkpss\b/.test(n)) {
+        const tm = n.match(/\bkpss\s*(p(?:1|2|3|93|94|121|123))\b/);
+        const sm = n.match(/\bkpss[^0-9]{0,60}(50|55|60|65|70|75|80|85|90)\b/);
+        return { required: true, score: sm ? Number(sm[1]) : null, type: tm ? tm[1].toUpperCase() : null };
+      }
+      if (jobType === 'akademik' || jobType === 'isci' || /bilisim personeli|muvazzaf|ic denetci/.test(norm(title))) {
+        return { required: false, score: null, type: null };
+      }
+      return { required: true, score: null, type: null };
+    }
+
+    // Doğrudan telefon üzerinden canlı kamu ilanlarını çekme (PC kapalıyken bile çalışır!)
+    async function syncLiveJobs() {
+      const btn = document.getElementById('liveRefreshBtn');
+      btn.innerText = '⏳ Kontrol ediliyor...';
+      let added = 0;
+      try {
+        if (window.AndroidBridge && window.AndroidBridge.fetchHtml) {
+          const html = window.AndroidBridge.fetchHtml('https://ilan.memurlar.net/', 'windows-1254');
+          if (html) {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const existingUrls = new Set(getAllJobsRaw().map(j => String(j.url || '')));
+            const links = Array.from(doc.querySelectorAll('a[href*="/ilan/"]'));
+            for (const a of links.slice(0, 20)) {
+              const href = a.getAttribute('href') || '';
+              const m = href.match(/\/ilan\/(\d+)\/.+\.html$/);
+              const title = (a.textContent || '').replace(/\s+/g, ' ').trim();
+              if (!m || title.length < 15) continue;
+              const fullUrl = href.startsWith('http') ? href : 'https://ilan.memurlar.net' + href;
+              if (existingUrls.has(fullUrl)) continue;
+              const nt = norm(title);
+              if (/iptal|sonuc|duzeltme|yerlesen|mulakat|odullendir|201\d|202[0-5]/.test(nt)) continue;
+              existingUrls.add(fullUrl);
+
+              let desc = '';
+              try {
+                const detailHtml = window.AndroidBridge.fetchHtml(fullUrl, 'windows-1254');
+                if (detailHtml) {
+                  const detailDoc = new DOMParser().parseFromString(detailHtml, 'text/html');
+                  desc = formatDetailDoc(detailDoc, title);
+                }
+              } catch {}
+
+              const jobType = /ogretim|arastirma gorevlisi|akademik/.test(nt)
+                ? 'akademik'
+                : /isci/.test(nt)
+                  ? 'isci'
+                  : /sozlesmeli|kalkinma ajansi/.test(nt)
+                    ? 'sozlesmeli'
+                    : 'memur';
+              const kpss = detectKpssOnDevice(title, desc, jobType);
+              const city = meta.cities.find(c => (' ' + nt + ' ').includes(' ' + norm(c) + ' ')) || null;
+              const certs = [];
+              const fullNorm = norm(title + ' ' + desc);
+              (meta.certPatterns || []).forEach(cp => {
+                if (cp.regexes.some(rx => new RegExp(rx.source, rx.flags).test(fullNorm))) certs.push(cp.name);
+              });
+              const newJob = {
+                id: Number('9' + m[1]),
+                source: 'memurlar',
+                externalId: m[1],
+                title,
+                institution: title.split(/\s+\d+\s+/)[0] || null,
+                city,
+                description: desc.length >= 100 ? desc : (title + '\n\nDetaylı başvuru kılavuzu ve kadro tablosu için "Resmi İlana Git ↗" butonuna dokunabilirsiniz.'),
+                url: fullUrl,
+                publishedAt: new Date().toISOString(),
+                deadline: null,
+                kpssRequired: kpss.required,
+                minKpssScore: kpss.score,
+                kpssType: kpss.type,
+                minEducation: jobType === 'akademik' ? 'lisans' : null,
+                requiredDepartments: [],
+                requiredCertificates: certs,
+                certificateMode: 'all',
+                minExperienceYears: null,
+                maxAge: null,
+                positions: null,
+                jobType
+              };
+              store.extraJobs.unshift(newJob);
+              added++;
+            }
+            if (added > 0) {
+              saveStore();
+              notifyPhone('🆕 Yeni Kamu İlanı!', `${added} yeni kamu ilanı listeye eklendi.`);
+            }
+          }
+        }
+      } catch {}
+      loadJobs();
+      btn.innerText = added > 0 ? `✅ +${added} yeni ilan` : '✅ Güncel';
+      setTimeout(() => { btn.innerText = '🔄 Yeni İlanları Çek'; }, 2500);
+    }
+
+    if (activeEmail && store.users[activeEmail]) initApp();
+  </script>
+</body>
+</html>

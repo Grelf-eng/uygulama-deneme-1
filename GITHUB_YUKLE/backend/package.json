@@ -1,0 +1,46 @@
+{
+  "name": "kamu-ilan-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Kamu ilan takip uygulaması için Node.js + Express + TypeScript + SQLite backend",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "scrape": "tsx src/scrapers/run.ts",
+    "seed": "tsx src/seed.ts",
+    "reparse": "tsx scripts/reparse.ts",
+    "mobile:bridge": "tsx scripts/start-mobile-bridge.ts",
+    "apk:download-sdk": "tsx scripts/download-android-sdk.ts",
+    "apk:build": "tsx scripts/compile-apk.ts",
+    "test:smoke": "tsx test/smoke.test.ts",
+    "test:parse": "tsx test/parse.test.ts && tsx test/certificates.test.ts"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^12.2.0",
+    "cheerio": "^1.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "expo-server-sdk": "^3.13.0",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "node-cron": "^3.0.3",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^22.10.5",
+    "@types/node-cron": "^3.0.11",
+    "light-my-request": "^6.8.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,294 @@
+import {
+  EDUCATION_LABELS,
+  Job,
+  Profile,
+  educationRank,
+  hasDepartment,
+} from '../types';
+import { certificatesMatch } from '../constants/certificates';
+import { norm, todayISO } from '../utils/text';
+import { formatKpssType, normalizeKpssType } from '../constants/kpss';
+
+export type CheckStatus = 'ok' | 'fail' | 'warn';
+
+export interface Check {
+  key: 'education' | 'kpss' | 'department' | 'certificate' | 'experience' | 'age' | 'deadline' | 'city';
+  label: string;
+  status: CheckStatus;
+  detail: string;
+  /** soft=true ise genel sonucu etkilemez (örn. şehir tercihi) */
+  soft?: boolean;
+}
+
+export interface Eligibility {
+  /** ok=✅ tüm şartlar sağlanıyor, warn=⚠️ doğrulanamayan şart var, fail=❌ şart sağlanmıyor */
+  overall: CheckStatus;
+  /** 0-100 eşleşme puanı (fail ise 0-30 aralığında) */
+  score: number;
+  checks: Check[];
+  summary: { ok: number; warn: number; fail: number };
+}
+
+function departmentMatches(profileDept: string, required: string[]): boolean {
+  const p = norm(profileDept);
+  if (!p) return false;
+  return required.some((r) => {
+    const n = norm(r);
+    if (!n) return false;
+    if (n.includes(p) || p.includes(n)) return true;
+    // Kelime bazlı örtüşme (ör. "Bilgisayar Mühendisliği" ~ "Bilgisayar ve Yazılım Mühendisliği")
+    const pw = p.split(' ').filter((w) => w.length > 3);
+    const nw = n.split(' ').filter((w) => w.length > 3);
+    return pw.length > 0 && pw.every((w) => nw.some((x) => x.startsWith(w.slice(0, 5))));
+  });
+}
+
+export function checkEligibility(job: Job, profile: Profile | null): Eligibility {
+  const checks: Check[] = [];
+
+  // Süre
+  if (job.deadline) {
+    const expired = job.deadline < todayISO();
+    checks.push({
+      key: 'deadline',
+      label: 'Son başvuru',
+      status: expired ? 'fail' : 'ok',
+      detail: expired ? `Süresi doldu (${job.deadline})` : `Son gün: ${job.deadline}`,
+    });
+  }
+
+  // KPSS
+  if (job.kpssRequired === false) {
+    checks.push({ key: 'kpss', label: 'KPSS', status: 'ok', detail: "KPSS şartı aranmıyor" });
+  } else if (job.kpssRequired === null) {
+    checks.push({
+      key: 'kpss',
+      label: 'KPSS',
+      status: 'warn',
+      detail: 'İlanda KPSS şartı net değil, ilan metnini kontrol edin',
+    });
+  } else {
+    const jobTypeLabel = formatKpssType(job.kpssType) || job.kpssType;
+    const typeLabel = jobTypeLabel ? ` (${jobTypeLabel})` : '';
+    const normJobType = normalizeKpssType(job.kpssType);
+    const normProfileType = normalizeKpssType(profile?.kpssType);
+    if (profile?.kpssScore == null) {
+      checks.push({
+        key: 'kpss',
+        label: 'KPSS',
+        status: 'warn',
+        detail: `KPSS${typeLabel} aranıyor; profilinize KPSS puanınızı ekleyin`,
+      });
+    } else if (job.minKpssScore == null) {
+      checks.push({
+        key: 'kpss',
+        label: 'KPSS',
+        status: 'warn',
+        detail: `KPSS${typeLabel} aranıyor, taban puan ilanda belirtilmemiş (puanınız: ${profile.kpssScore})`,
+      });
+    } else if (profile.kpssScore < job.minKpssScore) {
+      checks.push({
+        key: 'kpss',
+        label: 'KPSS',
+        status: 'fail',
+        detail: `En az ${job.minKpssScore} puan gerekli, sizin puanınız ${profile.kpssScore}`,
+      });
+    } else if (normJobType && normProfileType && normJobType !== normProfileType) {
+      const profTypeLabel = formatKpssType(profile?.kpssType) || profile?.kpssType;
+      checks.push({
+        key: 'kpss',
+        label: 'KPSS',
+        status: 'warn',
+        detail: `Puan yeterli (${profile.kpssScore} ≥ ${job.minKpssScore}) ancak ilan ${jobTypeLabel} istiyor, sizin türünüz ${profTypeLabel}`,
+      });
+    } else {
+      checks.push({
+        key: 'kpss',
+        label: 'KPSS',
+        status: 'ok',
+        detail: `Puanınız yeterli (${profile.kpssScore} ≥ ${job.minKpssScore})`,
+      });
+    }
+  }
+
+  // Eğitim
+  if (job.minEducation) {
+    const need = educationRank(job.minEducation);
+    const have = educationRank(profile?.educationLevel);
+    const needLabel = EDUCATION_LABELS[job.minEducation];
+    if (!profile?.educationLevel) {
+      checks.push({
+        key: 'education',
+        label: 'Eğitim',
+        status: 'warn',
+        detail: `En az ${needLabel} aranıyor; profilinize eğitim seviyenizi ekleyin`,
+      });
+    } else if (have >= need) {
+      checks.push({
+        key: 'education',
+        label: 'Eğitim',
+        status: 'ok',
+        detail: `${EDUCATION_LABELS[profile.educationLevel]} ≥ ${needLabel}`,
+      });
+    } else {
+      checks.push({
+        key: 'education',
+        label: 'Eğitim',
+        status: 'fail',
+        detail: `En az ${needLabel} gerekli, sizin seviyeniz ${EDUCATION_LABELS[profile.educationLevel]}`,
+      });
+    }
+  }
+
+  // Bölüm
+  if (job.requiredDepartments.length > 0) {
+    if (profile && !hasDepartment(profile.educationLevel)) {
+      // Lise ve altı eğitimde bölüm yoktur; bölüm şartı olan ilana başvurulamaz
+      checks.push({
+        key: 'department',
+        label: 'Bölüm',
+        status: 'fail',
+        detail: `Aranan bölümler: ${job.requiredDepartments.join(', ')} (lise ve altı eğitimle sağlanamaz)`,
+      });
+    } else if (!profile?.department) {
+      checks.push({
+        key: 'department',
+        label: 'Bölüm',
+        status: 'warn',
+        detail: `Aranan bölümler: ${job.requiredDepartments.join(', ')}. Profilinize bölümünüzü ekleyin`,
+      });
+    } else if (departmentMatches(profile.department, job.requiredDepartments)) {
+      checks.push({
+        key: 'department',
+        label: 'Bölüm',
+        status: 'ok',
+        detail: `"${profile.department}" aranan bölümlerle uyumlu`,
+      });
+    } else {
+      checks.push({
+        key: 'department',
+        label: 'Bölüm',
+        status: 'fail',
+        detail: `Aranan bölümler: ${job.requiredDepartments.join(', ')}`,
+      });
+    }
+  }
+
+  // Sertifika / belge
+  if (job.requiredCertificates.length > 0) {
+    const have = profile?.certificates ?? [];
+    const missing = job.requiredCertificates.filter((r) => !have.some((h) => certificatesMatch(h, r)));
+    const matched = job.requiredCertificates.length - missing.length;
+    const any = job.certificateMode === 'any';
+    const satisfied = any ? matched > 0 : missing.length === 0;
+    const wanted = job.requiredCertificates.join(any ? ' veya ' : ', ');
+    if (satisfied) {
+      checks.push({
+        key: 'certificate',
+        label: 'Sertifika',
+        status: 'ok',
+        detail: `Gerekli belge(ler) profilinizde var: ${wanted}`,
+      });
+    } else if (have.length === 0) {
+      checks.push({
+        key: 'certificate',
+        label: 'Sertifika',
+        status: 'warn',
+        detail: `${any ? 'Şunlardan biri' : 'Şunlar'} aranıyor: ${wanted}. Profilinize sertifikalarınızı ekleyin`,
+      });
+    } else {
+      checks.push({
+        key: 'certificate',
+        label: 'Sertifika',
+        status: 'fail',
+        detail: any ? `Şunlardan biri gerekli: ${wanted}` : `Eksik belge(ler): ${missing.join(', ')}`,
+      });
+    }
+  }
+
+  // Deneyim
+  if (job.minExperienceYears && job.minExperienceYears > 0) {
+    const have = profile?.experienceYears ?? 0;
+    checks.push({
+      key: 'experience',
+      label: 'Deneyim',
+      status: have >= job.minExperienceYears ? 'ok' : 'fail',
+      detail:
+        have >= job.minExperienceYears
+          ? `${have} yıl deneyim ≥ ${job.minExperienceYears} yıl`
+          : `En az ${job.minExperienceYears} yıl gerekli, sizde ${have} yıl var`,
+    });
+  }
+
+  // Yaş
+  if (job.maxAge) {
+    if (!profile?.birthYear) {
+      checks.push({
+        key: 'age',
+        label: 'Yaş',
+        status: 'warn',
+        detail: `Azami yaş ${job.maxAge}; profilinize doğum yılınızı ekleyin`,
+      });
+    } else {
+      const age = new Date().getFullYear() - profile.birthYear;
+      checks.push({
+        key: 'age',
+        label: 'Yaş',
+        status: age <= job.maxAge ? 'ok' : 'fail',
+        detail: age <= job.maxAge ? `Yaşınız ${age} ≤ ${job.maxAge}` : `Azami yaş ${job.maxAge}, sizin yaşınız ${age}`,
+      });
+    }
+  }
+
+  // Şehir tercihi (bilgilendirme amaçlı)
+  if (job.city && profile && profile.cities.length > 0) {
+    const match = profile.cities.some((c) => norm(c) === norm(job.city));
+    checks.push({
+      key: 'city',
+      label: 'Şehir',
+      status: match ? 'ok' : 'warn',
+      soft: true,
+      detail: match ? `${job.city} tercih ettiğiniz şehirlerden` : `${job.city} tercih listenizde yok`,
+    });
+  }
+
+  const hard = checks.filter((c) => !c.soft);
+  const overall: CheckStatus = hard.some((c) => c.status === 'fail')
+    ? 'fail'
+    : hard.some((c) => c.status === 'warn')
+      ? 'warn'
+      : 'ok';
+
+  const summary = {
+    ok: checks.filter((c) => c.status === 'ok').length,
+    warn: checks.filter((c) => c.status === 'warn').length,
+    fail: checks.filter((c) => c.status === 'fail').length,
+  };
+
+  return { overall, score: computeScore(job, profile, overall, checks), checks, summary };
+}
+
+function computeScore(job: Job, profile: Profile | null, overall: CheckStatus, checks: Check[]): number {
+  if (overall === 'fail') {
+    const hard = checks.filter((c) => !c.soft);
+    const okRatio = hard.length ? hard.filter((c) => c.status === 'ok').length / hard.length : 0;
+    return Math.round(okRatio * 30);
+  }
+  let score = overall === 'ok' ? 55 : 40;
+  if (profile) {
+    if (job.city && profile.cities.some((c) => norm(c) === norm(job.city))) score += 20;
+    if (profile.jobTypes.includes(job.jobType)) score += 10;
+    if (job.kpssRequired && job.minKpssScore && profile.kpssScore != null) {
+      score += Math.min(10, Math.max(0, Math.round((profile.kpssScore - job.minKpssScore) / 2)));
+    }
+    if (job.requiredDepartments.length && checks.find((c) => c.key === 'department')?.status === 'ok') {
+      score += 5;
+    }
+    if (checks.find((c) => c.key === 'certificate')?.status === 'ok') score += 5;
+  }
+  if (job.deadline) {
+    const days = (Date.parse(job.deadline) - Date.now()) / 86400000;
+    if (days >= 0 && days <= 7) score += 5; // yaklaşan son tarih öne çıksın
+  }
+  return Math.min(100, score);
+}

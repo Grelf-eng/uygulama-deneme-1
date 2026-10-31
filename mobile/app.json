@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "Kamu İlan Asistanı",
+    "slug": "kamu-ilan-asistani",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "kamuilan",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#f3f4f6"
+    },
+    "android": {
+      "package": "tr.kamuilan.asistan",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1d4ed8"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "tr.kamuilan.asistan",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
+    },
+    "extra": {
+      "defaultApiUrl": "http://192.168.1.31:4000/api"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "color": "#1d4ed8"
+        }
+      ]
+    ]
+  }
+}

@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#1d4ed8" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Kamu İlan" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+  <title>Kamu İlan Asistanı</title>
+  <style>
+    :root {
+      --primary: #1d4ed8;
+      --primary-light: #dbeafe;
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --ok: #16a34a; --ok-bg: #dcfce7;
+      --warn: #d97706; --warn-bg: #fef3c7;
+      --fail: #dc2626; --fail-bg: #fee2e2;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); overscroll-behavior-y: contain; }
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .brand { display: flex; align-items: center; gap: 9px; }
+    .brand img { width: 30px; height: 30px; border-radius: 7px; }
+    header h1 { margin: 0; font-size: 17px; color: var(--primary); font-weight: 800; }
+    .container { max-width: 720px; margin: 0 auto; padding: 14px; padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+    .card { background: var(--card); border-radius: 15px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+    .btn { background: var(--primary); color: #fff; border: 1.5px solid var(--primary); border-radius: 10px; padding: 10px 14px; font-weight: 700; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+    .btn-sm { padding: 7px 11px; font-size: 13px; border-radius: 9px; }
+    .btn-outline { background: transparent; color: var(--primary); }
+    .btn-danger { background: var(--fail); border-color: var(--fail); }
+    .input, select, textarea { width: 100%; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 16px; margin-bottom: 10px; background: #fff; color: var(--text); }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+    .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .badge { padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-block; }
+    .chip { padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 13px; cursor: pointer; user-select: none; }
+    .chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .tabs {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #fff;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+      z-index: 20;
+    }
+    .tab-btn { background: none; border: none; font-size: 11px; color: var(--muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; font-weight: 700; flex: 1; }
+    .tab-btn .ico { font-size: 18px; line-height: 1.1; }
+    .tab-btn.active { color: var(--primary); }
+    .job-title { font-size: 16px; font-weight: 700; margin: 0 0 4px 0; cursor: pointer; line-height: 1.35; }
+    .job-title:hover { color: var(--primary); }
+    .sub { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+    .check-row { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .check-row:last-child { border-bottom: none; }
+    .install-banner {
+      background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+      color: #fff;
+      border-radius: 14px;
+      padding: 13px 15px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      box-shadow: 0 4px 12px rgba(29,78,216,0.22);
+    }
+    .install-banner .install-btn {
+      background: #fff;
+      color: var(--primary);
+      border: none;
+      border-radius: 9px;
+      padding: 9px 13px;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(17,24,39,0.55); z-index: 50;
+      display: flex; align-items: flex-end; justify-content: center;
+    }
+    .modal-sheet {
+      background: #fff; width: 100%; max-width: 500px; border-radius: 20px 20px 0 0;
+      padding: 20px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <img src="/icons/icon-192.png" alt="Logo" />
+      <h1>Kamu İlan Asistanı</h1>
+    </div>
+    <div class="row">
+      <a href="/indir" id="desktopQrBtn" class="btn btn-outline btn-sm">📱 Telefona Yükle</a>
+      <div id="headerActions" class="row hidden">
+        <span id="adminHeaderBadge" class="badge hidden" style="background:#fef3c7;color:#b45309;">🛡️ Yönetici</span>
+        <button class="btn btn-outline btn-sm" onclick="showScreen('notifications')" id="notifBtn">🔔</button>
+        <button class="btn btn-danger btn-sm" onclick="logout()">Çıkış</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- MOBİL KURULUM BANNER (Sadece telefonda tarayıcıdan açıldığında görünür, yüklendikten sonra gizlenir) -->
+    <div id="mobileInstallBanner" class="install-banner hidden">
+      <div style="flex:1">
+        <div style="font-weight:800;font-size:14px;">📲 Uygulamayı Telefonunuza Yükleyin</div>
+        <div style="font-size:12px;opacity:0.9;margin-top:2px;">Ana ekrana tam ekran mobil uygulama olarak eklenir.</div>
+      </div>
+      <button class="install-btn" onclick="triggerMobileInstall()">Yükle</button>
+    </div>
+
+    <!-- GİRİŞ / KAYIT EKRANI -->
+    <div id="authScreen" class="card" style="max-width:420px;margin:20px auto;">
+      <div id="authFormWrap">
+        <h2 id="authTitle" style="margin-top:0">Giriş Yap</h2>
+        <p style="color:var(--muted);font-size:14px;">Devam etmek için kullanıcı adınız (veya e-posta adresiniz) ve şifrenizle giriş yapın.</p>
+        <div id="nameWrap" class="hidden">
+          <label>Ad Soyad</label>
+          <input id="authName" class="input" placeholder="Ad Soyad" />
+        </div>
+        <label>Kullanıcı Adı veya E-posta</label>
+        <input id="authEmail" class="input" type="text" autocomplete="username" placeholder="Kullanıcı adı veya e-posta" onkeydown="if(event.key==='Enter'){submitAuth();}" />
+        <label>Şifre</label>
+        <input id="authPass" class="input" type="password" autocomplete="current-password" placeholder="Şifreniz" onkeydown="if(event.key==='Enter'){submitAuth();}" />
+        <div class="row" style="margin-top:8px;">
+          <button class="btn" style="flex:1" onclick="submitAuth()" id="authSubmitBtn">Giriş Yap</button>
+          <button class="btn btn-outline" onclick="toggleAuthMode()" id="authToggleBtn">Kayıt Ol</button>
+        </div>
+      </div>
+
+      <!-- E-POSTA DOĞRULAMA KODU ADIMI -->
+      <div id="verifyWrap" class="hidden">
+        <h2 style="margin-top:0">📧 E-posta Doğrulama Kodu</h2>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;margin-bottom:14px;">
+          <div style="font-size:13px;color:#1e3a8a;line-height:1.45;">
+            <b id="verifyTargetEmail"></b> adresinize 6 haneli rastgele bir güvenlik doğrulama kodu gönderildi. Sisteme giriş yapabilmek için lütfen bu kodu girin.
+          </div>
+        </div>
+        <label>6 Haneli Güvenlik Kodu</label>
+        <input id="authVerifyCode" class="input" type="text" maxlength="6" inputmode="numeric" placeholder="Örn. 482915" style="letter-spacing:6px;font-size:20px;font-weight:700;text-align:center;" onkeydown="if(event.key==='Enter'){submitVerifyCode();}" />
+        <button class="btn" style="width:100%;margin-top:10px;" onclick="submitVerifyCode()" id="verifySubmitBtn">✅ Kodu Onayla ve Giriş Yap</button>
+        <div class="row" style="margin-top:8px;gap:8px;">
+          <button class="btn btn-outline btn-sm" style="flex:1;" onclick="resendVerificationCode()" id="resendCodeBtn">🔄 Tekrar Kod Gönder</button>
+          <button class="btn btn-outline btn-sm" onclick="cancelVerification()">Geri Dön</button>
+        </div>
+        <p id="verifySuccess" style="color:var(--success);font-size:13px;margin-top:8px;font-weight:600;"></p>
+      </div>
+
+      <p id="authError" style="color:var(--fail);font-size:13px;margin-top:10px;"></p>
+    </div>
+
+    <!-- İLANLAR & EŞLEŞENLER -->
+    <div id="jobsScreen" class="hidden">
+      <div class="card">
+        <input id="searchInput" class="input" placeholder="İlan, kurum veya şehir ara..." oninput="debounceLoadJobs()" />
+        <div class="row" style="margin-bottom:8px;">
+          <span class="chip active" data-kpss="" onclick="setKpssFilter('')">Tümü</span>
+          <span class="chip" data-kpss="yes" onclick="setKpssFilter('yes')">KPSS'li</span>
+          <span class="chip" data-kpss="no" onclick="setKpssFilter('no')">KPSS'siz</span>
+        </div>
+        <div class="row">
+          <select id="citySelect" style="flex:1;margin:0" onchange="loadJobs()">
+            <option value="">📍 Tüm Şehirler</option>
+          </select>
+          <select id="typeSelect" style="flex:1;margin:0" onchange="loadJobs()">
+            <option value="">Tüm Türler</option>
+          </select>
+        </div>
+        <div id="matchesNote" class="hidden" style="font-size:13px;color:var(--muted);margin-top:8px;">
+          ✨ Profilinizdeki şartlarla uyuşmayan (❌) ilanlar gizlenir, en yüksek uyum puanlı ilanlar üstte listelenir.
+        </div>
+      </div>
+      <div class="row" style="justify-content:space-between;margin:6px 4px;">
+        <div id="jobsCount" style="font-size:12px;color:var(--muted);"></div>
+        <button style="background:none;border:none;color:var(--primary);font-size:12px;font-weight:700;cursor:pointer;" onclick="loadJobs()">↻ Yenile</button>
+      </div>
+      <div id="jobsList"></div>
+    </div>
+
+    <!-- İLAN DETAYI -->
+    <div id="detailScreen" class="hidden"></div>
+
+    <!-- CV ANALİZ VE PUANLAMA -->
+    <div id="cvScreen" class="hidden">
+      <div class="card">
+        <h3 style="margin:0 0 6px 0;">📄 CV Yorumlama ve Puanlama</h3>
+        <p style="margin:0 0 12px 0;font-size:13px;color:var(--muted);line-height:1.5;">
+          CV dosyanızı yükleyin veya metnini aşağıya yapıştırın. Sistem CV’nizi <b>100 puan</b> üzerinden değerlendirir ve <b>hangi eksikten kaç puan kırıldığını</b> tek tek açıklar.
+        </p>
+
+        <label>🎯 Değerlendirme Hedefi (Kadro Türü)</label>
+        <select id="cvTrackSelect" class="input">
+          <option value="genel">Genel Kamu & Özel Sektör CV</option>
+          <option value="memur">Memur / KPSS-B Kadroları</option>
+          <option value="sozlesmeli">4/B Sözleşmeli Personel</option>
+          <option value="uzman">KPSS-A / Uzman & Müfettiş Yrd.</option>
+          <option value="isci">Kamu İşçisi (İŞKUR / Belediye)</option>
+          <option value="akademik">Akademik Personel (Öğr. Gör. / Arş. Gör.)</option>
+          <option value="bilisim">Sözleşmeli Bilişim Personeli</option>
+        </select>
+
+        <div class="row" style="margin-bottom:10px;">
+          <label for="cvFileInput" class="btn btn-outline btn-sm" style="margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+            📂 Dosya Yükle (.PDF, .DOCX, .TXT)
+          </label>
+          <input id="cvFileInput" type="file" accept=".pdf,.docx,.txt,.md,.html" style="display:none" onchange="handleCvFileUpload(event)" />
+          <button type="button" class="btn btn-outline btn-sm" onclick="fillCvDraftFromProfile()">👤 Profilden Taslak Oluştur</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="clearCvForm()">🗑️ Temizle</button>
+        </div>
+
+        <label>✍️ CV Metniniz</label>
+        <textarea id="cvTextInput" class="input" rows="8" style="resize:vertical;line-height:1.5;font-family:inherit;" placeholder="Özgeçmiş metninizi buraya yapıştırın (Ad Soyad, İletişim, Özet, Eğitim, İş/Staj Deneyimi, KPSS/Dil/Sertifikalar, Teknik Yetkinlikler, Referanslar)..."></textarea>
+
+        <button id="cvAnalyzeBtn" class="btn" style="width:100%;" onclick="submitCvAnalysis()">🔍 CV’mi Yorumla ve Puanla</button>
+        <p id="cvError" style="color:var(--fail);font-size:13px;margin:8px 0 0 0;"></p>
+      </div>
+
+      <div id="cvResultArea" class="hidden"></div>
+    </div>
+
+    <!-- BAŞVURULAR -->
+    <div id="applicationsScreen" class="hidden">
+      <h3 style="margin:6px 4px 12px;">📋 Başvuru Takibi</h3>
+      <div id="appList"></div>
+    </div>
+
+    <!-- BİLDİRİMLER -->
+    <div id="notificationsScreen" class="hidden">
+      <h3 style="margin:6px 4px 12px;">🔔 Bildirimler</h3>
+      <div id="notifList"></div>
+    </div>
+
+    <!-- PROFİL -->
+    <div id="profileScreen" class="hidden">
+      <div id="adminPanelCard" class="card hidden" style="border:1.5px solid #f59e0b;background:#fffbeb;">
+        <div class="row" style="justify-content:space-between;margin-bottom:8px;">
+          <h3 style="margin:0;color:#b45309;">🛡️ Yönetici Paneli</h3>
+          <span id="adminUserLabel" class="badge" style="background:#fef3c7;color:#92400e;"></span>
+        </div>
+        <div id="adminStatsText" style="font-size:13px;color:#78350f;margin-bottom:10px;">Sistem durumu yükleniyor...</div>
+        <button class="btn btn-sm" id="adminScrapeBtn" onclick="triggerAdminScrape()">🔄 Kaynaklardan İlanları Yeniden Çek</button>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">👤 Profilim ve Tercihlerim</h3>
+        <label>Ad Soyad</label>
+        <input id="profName" class="input" />
+        <div class="row">
+          <div style="flex:1;min-width:130px;">
+            <label>Doğum Yılı</label>
+            <input id="profBirth" class="input" type="number" placeholder="1998" />
+          </div>
+          <div style="flex:1;min-width:150px;">
+            <label>Eğitim Seviyesi</label>
+            <select id="profEdu" class="input" onchange="updateDeptVisibility()"></select>
+          </div>
+        </div>
+        <div id="deptWrap">
+          <label id="deptLabel">Bölüm / Program</label>
+          <div id="deptSelectWrap" class="hidden">
+            <select id="profDeptSelect" class="input" onchange="syncSelectedDept()"></select>
+          </div>
+          <div id="deptInputWrap">
+            <input id="profDept" class="input" placeholder="Örn. Bilgisayar Programcılığı" />
+          </div>
+          <small id="deptHelp" style="color:var(--muted);font-size:12px;display:block;margin-top:-6px;margin-bottom:8px;"></small>
+        </div>
+
+        <label>📜 Sertifikalar ve Belgeler <span id="certCount" style="font-weight:400"></span></label>
+        <div id="certChips" class="row" style="max-height:185px;overflow-y:auto;padding:8px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:#fff;"></div>
+        <div class="row" style="margin-bottom:12px;">
+          <input id="certCustom" class="input" style="flex:1;margin:0" placeholder="Listede yoksa yazın (örn. Havuz Suyu Operatörü Belgesi)" onkeydown="if(event.key==='Enter'){addCustomCert();}" />
+          <button class="btn btn-outline" onclick="addCustomCert()">Ekle</button>
+        </div>
+
+        <div class="row">
+          <div style="flex:1;min-width:110px;">
+            <label>KPSS Puanı</label>
+            <input id="profKpss" class="input" type="number" step="0.1" placeholder="78.5" />
+          </div>
+          <div style="flex:1;min-width:110px;">
+            <label>KPSS Türü</label>
+            <select id="profKpssType" class="input">
+              <option value="">Seçiniz</option>
+              <option value="P94">Ortaöğretim</option>
+              <option value="P93">Ön Lisans</option>
+              <option value="P3">Lisans</option>
+              <option value="P1">Uzmanlık (Sayısal)</option>
+              <option value="P2">Uzmanlık (Eşit Ağırlık)</option>
+              <option value="P48">Uzmanlık (Alan Bilgisi)</option>
+              <option value="P10">Öğretmenlik (Eğitim Bilimleri)</option>
+              <option value="P121">Öğretmenlik (ÖABT)</option>
+              <option value="P123">Din Hizmetleri (DHBT)</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:100px;">
+            <label>Deneyim (Yıl)</label>
+            <input id="profExp" class="input" type="number" step="0.5" value="0" />
+          </div>
+        </div>
+
+        <label>İş Türü Tercihleri</label>
+        <div id="jobTypeChips" class="row" style="margin-bottom:12px;"></div>
+
+        <label>📍 Tercih Edilen Şehirler <span id="cityCount" style="font-weight:400"></span></label>
+        <input id="cityFilter" class="input" style="margin-bottom:6px" placeholder="Şehir ara... (seçmek için üzerine basın)" oninput="renderCityChips()" />
+        <div id="cityChips" class="row" style="max-height:175px;overflow-y:auto;padding:8px;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;background:#fff;"></div>
+
+        <button class="btn" style="width:100%;margin-top:6px;" onclick="saveProfile()">Profili Kaydet</button>
+        <button class="btn btn-outline" style="width:100%;margin-top:8px;" onclick="sendTestNotif()">🔔 Test Bildirimi Gönder</button>
+        <p id="profMsg" style="color:var(--ok);font-size:13px;margin-top:8px;"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOBİL KURULUM YARDIM PENCERESİ (iOS / Tarayıcı Menüsü İçin) -->
+  <div id="installGuideModal" class="modal-backdrop hidden" onclick="closeInstallModal(event)">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <h3 style="margin:0 0 8px;">📲 Telefonunuza Uygulama Olarak Ekleyin</h3>
+      <div id="installGuideBody" style="font-size:14px;color:var(--text);line-height:1.6;"></div>
+      <button class="btn" style="width:100%;margin-top:14px;" onclick="document.getElementById('installGuideModal').classList.add('hidden')">Anladım</button>
+    </div>
+  </div>
+
+  <nav id="bottomTabs" class="tabs hidden">
+    <button class="tab-btn active" data-tab="jobs" onclick="switchTab('jobs')"><span class="ico">📋</span><span>İlanlar</span></button>
+    <button class="tab-btn" data-tab="matches" onclick="switchTab('matches')"><span class="ico">✨</span><span>Eşleşenler</span></button>
+    <button class="tab-btn" data-tab="cv" onclick="switchTab('cv')"><span class="ico">📄</span><span>CV Analiz</span></button>
+    <button class="tab-btn" data-tab="applications" onclick="switchTab('applications')"><span class="ico">✅</span><span>Başvurular</span></button>
+    <button class="tab-btn" data-tab="profile" onclick="switchTab('profile')"><span class="ico">👤</span><span>Profil</span></button>
+  </nav>
+
+  <script>
+    // PWA Service Worker ve Kurulum Yönetimi
+    let deferredInstallPrompt = null;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    const isMobileUA = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+
+    if (isMobileUA) {
+      document.getElementById('desktopQrBtn').classList.add('hidden');
+      if (!isStandalone) {
+        document.getElementById('mobileInstallBanner').classList.remove('hidden');
+      }
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      if (!isStandalone) {
+        document.getElementById('mobileInstallBanner').classList.remove('hidden');
+      }
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredInstallPrompt = null;
+      document.getElementById('mobileInstallBanner').classList.add('hidden');
+    });
+
+    async function triggerMobileInstall() {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const choice = await deferredInstallPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+          document.getElementById('mobileInstallBanner').classList.add('hidden');
+        }
+        deferredInstallPrompt = null;
+        return;
+      }
+      const body = document.getElementById('installGuideBody');
+      if (isIOS) {
+        body.innerHTML = `
+          1. Safari'nin alt barındaki <b>Paylaş (⬆️)</b> simgesine dokunun.<br/>
+          2. Açılan menüde aşağı kaydırıp <b>"Ana Ekrana Ekle"</b> seçeneğine dokunun.<br/>
+          3. Sağ üstteki <b>"Ekle"</b> butonuna basın — uygulama ana ekranınıza yerleşecektir!
+        `;
+      } else {
+        body.innerHTML = `
+          1. Tarayıcınızın sağ üst köşesindeki <b>⋮ (üç nokta)</b> menüsüne dokunun.<br/>
+          2. <b>"Uygulamayı yükle"</b> veya <b>"Ana ekrana ekle"</b> seçeneğine dokunun.<br/>
+          3. Onayladığınızda <b>Kamu İlan Asistanı</b> telefonunuza uygulama olarak kurulacaktır!
+        `;
+      }
+      document.getElementById('installGuideModal').classList.remove('hidden');
+    }
+
+    function closeInstallModal(e) {
+      if (e.target.id === 'installGuideModal') {
+        document.getElementById('installGuideModal').classList.add('hidden');
+      }
+    }
+
+    let token = localStorage.getItem('kamu_token');
+    let isRegister = false;
+    let currentTab = 'jobs';
+    let kpssFilter = '';
+    let meta = { cities: [], educationLevels: [], jobTypes: [], certificates: [], noDepartmentLevels: ['ilkokul', 'ortaokul', 'lise'] };
+    let profileCerts = [];
+    let profileCities = [];
+    let profileJobTypes = ['memur', 'sozlesmeli', 'isci', 'akademik'];
+    let searchTimer = null;
+
+    const STATUS_META = {
+      ok: { emoji: '✅', label: 'Uygun', color: 'var(--ok)', bg: 'var(--ok-bg)' },
+      warn: { emoji: '⚠️', label: 'Kontrol et', color: 'var(--warn)', bg: 'var(--warn-bg)' },
+      fail: { emoji: '❌', label: 'Uygun değil', color: 'var(--fail)', bg: 'var(--fail-bg)' },
+    };
+    const APP_LABELS = {
+      planned: 'Planlandı', applied: 'Başvuruldu', interview: 'Mülakat / Sınav', accepted: 'Kabul edildi', rejected: 'Olumsuz'
+    };
+    const TYPE_LABELS = { memur: 'Memur', sozlesmeli: 'Sözleşmeli (4/B)', isci: 'İşçi', akademik: 'Akademik', diger: 'Diğer' };
+    const SOURCE_LABELS = {
+      memurlar: 'İlan.memurlar.net',
+      kamuilan: 'Cumhurbaşkanlığı SBB',
+      aile: 'Aile Bakanlığı',
+      iskur: 'İŞKUR Kamu'
+    };
+
+    async function api(path, opts = {}) {
+      let res;
+      const reqInit = {
+        method: opts.method || 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: 'Bearer ' + token } : {})
+        },
+        body: opts.body ? JSON.stringify(opts.body) : undefined
+      };
+      try {
+        res = await fetch('/api' + path, reqInit);
+      } catch {
+        // Sunucu anlık yeniden başlıyorsa 900ms bekleyip bir kez daha dene
+        await new Promise(r => setTimeout(r, 900));
+        try {
+          res = await fetch('/api' + path, reqInit);
+        } catch {
+          const netErr = new Error('Sunucuya bağlanılamadı. Lütfen sunucunun açık olduğundan emin olup tekrar deneyin.');
+          netErr.isNetwork = true;
+          throw netErr;
+        }
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 502 || res.status === 503 || res.status === 504) {
+          const err = new Error('Tünel geçici olarak yanıt vermedi (502). Kesintisiz bağlantı için http://192.168.1.31:4000 veya http://localhost:4000 adresini kullanın.');
+          err.status = res.status;
+          throw err;
+        }
+        const err = new Error(data.error || 'Hata oluştu');
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    }
+
+    let pendingVerifyEmail = '';
+
+    function showVerificationCard(email, infoMsg) {
+      pendingVerifyEmail = email;
+      document.getElementById('authFormWrap').classList.add('hidden');
+      document.getElementById('verifyWrap').classList.remove('hidden');
+      document.getElementById('verifyTargetEmail').innerText = email;
+      document.getElementById('authVerifyCode').value = '';
+      document.getElementById('verifySuccess').innerText = infoMsg || '';
+      document.getElementById('authError').innerText = '';
+      setTimeout(() => {
+        const inp = document.getElementById('authVerifyCode');
+        if (inp) inp.focus();
+      }, 100);
+    }
+
+    function cancelVerification() {
+      pendingVerifyEmail = '';
+      document.getElementById('verifyWrap').classList.add('hidden');
+      document.getElementById('authFormWrap').classList.remove('hidden');
+      document.getElementById('authError').innerText = '';
+      document.getElementById('verifySuccess').innerText = '';
+    }
+
+    async function submitVerifyCode() {
+      const code = (document.getElementById('authVerifyCode').value || '').trim();
+      const errEl = document.getElementById('authError');
+      const succEl = document.getElementById('verifySuccess');
+      errEl.innerText = '';
+      succEl.innerText = '';
+
+      if (!code || code.length !== 6) {
+        errEl.innerText = 'Lütfen e-postanıza gönderilen 6 haneli kodu eksiksiz girin.';
+        return;
+      }
+
+      const email = pendingVerifyEmail || document.getElementById('authEmail').value.trim();
+      const btn = document.getElementById('verifySubmitBtn');
+      btn.disabled = true;
+      btn.innerText = 'Doğrulanıyor...';
+
+      try {
+        const r = await api('/auth/verify-email', {
+          method: 'POST',
+          body: { email, code }
+        });
+        token = r.token;
+        localStorage.setItem('kamu_token', token);
+        succEl.innerText = r.message || 'E-posta doğrulandı! Giriş yapılıyor...';
+        setTimeout(async () => {
+          cancelVerification();
+          await initApp();
+        }, 500);
+      } catch (e) {
+        errEl.innerText = e.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '✅ Kodu Onayla ve Giriş Yap';
+      }
+    }
+
+    async function resendVerificationCode() {
+      const email = pendingVerifyEmail || document.getElementById('authEmail').value.trim();
+      const errEl = document.getElementById('authError');
+      const succEl = document.getElementById('verifySuccess');
+      errEl.innerText = '';
+      succEl.innerText = '';
+
+      if (!email) {
+        errEl.innerText = 'E-posta adresi belirlenemedi.';
+        return;
+      }
+
+      const btn = document.getElementById('resendCodeBtn');
+      btn.disabled = true;
+      btn.innerText = 'Gönderiliyor...';
+
+      try {
+        const r = await api('/auth/resend-code', {
+          method: 'POST',
+          body: { email }
+        });
+        succEl.innerText = r.message || 'Yeni doğrulama kodu e-postanıza gönderildi.';
+      } catch (e) {
+        errEl.innerText = e.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '🔄 Tekrar Kod Gönder';
+      }
+    }
+
+    async function loadAdminStats() {
+      try {
+        const s = await api('/admin/stats');
+        const srcSummary = (s.bySource || []).map(x => `${x.source}: ${x.count}`).join(', ');
+        document.getElementById('adminStatsText').innerText =
+          `Aktif İlan: ${s.jobCount} (${srcSummary || 'yok'}) • Kayıtlı Hesap: ${s.userCount}`;
+      } catch {}
+    }
+
+    async function triggerAdminScrape() {
+      const btn = document.getElementById('adminScrapeBtn');
+      btn.disabled = true;
+      btn.innerText = '⏳ İlanlar çekiliyor...';
+      try {
+        await api('/admin/scrape', { method: 'POST' });
+        await loadAdminStats();
+        btn.innerText = '✅ Güncellendi!';
+      } catch (e) {
+        alert(e.message);
+        btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek';
+      } finally {
+        btn.disabled = false;
+        setTimeout(() => { btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek'; }, 2500);
+      }
+    }
+
+    function toggleAuthMode() {
+      isRegister = !isRegister;
+      document.getElementById('authTitle').innerText = isRegister ? 'Yeni Hesap Oluştur' : 'Giriş Yap';
+      document.getElementById('authSubmitBtn').innerText = isRegister ? 'Kayıt Ol' : 'Giriş Yap';
+      document.getElementById('authToggleBtn').innerText = isRegister ? 'Giriş Ekranı' : 'Kayıt Ol';
+      document.getElementById('nameWrap').classList.toggle('hidden', !isRegister);
+      document.getElementById('authError').innerText = '';
+    }
+
+    async function submitAuth() {
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPass').value;
+      const fullName = document.getElementById('authName').value.trim();
+      document.getElementById('authError').innerText = '';
+      try {
+        const r = await api(isRegister ? '/auth/register' : '/auth/login', {
+          method: 'POST',
+          body: isRegister ? { email, password, fullName } : { email, password }
+        });
+
+        if (r && r.requiresVerification) {
+          showVerificationCard(r.email || email, r.message);
+          return;
+        }
+
+        token = r.token;
+        localStorage.setItem('kamu_token', token);
+        await initApp();
+      } catch (e) {
+        if (e.data && e.data.requiresVerification) {
+          showVerificationCard(e.data.email || email, e.message);
+          return;
+        }
+        document.getElementById('authError').innerText = e.message;
+      }
+    }
+
+    function logout() {
+      token = null;
+      cvLoadedOnce = false;
+      cancelVerification();
+      localStorage.removeItem('kamu_token');
+      document.getElementById('authPass').value = '';
+      clearCvForm();
+      document.getElementById('adminHeaderBadge').classList.add('hidden');
+      document.getElementById('adminPanelCard').classList.add('hidden');
+      document.getElementById('authScreen').classList.remove('hidden');
+      document.getElementById('headerActions').classList.add('hidden');
+      document.getElementById('bottomTabs').classList.add('hidden');
+      ['jobsScreen','detailScreen','cvScreen','applicationsScreen','notificationsScreen','profileScreen'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+    }
+
+    async function initApp() {
+      try {
+        const [me, m] = await Promise.all([api('/profile'), api('/jobs/meta')]);
+        meta = m;
+        const citySel = document.getElementById('citySelect');
+        citySel.innerHTML = '<option value="">📍 Tüm Şehirler</option>' + m.cities.map(c => `<option value="${c}">${c}</option>`).join('');
+        const typeSel = document.getElementById('typeSelect');
+        typeSel.innerHTML = '<option value="">Tüm Türler</option>' + m.jobTypes.map(t => `<option value="${t.value}">${t.label}</option>`).join('');
+        const eduSel = document.getElementById('profEdu');
+        eduSel.innerHTML = '<option value="">Seçiniz</option>' + m.educationLevels.map(e => `<option value="${e.value}">${e.label}</option>`).join('');
+
+        const isAdmin = Boolean(me.isAdmin);
+        document.getElementById('adminHeaderBadge').classList.toggle('hidden', !isAdmin);
+        document.getElementById('adminPanelCard').classList.toggle('hidden', !isAdmin);
+        if (isAdmin) {
+          document.getElementById('adminUserLabel').innerText = me.username || me.email || 'Admin';
+          loadAdminStats();
+        }
+
+        fillProfileForm(me.profile);
+        document.getElementById('authScreen').classList.add('hidden');
+        document.getElementById('headerActions').classList.remove('hidden');
+        document.getElementById('bottomTabs').classList.remove('hidden');
+        switchTab(me.profile && me.profile.educationLevel ? 'matches' : 'jobs');
+      } catch (e) {
+        if (e && e.isNetwork) {
+          document.getElementById('authError').innerText = e.message;
+          return;
+        }
+        logout();
+      }
+    }
+
+    function syncSelectedDept() {
+      const sel = document.getElementById('profDeptSelect');
+      if (sel && sel.value) {
+        document.getElementById('profDept').value = sel.value;
+      }
+    }
+
+    function fillProfileForm(p) {
+      if (!p) return;
+      document.getElementById('profName').value = p.fullName || '';
+      document.getElementById('profBirth').value = p.birthYear || '';
+      document.getElementById('profEdu').value = p.educationLevel || '';
+      document.getElementById('profDept').value = p.department || '';
+      document.getElementById('profKpss').value = p.kpssScore ?? '';
+      document.getElementById('profKpssType').value = p.kpssType || '';
+      document.getElementById('profExp').value = p.experienceYears ?? 0;
+      profileCities = [...(p.cities || [])];
+      profileCerts = [...(p.certificates || [])];
+      profileJobTypes = (p.jobTypes && p.jobTypes.length) ? [...p.jobTypes] : ['memur', 'sozlesmeli', 'isci', 'akademik'];
+      renderCityChips();
+      renderCertChips();
+      renderJobTypeChips();
+      updateDeptVisibility();
+    }
+
+    function updateDeptVisibility() {
+      const level = document.getElementById('profEdu').value;
+      const hide = !level || (meta.noDepartmentLevels || ['ilkokul', 'ortaokul', 'lise']).includes(level);
+      document.getElementById('deptWrap').classList.toggle('hidden', hide);
+      if (hide) {
+        document.getElementById('profDept').value = '';
+        return;
+      }
+
+      const poolOnly = ['lisans', 'yuksek_lisans', 'doktora'].includes(level);
+      const isAssociate = level === 'onlisans';
+      const deptSelectWrap = document.getElementById('deptSelectWrap');
+      const deptInputWrap = document.getElementById('deptInputWrap');
+      const deptSelect = document.getElementById('profDeptSelect');
+      const deptHelp = document.getElementById('deptHelp');
+      const currentVal = document.getElementById('profDept').value.trim();
+
+      if (poolOnly) {
+        deptSelectWrap.classList.remove('hidden');
+        deptInputWrap.classList.add('hidden');
+        deptHelp.innerText = '🔒 Lisans ve üstü için bölümünüzü resmi YÖK/KPSS seçenek havuzundan seçmelisiniz (serbest metin girişi kapalıdır).';
+        const list = meta.undergradDepartments || [];
+        deptSelect.innerHTML = '<option value="">Bölümünüzü Seçiniz...</option>' + list.map(d => `<option value="${d}">${d}</option>`).join('');
+        if (currentVal && list.includes(currentVal)) {
+          deptSelect.value = currentVal;
+        } else if (currentVal) {
+          const found = list.find(d => d.toLocaleLowerCase('tr') === currentVal.toLocaleLowerCase('tr'));
+          if (found) {
+            deptSelect.value = found;
+            document.getElementById('profDept').value = found;
+          }
+        }
+      } else if (isAssociate) {
+        deptSelectWrap.classList.remove('hidden');
+        deptInputWrap.classList.add('hidden');
+        deptHelp.innerText = '💡 Ön lisans programınızı listeden kolayca seçebilirsiniz.';
+        const list = meta.associateDepartments || [];
+        deptSelect.innerHTML = '<option value="">Ön Lisans Programı Seçiniz...</option>' + list.map(d => `<option value="${d}">${d}</option>`).join('');
+        if (currentVal && list.includes(currentVal)) {
+          deptSelect.value = currentVal;
+        }
+      } else {
+        deptSelectWrap.classList.add('hidden');
+        deptInputWrap.classList.remove('hidden');
+        deptHelp.innerText = '';
+      }
+    }
+
+    function renderJobTypeChips() {
+      const box = document.getElementById('jobTypeChips');
+      box.innerHTML = '';
+      (meta.jobTypes || []).forEach(t => {
+        const chip = document.createElement('span');
+        chip.className = 'chip' + (profileJobTypes.includes(t.value) ? ' active' : '');
+        chip.textContent = t.label;
+        chip.onclick = () => {
+          profileJobTypes = profileJobTypes.includes(t.value)
+            ? profileJobTypes.filter(x => x !== t.value)
+            : [...profileJobTypes, t.value];
+          renderJobTypeChips();
+        };
+        box.appendChild(chip);
+      });
+    }
+
+    function renderCityChips() {
+      const q = document.getElementById('cityFilter').value.trim().toLocaleLowerCase('tr');
+      const box = document.getElementById('cityChips');
+      box.innerHTML = '';
+      const sorted = [...(meta.cities || [])].sort((a, b) => (profileCities.includes(b) ? 1 : 0) - (profileCities.includes(a) ? 1 : 0));
+      sorted.filter(c => c.toLocaleLowerCase('tr').includes(q)).forEach(city => {
+        const chip = document.createElement('span');
+        chip.className = 'chip' + (profileCities.includes(city) ? ' active' : '');
+        chip.textContent = city;
+        chip.onclick = () => toggleCity(city);
+        box.appendChild(chip);
+      });
+      document.getElementById('cityCount').textContent = profileCities.length ? `(${profileCities.length} seçili)` : '(Tümü)';
+    }
+
+    function toggleCity(city) {
+      profileCities = profileCities.includes(city) ? profileCities.filter(c => c !== city) : [...profileCities, city];
+      renderCityChips();
+    }
+
+    function renderCertChips() {
+      const box = document.getElementById('certChips');
+      box.innerHTML = '';
+      const custom = profileCerts.filter(c => !(meta.certificates || []).includes(c));
+      const all = [...(meta.certificates || []), ...custom].sort((a, b) => (profileCerts.includes(b) ? 1 : 0) - (profileCerts.includes(a) ? 1 : 0));
+      all.forEach(name => {
+        const chip = document.createElement('span');
+        chip.className = 'chip' + (profileCerts.includes(name) ? ' active' : '');
+        chip.textContent = name;
+        chip.onclick = () => toggleCert(name);
+        box.appendChild(chip);
+      });
+      document.getElementById('certCount').textContent = profileCerts.length ? `(${profileCerts.length} seçili)` : '';
+    }
+
+    function toggleCert(name) {
+      profileCerts = profileCerts.includes(name) ? profileCerts.filter(c => c !== name) : [...profileCerts, name];
+      renderCertChips();
+    }
+
+    function addCustomCert() {
+      const input = document.getElementById('certCustom');
+      const v = input.value.trim();
+      if (v.length >= 2 && !profileCerts.includes(v)) profileCerts.push(v);
+      input.value = '';
+      renderCertChips();
+    }
+
+    async function saveProfile() {
+      const edu = document.getElementById('profEdu').value || null;
+      let dept = document.getElementById('profDept').value.trim();
+      const poolOnly = ['lisans', 'yuksek_lisans', 'doktora'].includes(edu);
+      if (poolOnly && !dept) {
+        alert('Lütfen lisans/üstü bölümünüzü listeden seçin.');
+        return;
+      }
+      const body = {
+        fullName: document.getElementById('profName').value.trim(),
+        birthYear: document.getElementById('profBirth').value || null,
+        educationLevel: edu,
+        department: dept,
+        certificates: profileCerts,
+        kpssScore: document.getElementById('profKpss').value || null,
+        kpssType: document.getElementById('profKpssType').value || null,
+        experienceYears: Number(document.getElementById('profExp').value || 0),
+        cities: profileCities,
+        jobTypes: profileJobTypes,
+        notificationsEnabled: true
+      };
+      try {
+        await api('/profile', { method: 'PUT', body });
+        document.getElementById('profMsg').innerText = '✅ Profil kaydedildi! Eşleşen ilanlar güncellendi.';
+        const saved = await api('/profile');
+        fillProfileForm(saved.profile);
+        setTimeout(() => document.getElementById('profMsg').innerText = '', 3000);
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    async function sendTestNotif() {
+      try {
+        await api('/notifications/test', { method: 'POST' });
+        if ('Notification' in window) {
+          if (Notification.permission === 'default') await Notification.requestPermission();
+          if (Notification.permission === 'granted') {
+            new Notification('🇹🇷 Kamu İlan Asistanı', {
+              body: 'Bildirim sistemi aktif! Uygun kamu ilanları çıktığında bilgilendirileceksiniz.',
+              icon: '/icons/icon-192.png'
+            });
+          }
+        }
+        document.getElementById('profMsg').innerText = '🔔 Test bildirimi gönderildi!';
+        setTimeout(() => document.getElementById('profMsg').innerText = '', 3000);
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    function showScreen(name) {
+      ['jobsScreen','detailScreen','cvScreen','applicationsScreen','notificationsScreen','profileScreen'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.getElementById(name + 'Screen').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      if (name === 'cv') loadSavedCv();
+      if (name === 'applications') loadApplications();
+      if (name === 'notifications') loadNotifications();
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      if (tab === 'jobs' || tab === 'matches') {
+        showScreen('jobs');
+        document.getElementById('matchesNote').classList.toggle('hidden', tab !== 'matches');
+        loadJobs();
+      } else {
+        showScreen(tab);
+      }
+    }
+
+    function setKpssFilter(val) {
+      kpssFilter = val;
+      document.querySelectorAll('[data-kpss]').forEach(el => el.classList.toggle('active', el.dataset.kpss === val));
+      loadJobs();
+    }
+
+    function debounceLoadJobs() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadJobs, 300);
+    }
+
+    function findOfficialApplyUrl(desc) {
+      if (!desc) return null;
+      const matches = desc.match(/https?:\/\/[^\s)"',;<>]+/gi) || [];
+      for (const raw of matches) {
+        const u = raw.replace(/[.,;:]+$/, '');
+        if (/kariyerkapisi\.(?:cbiko\.)?gov\.tr\/isealim|isealimkariyerkapisi\.cbiko\.gov\.tr|personeltemin\.msb\.gov\.tr|basvuru|pdb\.|ais\./i.test(u)) {
+          return u;
+        }
+      }
+      if (/kariyerkapisi\.gov\.tr\/isealim/i.test(desc)) return 'https://isealimkariyerkapisi.cbiko.gov.tr';
+      return null;
+    }
+
+    const KPSS_TYPE_MAP = {
+      P94: 'Ortaöğretim',
+      P93: 'Ön Lisans',
+      P3: 'Lisans',
+      P1: 'Uzmanlık (Sayısal)',
+      P2: 'Uzmanlık (Eşit Ağırlık)',
+      P48: 'Uzmanlık (Alan Bilgisi)',
+      P10: 'Öğretmenlik (Eğitim Bilimleri)',
+      P121: 'Öğretmenlik (ÖABT)',
+      P123: 'Din Hizmetleri (DHBT)'
+    };
+
+    function formatKpssTypeName(t) {
+      if (!t) return '';
+      const u = String(t).toUpperCase().replace(/\s+/g, '');
+      return KPSS_TYPE_MAP[u] || t;
+    }
+
+    function formatKpssBadge(j) {
+      if (j.kpssRequired === false) {
+        return { text: 'KPSS Şartsız', bg: 'var(--ok-bg)', color: 'var(--ok)' };
+      }
+      if (j.kpssRequired === true) {
+        const typeName = formatKpssTypeName(j.kpssType);
+        const parts = ['KPSS'];
+        if (typeName) parts.push(typeName);
+        if (j.minKpssScore) parts.push('≥ ' + j.minKpssScore);
+        else parts.push('Şartlı');
+        return { text: parts.join(' '), bg: 'var(--primary-light)', color: 'var(--primary)' };
+      }
+      return { text: 'KPSS Belirsiz', bg: 'var(--warn-bg)', color: 'var(--warn)' };
+    }
+
+    function renderJobCard(j) {
+      const m = STATUS_META[j.eligibility.overall];
+      const kb = formatKpssBadge(j);
+      const srcName = SOURCE_LABELS[j.source] || j.source;
+      return `
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+            <div style="flex:1" onclick="openJob(${j.id})">
+              <div class="job-title">${j.title}</div>
+              <div class="sub">${[j.institution, j.city, srcName].filter(Boolean).join(' • ')}</div>
+            </div>
+          </div>
+          <div class="row" style="margin-bottom:8px;" onclick="openJob(${j.id})">
+            <span class="badge" style="background:var(--border);color:var(--text)">${TYPE_LABELS[j.jobType] || j.jobType}</span>
+            <span class="badge" style="background:${kb.bg};color:${kb.color}">${kb.text}</span>
+            ${j.positions ? `<span class="badge" style="background:var(--border)">${j.positions} kişi</span>` : ''}
+            ${j.applicationStatus ? `<span class="badge" style="background:var(--primary-light);color:var(--primary)">${APP_LABELS[j.applicationStatus]}</span>` : ''}
+          </div>
+          ${(j.requiredCertificates || []).length ? `<div class="sub" style="margin-bottom:8px">📜 Aranan belge: ${j.requiredCertificates.join(j.certificateMode === 'any' ? ' veya ' : ', ')}</div>` : ''}
+          ${j.historicalPlacement ? `
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;padding:6px 10px;font-size:12.5px;color:#166534;margin-bottom:8px;">
+              📊 <b>Geçmiş Yıl Atama Ortalaması:</b> ~${j.historicalPlacement.avgScore} Puan (${j.historicalPlacement.period} · ${j.historicalPlacement.minPlacedScore} - ${j.historicalPlacement.maxPlacedScore})
+            </div>
+          ` : ''}
+          <div class="row" style="justify-content:space-between;" onclick="openJob(${j.id})">
+            <span class="badge" style="background:${m.bg};color:${m.color};padding:5px 10px;font-size:13px;">
+              ${m.emoji} ${m.label} · Uyum %${j.eligibility.score}
+            </span>
+            ${j.deadline ? `<span style="font-size:12px;color:var(--muted)">⏰ Son: ${j.deadline}</span>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    async function loadJobs() {
+      const q = document.getElementById('searchInput').value.trim();
+      const city = document.getElementById('citySelect').value;
+      const jobType = document.getElementById('typeSelect').value;
+      const params = new URLSearchParams({ limit: '250' });
+      if (q) params.set('query', q);
+      if (city) params.set('city', city);
+      if (jobType) params.set('jobType', jobType);
+      if (kpssFilter) params.set('kpss', kpssFilter);
+
+      const endpoint = currentTab === 'matches' ? '/jobs/matches?' : '/jobs?';
+      const data = await api(endpoint + params.toString());
+      document.getElementById('jobsCount').innerText = `${data.total} ilan listeleniyor`;
+      document.getElementById('jobsList').innerHTML = data.items.map(renderJobCard).join('') || '<div class="card">Uygun ilan bulunamadı.</div>';
+    }
+
+    async function openJob(id) {
+      const j = await api('/jobs/' + id);
+      const m = STATUS_META[j.eligibility.overall];
+      const checksHtml = (j.eligibility.checks || []).map(c => `
+        <div class="check-row">
+          <div style="font-size:18px">${STATUS_META[c.status].emoji}</div>
+          <div>
+            <div style="font-weight:700">${c.label}</div>
+            <div style="color:var(--muted);font-size:13px">${c.detail}</div>
+          </div>
+        </div>
+      `).join('');
+
+      const appButtons = Object.entries(APP_LABELS).map(([k, label]) => `
+        <span class="chip ${j.applicationStatus === k ? 'active' : ''}" onclick="setAppStatus(${j.id}, '${k}')">${label}</span>
+      `).join('');
+
+      const srcName = SOURCE_LABELS[j.source] || j.source;
+      const applyUrl = findOfficialApplyUrl(j.description);
+      document.getElementById('detailScreen').innerHTML = `
+        <button class="btn btn-outline" style="margin-bottom:12px" onclick="switchTab(currentTab)">← Listeye Dön</button>
+        <div class="card">
+          <h2 style="margin:0 0 6px 0;font-size:19px;">${j.title}</h2>
+          <div class="sub">${[j.institution, j.city, 'Kaynak: ' + srcName].filter(Boolean).join(' • ')}</div>
+          <div class="row" style="margin-top:12px;">
+            ${j.url ? `<a class="btn" style="flex:1" href="${j.url}" target="_blank" rel="noopener noreferrer">İlan Sayfasına Git ↗</a>` : ''}
+            ${applyUrl && applyUrl !== j.url ? `<a class="btn btn-outline" style="flex:1" href="${applyUrl}" target="_blank" rel="noopener noreferrer">Başvuru Ekranı ↗</a>` : ''}
+            <button class="btn btn-outline" style="flex:1" onclick="openCvForJobType('${j.jobType}')">📄 CV Puanımı Gör</button>
+          </div>
+        </div>
+        ${j.historicalPlacement ? `
+        <div class="card" style="border:1.5px solid #86efac;background:#f0fdf4;">
+          <h3 style="margin:0 0 6px 0;color:#166534;font-size:16px;">📊 Geçmiş Yıllar Atama Puan İstatistikleri</h3>
+          <div style="font-size:14px;color:#14532d;line-height:1.55;margin-bottom:8px;">
+            ${escapeHtml(j.historicalPlacement.summary)}
+          </div>
+          <div class="row" style="gap:8px;">
+            <span class="badge" style="background:#dcfce7;color:#15803d;font-size:13px;padding:5px 9px;">Ortalama Atama: ~${j.historicalPlacement.avgScore} Puan</span>
+            <span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:13px;padding:5px 9px;">Yerleşme Aralığı: ${j.historicalPlacement.minPlacedScore} - ${j.historicalPlacement.maxPlacedScore}</span>
+            <span class="badge" style="background:#fef3c7;color:#92400e;font-size:13px;padding:5px 9px;">Referans Dönem: ${j.historicalPlacement.period}</span>
+          </div>
+        </div>
+        ` : ''}
+        <div class="card">
+          <div class="badge" style="background:${m.bg};color:${m.color};padding:8px 12px;font-size:15px;margin-bottom:10px;">
+            ${m.emoji} ${m.label} · Uyum Puanı %${j.eligibility.score}
+          </div>
+          <h3 style="margin:8px 0">Şart Kontrolü (✅ ❌ ⚠️)</h3>
+          ${checksHtml || '<p style="color:var(--muted)">Kontrol edilebilir özel şart bulunamadı.</p>'}
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">Başvuru Takibi</h3>
+          <div class="row">${appButtons}</div>
+          ${j.applicationStatus ? `<button class="btn btn-danger btn-sm" style="margin-top:10px" onclick="clearAppStatus(${j.id})">Takibi Bırak</button>` : ''}
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">İlan Açıklaması</h3>
+          <div style="line-height:1.68;white-space:pre-line;word-break:break-word;font-size:14.5px;color:#1f2937;">${j.description}</div>
+        </div>
+      `;
+      showScreen('detail');
+    }
+
+    function escapeHtml(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    let cvLoadedOnce = false;
+    async function loadSavedCv() {
+      if (cvLoadedOnce) return;
+      try {
+        const r = await api('/cv');
+        cvLoadedOnce = true;
+        if (r.saved) {
+          document.getElementById('cvTextInput').value = r.saved.cvText || '';
+          document.getElementById('cvTrackSelect').value = r.saved.targetTrack || 'genel';
+          renderCvAnalysis(r.saved.analysis);
+        }
+      } catch {}
+    }
+
+    function openCvForJobType(jobType) {
+      const map = { memur: 'memur', sozlesmeli: 'sozlesmeli', isci: 'isci', akademik: 'akademik' };
+      document.getElementById('cvTrackSelect').value = map[jobType] || 'genel';
+      switchTab('cv');
+    }
+
+    function clearCvForm() {
+      document.getElementById('cvTextInput').value = '';
+      document.getElementById('cvError').innerText = '';
+      document.getElementById('cvResultArea').classList.add('hidden');
+    }
+
+    function fillCvDraftFromProfile() {
+      const name = document.getElementById('profName').value.trim() || 'Ad Soyad';
+      const eduSel = document.getElementById('profEdu');
+      const eduText = eduSel.options[eduSel.selectedIndex]?.text || '';
+      const dept = document.getElementById('profDept').value.trim();
+      const kpss = document.getElementById('profKpss').value.trim();
+      const kpssType = document.getElementById('profKpssType').value;
+      const kpssTypeName = formatKpssTypeName(kpssType);
+      const exp = document.getElementById('profExp').value;
+      const city = profileCities[0] || '';
+      const certs = profileCerts.join(', ');
+
+      const lines = [
+        name,
+        `${city ? city + ' | ' : ''}05XX XXX XX XX | ad.soyad@email.com`,
+        '',
+        'PROFESYONEL ÖZET',
+        `${dept || eduText || 'Kamu'} alanında eğitim almış, analitik düşünme ve kurum içi süreç yönetimi becerileri güçlü adayım.`,
+        '',
+        'EĞİTİM BİLGİLERİ',
+        `${eduText && eduText !== 'Seçiniz' ? eduText : 'Lisans'}${dept ? ' - ' + dept : ''} (2019 - 2023)`,
+        '',
+        'İŞ VE STAJ DENEYİMİ',
+        exp && Number(exp) > 0 ? `İlgili Kurum / İşletme (${exp} Yıl Deneyim) - Süreç takibi, raporlama ve koordinasyon görevlerini yürüttüm.` : '',
+        '',
+        'SINAV VE SERTİFİKALAR',
+        kpss ? `KPSS ${kpssTypeName || kpssType || 'Lisans'}: ${kpss}` : '',
+        certs ? `Belgeler: ${certs}` : '',
+        '',
+        'TEKNİK VE KİŞİSEL YETKİNLİKLER',
+        'MS Office (Word, Excel, PowerPoint), Raporlama, Ekip Çalışması, Zaman Yönetimi'
+      ].filter(Boolean);
+
+      document.getElementById('cvTextInput').value = lines.join('\n');
+      document.getElementById('cvError').innerText = '';
+    }
+
+    async function handleCvFileUpload(ev) {
+      const file = ev.target.files && ev.target.files[0];
+      ev.target.value = '';
+      if (!file) return;
+      const errEl = document.getElementById('cvError');
+      errEl.innerText = '';
+      if (file.size > 6 * 1024 * 1024) {
+        errEl.innerText = 'Dosya boyutu en fazla 6 MB olabilir.';
+        return;
+      }
+      const btn = document.getElementById('cvAnalyzeBtn');
+      btn.disabled = true;
+      btn.innerText = '⏳ Dosya okunuyor ve analiz ediliyor...';
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const targetTrack = document.getElementById('cvTrackSelect').value;
+          const res = await api('/cv/analyze', {
+            method: 'POST',
+            body: { fileName: file.name, fileBase64: String(reader.result || ''), targetTrack }
+          });
+          document.getElementById('cvTextInput').value = res.cvText || '';
+          renderCvAnalysis(res.analysis);
+        } catch (e) {
+          errEl.innerText = e.message;
+        } finally {
+          btn.disabled = false;
+          btn.innerText = '🔍 CV’mi Yorumla ve Puanla';
+        }
+      };
+      reader.onerror = () => {
+        errEl.innerText = 'Dosya okunamadı.';
+        btn.disabled = false;
+        btn.innerText = '🔍 CV’mi Yorumla ve Puanla';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function submitCvAnalysis() {
+      const cvText = document.getElementById('cvTextInput').value.trim();
+      const targetTrack = document.getElementById('cvTrackSelect').value;
+      const errEl = document.getElementById('cvError');
+      errEl.innerText = '';
+      if (cvText.length < 15) {
+        errEl.innerText = 'Lütfen değerlendirmek için CV metninizi kutuya yapıştırın veya dosya yükleyin.';
+        return;
+      }
+      const btn = document.getElementById('cvAnalyzeBtn');
+      btn.disabled = true;
+      btn.innerText = '⏳ CV Yorumlanıyor...';
+      try {
+        const res = await api('/cv/analyze', { method: 'POST', body: { cvText, targetTrack } });
+        renderCvAnalysis(res.analysis);
+      } catch (e) {
+        errEl.innerText = e.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '🔍 CV’mi Yorumla ve Puanla';
+      }
+    }
+
+    async function applyCvToProfile() {
+      try {
+        const res = await api('/cv/apply-to-profile', { method: 'POST' });
+        fillProfileForm(res.profile);
+        const msgEl = document.getElementById('cvApplyMsg');
+        if (msgEl) msgEl.innerText = '✅ Bilgiler profilinize aktarıldı! Eşleşenler sekmesinden uygun ilanları görebilirsiniz.';
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    function renderCvAnalysis(a) {
+      if (!a) return;
+      const box = document.getElementById('cvResultArea');
+      box.classList.remove('hidden');
+
+      const scoreColor = a.score >= 85 ? 'var(--ok)' : a.score >= 70 ? 'var(--primary)' : a.score >= 50 ? 'var(--warn)' : 'var(--fail)';
+      const scoreBg = a.score >= 85 ? 'var(--ok-bg)' : a.score >= 70 ? 'var(--primary-light)' : a.score >= 50 ? 'var(--warn-bg)' : 'var(--fail-bg)';
+
+      const catsHtml = (a.categories || []).map(c => {
+        const pct = Math.round((c.earned / c.maxPoints) * 100);
+        const barColor = pct >= 80 ? 'var(--ok)' : pct >= 55 ? 'var(--primary)' : pct >= 35 ? 'var(--warn)' : 'var(--fail)';
+        return `
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+              <span style="font-weight:600">${escapeHtml(c.label)}</span>
+              <span><b>${c.earned}</b> / ${c.maxPoints} ${c.lost > 0 ? `<span style="color:var(--fail);font-weight:700;">(-${c.lost}p)</span>` : '<span style="color:var(--ok)">✓</span>'}</span>
+            </div>
+            <div style="height:8px;background:var(--border);border-radius:99px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:${barColor};border-radius:99px;"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const deductionsHtml = (a.deductions || []).length
+        ? a.deductions.map(d => `
+          <div style="border:1px solid #fecaca;background:#fff5f5;border-radius:12px;padding:12px;margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">
+              <div>
+                <div style="font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;">${escapeHtml(d.category)}</div>
+                <div style="font-weight:700;font-size:14.5px;color:#111827;">${escapeHtml(d.title)}</div>
+              </div>
+              <span class="badge" style="background:#fee2e2;color:#b91c1c;font-size:13px;padding:5px 10px;white-space:nowrap;">-${d.pointsLost} Puan</span>
+            </div>
+            <div style="font-size:13.5px;color:#7f1d1d;margin-bottom:6px;"><b>Neden Kırıldı:</b> ${escapeHtml(d.reason)}</div>
+            <div style="font-size:13px;color:#065f46;background:#ecfdf5;padding:8px 10px;border-radius:8px;"><b>💡 Nasıl Düzeltilir (+${d.pointsLost}p):</b> ${escapeHtml(d.suggestion)}</div>
+          </div>
+        `).join('')
+        : '<div style="padding:12px;background:var(--ok-bg);color:var(--ok);border-radius:10px;font-weight:600;">🎉 Tebrikler! CV’nizde hiçbir puan kesintisi bulunmadı.</div>';
+
+      const strengthsHtml = (a.strengths || []).length
+        ? a.strengths.map(s => `
+          <div class="check-row">
+            <div style="font-size:17px">✅</div>
+            <div>
+              <div style="font-weight:700;font-size:13.5px;">${escapeHtml(s.title)}</div>
+              <div style="color:var(--muted);font-size:12.5px;">${escapeHtml(s.detail)}</div>
+            </div>
+          </div>
+        `).join('')
+        : '<p style="color:var(--muted);font-size:13px;margin:0;">Tam puan alınan bölümler burada listelenir.</p>';
+
+      const ext = a.extractedProfile || {};
+      const extItems = [
+        ext.fullName ? `👤 <b>Ad Soyad:</b> ${escapeHtml(ext.fullName)}` : '',
+        ext.educationLabel ? `🎓 <b>Eğitim:</b> ${escapeHtml(ext.educationLabel)}` : '',
+        ext.department ? `🏛️ <b>Bölüm:</b> ${escapeHtml(ext.department)}` : '',
+        ext.kpssScore ? `📝 <b>KPSS:</b> ${escapeHtml(ext.kpssType || '')} ${ext.kpssScore}` : '',
+        ext.experienceYears != null ? `💼 <b>Deneyim:</b> ~${ext.experienceYears} yıl` : '',
+        ext.city ? `📍 <b>Şehir:</b> ${escapeHtml(ext.city)}` : '',
+        (ext.certificates || []).length ? `📜 <b>Belgeler:</b> ${escapeHtml(ext.certificates.join(', '))}` : ''
+      ].filter(Boolean);
+
+      box.innerHTML = `
+        <div class="card" style="border:2px solid ${scoreColor};">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div>
+              <div style="font-size:12px;color:var(--muted);font-weight:600;">${escapeHtml(a.targetTrackLabel)}</div>
+              <div style="font-size:34px;font-weight:800;color:${scoreColor};line-height:1.15;margin:4px 0;">
+                ${a.score} <span style="font-size:18px;color:var(--muted);font-weight:600;">/ 100</span>
+              </div>
+              <span class="badge" style="background:${scoreBg};color:${scoreColor};font-size:13px;padding:5px 10px;">${escapeHtml(a.levelLabel)}</span>
+            </div>
+            <div style="text-align:right;">
+              <div class="badge" style="background:var(--fail-bg);color:var(--fail);font-size:13px;padding:6px 10px;">
+                🔻 Kırılan: -${a.totalDeducted} Puan
+              </div>
+              <div style="font-size:12px;color:var(--muted);margin-top:6px;">${a.wordCount} kelime incelendi</div>
+            </div>
+          </div>
+          <div style="height:10px;background:var(--border);border-radius:99px;overflow:hidden;margin:14px 0 12px;">
+            <div style="height:100%;width:${a.score}%;background:${scoreColor};border-radius:99px;"></div>
+          </div>
+          <div style="background:#f8fafc;border-left:4px solid ${scoreColor};padding:10px 12px;border-radius:8px;font-size:13.5px;line-height:1.55;color:var(--text);">
+            💬 <b>Genel Yorum:</b> ${escapeHtml(a.overallComment)}
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin:0 0 10px 0;">🔻 Neden Puan Kırıldı? (${a.deductions.length} Eksik · -${a.totalDeducted} Puan)</h3>
+          ${deductionsHtml}
+        </div>
+
+        <div class="card">
+          <h3 style="margin:0 0 12px 0;">📊 Bölüm Bazlı Puan Tablosu</h3>
+          ${catsHtml}
+        </div>
+
+        <div class="card">
+          <h3 style="margin:0 0 8px 0;">✅ CV’nizdeki Güçlü Yönler (${(a.strengths || []).length})</h3>
+          ${strengthsHtml}
+        </div>
+
+        ${extItems.length ? `
+          <div class="card">
+            <h3 style="margin:0 0 8px 0;">⚡ CV’den Tespit Edilen Profil Bilgileri</h3>
+            <div style="font-size:13.5px;line-height:1.7;margin-bottom:10px;">${extItems.join('<br/>')}</div>
+            <button class="btn btn-outline" style="width:100%;" onclick="applyCvToProfile()">⚡ Bu Bilgileri Profilime Aktar (İlan Eşleştir)</button>
+            <p id="cvApplyMsg" style="color:var(--ok);font-size:13px;margin:8px 0 0 0;"></p>
+          </div>
+        ` : ''}
+      `;
+    }
+
+    async function setAppStatus(id, status) {
+      await api('/applications/' + id, { method: 'PUT', body: { status, notes: '' } });
+      openJob(id);
+    }
+
+    async function clearAppStatus(id) {
+      await api('/applications/' + id, { method: 'DELETE' });
+      openJob(id);
+    }
+
+    async function loadApplications() {
+      const r = await api('/applications');
+      document.getElementById('appList').innerHTML = r.items.map(a => renderJobCard({ ...a.job, applicationStatus: a.status })).join('') || '<div class="card">Takip ettiğiniz başvuru yok.</div>';
+    }
+
+    async function loadNotifications() {
+      const r = await api('/notifications');
+      await api('/notifications/read-all', { method: 'POST' });
+      document.getElementById('notifList').innerHTML = r.items.map(n => `
+        <div class="card" style="cursor:pointer" onclick="${n.jobId ? `openJob(${n.jobId})` : ''}">
+          <div style="font-weight:700">${n.title}</div>
+          <div style="margin:4px 0">${n.body}</div>
+          <div style="font-size:12px;color:var(--muted)">${n.createdAt}</div>
+        </div>
+      `).join('') || '<div class="card">Henüz bildirim yok.</div>';
+    }
+
+    if (token) initApp();
+  </script>
+</body>
+</html>

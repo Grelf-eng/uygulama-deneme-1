@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: kamu-ilan-asistani
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: cd backend && npm install && npm run build
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        value: kamu-ilan-guvenli-anahtar-2026-prod
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 465
+      - key: SMTP_USER
+        value: kamuilanasistani@gmail.com
+      - key: SMTP_PASS
+        value: pxiodkbxanhejnyj
+      - key: SMTP_FROM
+        value: Kamu İlan Asistanı <kamuilanasistani@gmail.com>
+      - key: SEED_SAMPLE
+        value: true
+      - key: SCRAPE_CRON
+        value: 0 */3 * * *

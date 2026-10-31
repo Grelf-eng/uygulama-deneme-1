@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kamu İlan Asistanı — iOS (iPhone) &amp; Android Mobil Kurulum</title>
+  <link rel="icon" href="/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <style>
+    :root {
+      --primary: #1d4ed8;
+      --primary-light: #dbeafe;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --ok: #16a34a;
+      --ok-bg: #dcfce7;
+      --apple: #000000;
+      --apple-bg: #f1f5f9;
+    }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); }
+    header { background: var(--card); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; color: var(--primary); text-decoration: none; }
+    .brand img { width: 34px; height: 34px; border-radius: 8px; }
+    .wrap { max-width: 1080px; margin: 24px auto; padding: 0 16px 48px; }
+    .hero-title { text-align: center; margin-bottom: 28px; }
+    .hero-title h1 { margin: 0 0 8px; font-size: 28px; font-weight: 800; color: #0f172a; }
+    .hero-title p { margin: 0; color: var(--muted); font-size: 15px; }
+
+    .dual-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-bottom: 24px; }
+    .card { background: var(--card); border-radius: 20px; padding: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.05); border: 1.5px solid var(--border); display: flex; flex-direction: column; }
+    .card-ios { border-color: #cbd5e1; }
+    .card-android { border-color: #86efac; }
+    
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .platform-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+    .badge-ios { background: #000; color: #fff; }
+    .badge-android { background: var(--ok-bg); color: var(--ok); }
+    
+    .qr-box { width: 190px; height: 190px; margin: 14px auto; padding: 8px; background: #fff; border: 2px solid var(--border); border-radius: 16px; display: flex; align-items: center; justify-content: center; }
+    .qr-box img { width: 100%; height: 100%; object-fit: contain; }
+    
+    .url-box { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-family: monospace; font-size: 13px; word-break: break-all; margin: 10px 0; text-align: center; }
+    .steps { padding-left: 20px; color: var(--text); line-height: 1.65; font-size: 14px; margin: 12px 0; flex: 1; }
+    .steps li { margin-bottom: 8px; }
+    
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--primary); color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 12px; font-weight: 700; font-size: 14px; border: none; cursor: pointer; text-align: center; }
+    .btn-green { background: var(--ok); }
+    .btn-apple { background: #000; color: #fff; }
+    .btn-outline { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); }
+    
+    .note-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 12px 14px; font-size: 13px; color: #1e40af; line-height: 1.5; margin-top: auto; }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="/">
+      <img src="/icons/icon-192.png" alt="İkon" />
+      <span>Kamu İlan Asistanı — Mobil Kurulum</span>
+    </a>
+    <a class="btn btn-outline" href="/">← Web Sürümüne Git</a>
+  </header>
+
+  <div class="wrap">
+    <div class="hero-title">
+      <h1>Cihazınızı Seçin &amp; Hemen Yükleyin</h1>
+      <p>Kamu İlan Asistanı hem iPhone (iOS) hem de Android cihazlarda tam uyumlu ve kesintisiz çalışır.</p>
+    </div>
+
+    <div class="dual-grid">
+      <!-- 🍎 iPHONE (iOS) SÜRÜMÜ -->
+      <div class="card card-ios">
+        <div class="card-header">
+          <span class="platform-badge badge-ios">🍎 APPLE iPHONE (iOS)</span>
+          <span style="font-size:12px;font-weight:700;color:var(--muted);">App Store Kalitesinde</span>
+        </div>
+        <h2 style="margin:0 0 8px;font-size:20px;">iPhone Ana Ekrana Kurulum (PWA)</h2>
+        <p style="color:var(--muted);font-size:14px;margin:0 0 10px;line-height:1.5;">
+          Apple iOS için özel olarak optimize edilmiştir. Safari üzerinden tek dokunuşla eklenir; tam ekran, Safari çubuğu olmadan ve anlık bildirim desteğiyle gerçek bir iPhone uygulaması gibi çalışır.
+        </p>
+
+        <div style="text-align:center;">
+          <div class="qr-box">
+            <img id="iosQr" alt="iPhone Kurulum QR Kodu" />
+          </div>
+          <div style="font-size:12px;font-weight:700;color:#000;">📷 iPhone Kamerasıyla Okutun</div>
+        </div>
+
+        <div id="iosUrl" class="url-box">Yükleniyor...</div>
+
+        <ol class="steps">
+          <li>Yukarıdaki linki iPhone'unuzda <b>Safari</b> tarayıcısıyla açın (veya QR kodu kameranızla tarayın).</li>
+          <li>Ekranın en altındaki <b>Paylaş (⬆️)</b> simgesine dokunun.</li>
+          <li>Açılan menüde aşağı kaydırıp <b>"Ana Ekrana Ekle" (➕)</b> seçeneğini seçin.</li>
+          <li>Sağ üstteki <b>"Ekle"</b> butonuna basın. Uygulama ikonuyla iPhone ekranınıza yerleşir!</li>
+        </ol>
+
+        <div class="note-box" style="margin-top:14px;">
+          💡 <b>Geliştirici İpucu:</b> Dilerseniz App Store'dan ücretsiz <b>Expo Go</b> indirip sayfanın altındaki React Native kodunu da canlı test edebilirsiniz.
+        </div>
+      </div>
+
+      <!-- 🤖 ANDROID SÜRÜMÜ -->
+      <div class="card card-android">
+        <div class="card-header">
+          <span class="platform-badge badge-android">🤖 ANDROID SÜRÜMÜ</span>
+          <span id="apkSize" style="font-size:12px;font-weight:700;color:var(--ok);">v1.5.3 Hazır</span>
+        </div>
+        <h2 style="margin:0 0 8px;font-size:20px;">Bağımsız APK Paketi</h2>
+        <p style="color:var(--muted);font-size:14px;margin:0 0 10px;line-height:1.5;">
+          Android için imzalanmış (V1+V2+V3) tam bağımsız APK dosyasıdır. İlanları, KPSS filtrelerini ve yerel CV puanlama motorunu doğrudan telefonunuzda çalıştırır.
+        </p>
+
+        <div style="text-align:center;">
+          <div class="qr-box">
+            <img id="apkQr" alt="Android APK QR Kodu" />
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--ok);">📷 Kamerayla Okut → Doğrudan İndir</div>
+        </div>
+
+        <div id="apkUrl" class="url-box">Yükleniyor...</div>
+
+        <div style="margin-bottom:12px;">
+          <a id="apkDirectBtn" class="btn btn-green" style="width:100%;" href="/kamu-ilan-asistani.apk" download>
+            📦 Doğrudan APK İndir (kamu-ilan-asistani.apk)
+          </a>
+        </div>
+
+        <ol class="steps">
+          <li>Yeşil butona basarak veya QR kodu taratarak APK dosyasını indirin.</li>
+          <li>Dosyayı açın ve <b>Yükle</b>'ye basın (Google Play Protect uyarırsa <i>Ayrıntılar → Yine de Yükle</i> deyin).</li>
+          <li>Uygulamayı açıp e-postanıza gelen 6 haneli kod ile güvenle giriş yapın.</li>
+        </ol>
+
+        <div class="note-box" style="background:#f0fdf4;border-color:#bbf7d0;color:#166534;">
+          ✅ <b>Çevrimdışı Desteği:</b> İnternetiniz olmasa bile 115 kamu ilanına ve CV analizinize telefonunuzdan anında erişebilirsiniz.
+        </div>
+      </div>
+    </div>
+
+    <!-- REACT NATIVE / EXPO GO SEÇENEĞİ -->
+    <div class="card" style="margin-top:10px;">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;">
+        <div style="flex:1;min-width:280px;">
+          <span class="platform-badge" style="background:#f3e8ff;color:#7e22ce;margin-bottom:8px;">⚛️ EXPO GO (iOS &amp; ANDROID)</span>
+          <h3 style="margin:0 0 6px;font-size:18px;">Canlı React Native Geliştirici Önizlemesi</h3>
+          <p style="color:var(--muted);font-size:13px;margin:0 0 8px;line-height:1.5;">
+            Hem App Store'da (iPhone) hem de Google Play'de (Android) bulunan ücretsiz <b>Expo Go</b> uygulaması ile projenin React Native kaynak kodunu cihazınızda yerel motorla çalıştırabilirsiniz.
+          </p>
+          <div id="expoUrl" class="url-box" style="text-align:left;font-size:12px;">Yükleniyor...</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="qr-box" style="width:140px;height:140px;margin:0 auto;">
+            <img id="expoQr" alt="Expo Go QR Kodu" />
+          </div>
+          <span style="font-size:11px;color:var(--muted);font-weight:700;">Expo Go ile Tara</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function refreshLinks() {
+      try {
+        const res = await fetch('/api/mobile-info');
+        const info = await res.json();
+
+        // Android APK Bağlantıları
+        const apkUrl = info.apkDownloadUrl;
+        document.getElementById('apkQr').src = '/api/qr.svg?text=' + encodeURIComponent(apkUrl);
+        document.getElementById('apkUrl').innerHTML = `Android İndirme Linki: <a href="${apkUrl}" style="color:var(--ok);font-weight:700;text-decoration:none">${apkUrl}</a>`;
+        if (info.apkSizeKb) {
+          document.getElementById('apkSize').innerText = `v1.5.3 (${info.apkSizeKb} KB)`;
+        }
+
+        // iOS (iPhone) PWA Bağlantıları
+        const installUrl = info.primaryInstallUrl;
+        document.getElementById('iosUrl').innerHTML = `iPhone Safari Linki: <a href="${installUrl}" target="_blank" style="color:#000;text-decoration:none;font-weight:700">${installUrl}</a>`;
+        document.getElementById('iosQr').src = '/api/qr.svg?text=' + encodeURIComponent(installUrl);
+
+        // Expo Go
+        document.getElementById('expoUrl').innerText = info.expoUrl;
+        document.getElementById('expoQr').src = '/api/qr.svg?text=' + encodeURIComponent(info.expoUrl);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    refreshLinks();
+    setInterval(refreshLinks, 8000);
+  </script>
+</body>
+</html>

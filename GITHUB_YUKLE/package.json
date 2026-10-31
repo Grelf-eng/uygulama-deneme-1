@@ -1,0 +1,9 @@
+{
+  "name": "kamu-ilan-asistani-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "if [ -d 'backend' ]; then cd backend && npm run build; else tsc -p tsconfig.json; fi",
+    "start": "if [ -d 'backend' ]; then cd backend && npm start; else node dist/index.js; fi"
+  }
+}

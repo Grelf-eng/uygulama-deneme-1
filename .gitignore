@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.vscode/
+scratch/
+android-apk/android-sdk/
+android-apk/output/
+*.log
