@@ -19,6 +19,7 @@ const filterSchema = z.object({
   jobType: z.enum(JOB_TYPES).optional(),
   education: z.enum(EDUCATION_LEVELS).optional(),
   source: z.string().trim().optional(),
+  certificate: z.string().trim().optional(),
   sort: z.enum(['newest', 'deadline']).optional(),
   includeExpired: z
     .enum(['true', 'false'])

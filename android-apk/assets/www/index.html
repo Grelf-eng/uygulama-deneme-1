@@ -128,12 +128,15 @@
           <span class="chip" data-kpss="yes" onclick="setKpssFilter('yes')">KPSS'li</span>
           <span class="chip" data-kpss="no" onclick="setKpssFilter('no')">KPSS'siz</span>
         </div>
-        <div class="row">
-          <select id="citySelect" style="flex:1;margin:0" onchange="loadJobs()">
+        <div class="row" style="flex-wrap:wrap;gap:8px;">
+          <select id="citySelect" style="flex:1;min-width:130px;margin:0" onchange="loadJobs()">
             <option value="">📍 Tüm Şehirler</option>
           </select>
-          <select id="typeSelect" style="flex:1;margin:0" onchange="loadJobs()">
+          <select id="typeSelect" style="flex:1;min-width:120px;margin:0" onchange="loadJobs()">
             <option value="">Tüm Türler</option>
+          </select>
+          <select id="certFilterSelect" style="flex:1.4;min-width:180px;margin:0" onchange="loadJobs()">
+            <option value="">📜 Tüm Sertifikalar / Belgeler</option>
           </select>
         </div>
         <div id="matchesNote" class="hidden" style="font-size:13px;color:var(--muted);margin-top:8px;">
@@ -981,6 +984,10 @@
       typeSel.innerHTML = '<option value="">Tüm Türler</option>' + meta.jobTypes.map(t => `<option value="${t.value}">${t.label}</option>`).join('');
       const eduSel = document.getElementById('profEdu');
       eduSel.innerHTML = '<option value="">Seçiniz</option>' + meta.educationLevels.map(e => `<option value="${e.value}">${e.label}</option>`).join('');
+      const certSel = document.getElementById('certFilterSelect');
+      if (certSel && meta.certificates) {
+        certSel.innerHTML = '<option value="">📜 Tüm Sertifikalar / Belgeler</option>' + meta.certificates.map(c => `<option value="${c}">${c}</option>`).join('');
+      }
 
       document.getElementById('adminHeaderBadge').classList.toggle('hidden', !u.isAdmin);
       fillProfileForm(u.profile);
@@ -1286,6 +1293,7 @@
       const q = norm(document.getElementById('searchInput').value);
       const city = document.getElementById('citySelect').value;
       const jobType = document.getElementById('typeSelect').value;
+      const cert = document.getElementById('certFilterSelect')?.value || '';
 
       let list = getAllJobsRaw()
         .filter(j => !j.deadline || j.deadline >= todayISO())
@@ -1296,6 +1304,7 @@
       }
       if (city) list = list.filter(j => j.city === city);
       if (jobType) list = list.filter(j => j.jobType === jobType);
+      if (cert) list = list.filter(j => (j.requiredCertificates || []).includes(cert));
       if (kpssFilter === 'yes') list = list.filter(j => j.kpssRequired === true);
       if (kpssFilter === 'no') list = list.filter(j => j.kpssRequired === false);
 
