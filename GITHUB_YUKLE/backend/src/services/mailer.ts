@@ -1,3 +1,4 @@
+import axios from 'axios';
 import crypto from 'crypto';
 import net from 'net';
 import tls from 'tls';
@@ -34,11 +35,68 @@ export function isValidEmailFormat(email: string): boolean {
  * Kod ASLA API yanıtında veya arayüzde 'kod bu' şeklinde gösterilmez.
  */
 export async function sendVerificationEmail(email: string, code: string): Promise<SendCodeResult> {
+  const targetEmail = email.trim().toLowerCase();
+
+  // 1. Resend API (HTTPS Port 443 - Bulut Güvenlik Duvarını %100 Aşar)
+  const resendKey = process.env.RESEND_API_KEY;
+  if (resendKey) {
+    try {
+      const res = await axios.post(
+        'https://api.resend.com/emails',
+        {
+          from: 'Kamu İlan Asistanı <onboarding@resend.dev>',
+          to: [targetEmail],
+          subject: `Kamu İlan Asistanı Doğrulama Kodunuz: ${code}`,
+          html: `<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;max-width:520px;margin:20px auto;padding:28px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;">
+            <div style="text-align:center;margin-bottom:20px;">
+              <h2 style="color:#1d4ed8;margin:0 0 6px;font-size:22px;">Kamu İlan Asistanı</h2>
+              <p style="color:#64748b;font-size:14px;margin:0;">Güvenlik Doğrulama Kodu</p>
+            </div>
+            <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 16px;">
+              Merhaba,<br/><br/>
+              Hesabınızı güvenle onaylamak için tek kullanımlık 6 haneli güvenlik kodunuz aşağıdadır:
+            </p>
+            <div style="text-align:center;margin:24px 0;">
+              <div style="display:inline-block;background:#eff6ff;border:2px dashed #3b82f6;color:#1e40af;font-size:32px;font-weight:800;letter-spacing:8px;padding:14px 28px;border-radius:12px;">
+                ${code}
+              </div>
+            </div>
+            <p style="color:#64748b;font-size:13px;line-height:1.5;margin:0 0 16px;">
+              ⏱️ Bu kod <b>15 dakika</b> boyunca geçerlidir. Güvenliğiniz için bu kodu kimseyle paylaşmayınız.
+            </p>
+            <hr style="border:none;border-top:1px solid #f1f5f9;margin:20px 0;"/>
+            <p style="color:#94a3b8;font-size:11px;text-align:center;margin:0;">
+              Bu e-posta Kamu İlan Asistanı güvenlik sistemi tarafından otomatik olarak oluşturulmuştur.
+            </p>
+          </div>`,
+          text: `Kamu İlan Asistanı Doğrulama Kodunuz: ${code}\n\nBu kod 15 dakika geçerlidir. Güvenliğiniz için kimseyle paylaşmayınız.`,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${resendKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 10000,
+        }
+      );
+
+      console.log(`[resend] ✅ 6 haneli kod ${targetEmail} adresine Resend HTTPS ile başarıyla iletildi (ID: ${res.data?.id})`);
+      return {
+        sent: true,
+        message: 'Doğrulama kodu e-posta adresinize başarıyla gönderildi.',
+      };
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || err.message;
+      console.error(`[resend] ⚠️ Resend gönderim hatası: ${errMsg}`);
+    }
+  }
+
+  // 2. SMTP Fallback
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   const port = Number(process.env.SMTP_PORT || (host === 'smtp.gmail.com' ? 465 : 587));
-  const from = process.env.SMTP_FROM || user || 'noreply@kamuilan.gov.tr';
+  const from = process.env.SMTP_FROM || user || 'kamuilanasistani@gmail.com';
 
   if (host && user && pass) {
     try {
@@ -48,12 +106,12 @@ export async function sendVerificationEmail(email: string, code: string): Promis
         user,
         pass,
         from,
-        to: email,
+        to: targetEmail,
         subject: `Kamu İlan Asistanı Doğrulama Kodunuz: ${code}`,
-        text: `Merhaba,\n\nKamu İlan Asistanı hesabınızı doğrulamak için güvenlik kodunuz: ${code}\n\nBu kod 15 dakika geçerlidir. Güvenliğiniz için bu kodu kimseyle paylaşmayınız.\n\nİyi günler dileriz.`,
+        text: `Merhaba,\n\nKamu İlan Asistanı hesabınızı doğrulamak için güvenlik kodunuz: ${code}\n\nBu kod 15 dakika geçerlidir.\n\nİyi günler dileriz.`,
       });
 
-      console.log(`[mail] ✅ 6 haneli doğrulama kodu ${email} adresine başarıyla e-posta olarak iletildi.`);
+      console.log(`[mail] ✅ 6 haneli doğrulama kodu ${targetEmail} adresine SMTP ile başarıyla iletildi.`);
       return {
         sent: true,
         message: 'Doğrulama kodu e-posta adresinize başarıyla gönderildi.',
@@ -61,9 +119,6 @@ export async function sendVerificationEmail(email: string, code: string): Promis
     } catch (err) {
       console.error(`[mail] ❌ SMTP gönderim hatası (${(err as Error).message}).`);
     }
-  } else {
-    console.warn(`[mail] ⚠️ SMTP_HOST / SMTP_USER / SMTP_PASS henüz .env içinde tanımlanmadı.`);
-    console.log(`[mail] Sunucu Konsol Günlüğü (Geliştirici İncelemesi): ${email} için üretilen güvenlik kodu = ${code}`);
   }
 
   return {
