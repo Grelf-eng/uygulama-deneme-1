@@ -36,14 +36,24 @@ function readStoredLinks(): StoredMobileLinks {
   }
 }
 
-mobileInfoRouter.get('/mobile-info', (_req, res) => {
+mobileInfoRouter.get('/mobile-info', (req, res) => {
+  const host = req.get('host') || 'uygulama-deneme-1.onrender.com';
+  const proto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
+  const currentDomainUrl = `${proto}://${host}`;
+
   const ips = getLanIps();
   const lanIp = ips[0] ?? '192.168.1.31';
   const lanUrl = `http://${lanIp}:${config.port}`;
   const stored = readStoredLinks();
-  const primaryInstallUrl = stored.tunnelUrl || lanUrl;
+  
+  // Bulutta çalışırken (Render) doğrudan canlı alan adını, yerelde ise tünel veya LAN URL'ini kullan
+  const isCloud = host.includes('onrender.com') || host.includes('railway.app') || process.env.NODE_ENV === 'production';
+  const primaryInstallUrl = isCloud ? currentDomainUrl : (stored.tunnelUrl || lanUrl);
 
-  const apkFile = path.join(process.cwd(), 'public', 'kamu-ilan-asistani.apk');
+  const publicDir = fs.existsSync(path.join(process.cwd(), 'public'))
+    ? path.join(process.cwd(), 'public')
+    : path.join(__dirname, '..', '..', 'public');
+  const apkFile = path.join(publicDir, 'kamu-ilan-asistani.apk');
   const apkAvailable = fs.existsSync(apkFile);
   const apkSizeKb = apkAvailable ? Math.round(fs.statSync(apkFile).size / 1024) : null;
 
@@ -52,8 +62,8 @@ mobileInfoRouter.get('/mobile-info', (_req, res) => {
     lanIp,
     lanUrl,
     lanApkUrl: `${lanUrl}/kamu-ilan-asistani.apk`,
-    tunnelUrl: stored.tunnelUrl ?? null,
-    tunnelApkUrl: stored.tunnelUrl ? `${stored.tunnelUrl}/kamu-ilan-asistani.apk` : null,
+    tunnelUrl: isCloud ? currentDomainUrl : (stored.tunnelUrl ?? null),
+    tunnelApkUrl: `${primaryInstallUrl}/kamu-ilan-asistani.apk`,
     primaryInstallUrl,
     apkAvailable,
     apkSizeKb,

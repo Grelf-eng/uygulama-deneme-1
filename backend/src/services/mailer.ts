@@ -97,6 +97,9 @@ function sendViaSmtpSocket(opts: SmtpOptions): Promise<void> {
     const isDirectTls = opts.port === 465;
     const envFrom = extractEnvelopeEmail(opts.from);
     const envTo = extractEnvelopeEmail(opts.to);
+    const cleanUser = opts.user.trim();
+    // Google Uygulama Şifrelerindeki tüm boşlukları kaldır (pxio dkbx anhe jnyj -> pxiodkbxanhejnyj)
+    const cleanPass = opts.pass.replace(/\s+/g, '');
 
     let socket: net.Socket;
     if (isDirectTls) {
@@ -112,9 +115,11 @@ function sendViaSmtpSocket(opts: SmtpOptions): Promise<void> {
       });
     }
 
-    socket.setTimeout(12000);
+    socket.setTimeout(15000);
 
     let step = 0;
+    let buffer = '';
+
     const send = (cmd: string) => {
       try {
         socket.write(cmd + '\r\n');
@@ -123,31 +128,38 @@ function sendViaSmtpSocket(opts: SmtpOptions): Promise<void> {
       }
     };
 
-    const onData = (chunk: Buffer) => {
-      const response = chunk.toString('utf8');
-      const lines = response.split(/\r?\n/).filter(Boolean);
-      const lastLine = lines[lines.length - 1] || response;
-      const code = lastLine.slice(0, 3);
+    const processLine = (line: string) => {
+      // SMTP çok satırlı cevapları: 250-... devam satırıdır, 250 ... son satırdır.
+      const match = line.match(/^(\d{3})(?:[ -](.*))?$/);
+      if (!match) return;
+
+      const code = match[1];
+      const isLast = line.length < 4 || line[3] === ' ';
 
       if (code.startsWith('4') || code.startsWith('5')) {
         socket.end();
-        return reject(new Error(`SMTP Sunucu Hatası: ${lastLine.trim()}`));
+        return reject(new Error(`SMTP Sunucu Hatası: ${line.trim()}`));
+      }
+
+      if (!isLast) {
+        // Çok satırlı ara cevapları bekle (250- gibi)
+        return;
       }
 
       if (isDirectTls) {
         // Direct TLS (Port 465) Akışı
         if (step === 0 && code === '220') {
           step = 1;
-          send(`EHLO localhost`);
+          send(`EHLO kamuilan.asistan`);
         } else if (step === 1 && code === '250') {
           step = 2;
           send('AUTH LOGIN');
         } else if (step === 2 && code === '334') {
           step = 3;
-          send(Buffer.from(opts.user).toString('base64'));
+          send(Buffer.from(cleanUser).toString('base64'));
         } else if (step === 3 && code === '334') {
           step = 4;
-          send(Buffer.from(opts.pass).toString('base64'));
+          send(Buffer.from(cleanPass).toString('base64'));
         } else if (step === 4 && code === '235') {
           step = 5;
           send(`MAIL FROM:<${envFrom}>`);
@@ -178,91 +190,21 @@ function sendViaSmtpSocket(opts: SmtpOptions): Promise<void> {
           socket.end();
           resolve();
         }
-      } else {
-        // STARTTLS (Port 587) Akışı
-        if (step === 0 && code === '220') {
-          step = 1;
-          send('EHLO localhost');
-        } else if (step === 1 && code === '250') {
-          step = 2;
-          send('STARTTLS');
-        } else if (step === 2 && code === '220') {
-          step = 3;
-          socket.removeAllListeners('data');
-          const secureSocket = tls.connect({
-            socket,
-            host: opts.host,
-            rejectUnauthorized: false,
-          });
-
-          secureSocket.on('data', (secChunk) => {
-            const secResp = secChunk.toString('utf8');
-            const secLines = secResp.split(/\r?\n/).filter(Boolean);
-            const secLast = secLines[secLines.length - 1] || secResp;
-            const secCode = secLast.slice(0, 3);
-
-            if (secCode.startsWith('4') || secCode.startsWith('5')) {
-              secureSocket.end();
-              return reject(new Error(`SMTP TLS Hatası: ${secLast.trim()}`));
-            }
-
-            const secSend = (cmd: string) => secureSocket.write(cmd + '\r\n');
-
-            if (step === 3) {
-              step = 4;
-              secSend('EHLO localhost');
-            } else if (step === 4 && secCode === '250') {
-              step = 5;
-              secSend('AUTH LOGIN');
-            } else if (step === 5 && secCode === '334') {
-              step = 6;
-              secSend(Buffer.from(opts.user).toString('base64'));
-            } else if (step === 6 && secCode === '334') {
-              step = 7;
-              secSend(Buffer.from(opts.pass).toString('base64'));
-            } else if (step === 7 && secCode === '235') {
-              step = 8;
-              secSend(`MAIL FROM:<${envFrom}>`);
-            } else if (step === 8 && secCode === '250') {
-              step = 9;
-              secSend(`RCPT TO:<${envTo}>`);
-            } else if (step === 9 && secCode === '250') {
-              step = 10;
-              secSend('DATA');
-            } else if (step === 10 && secCode === '354') {
-              step = 11;
-              const fromHeader = opts.from.includes('<') ? opts.from : `"Kamu İlan Asistanı" <${opts.from}>`;
-              const msg = [
-                `From: ${fromHeader}`,
-                `To: <${envTo}>`,
-                `Subject: =?UTF-8?B?${Buffer.from(opts.subject).toString('base64')}?=`,
-                'MIME-Version: 1.0',
-                'Content-Type: text/plain; charset=UTF-8',
-                'Content-Transfer-Encoding: 8bit',
-                '',
-                opts.text,
-                '.',
-              ].join('\r\n');
-              secSend(msg);
-            } else if (step === 11 && secCode === '250') {
-              step = 12;
-              secSend('QUIT');
-              secureSocket.end();
-              resolve();
-            }
-          });
-
-          secureSocket.on('error', (err) => reject(err));
-          // Start TLS handshake
-          secureSocket.write('EHLO localhost\r\n');
-        }
       }
     };
 
-    socket.on('data', onData);
+    socket.on('data', (chunk) => {
+      buffer += chunk.toString('utf8');
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        if (line.trim()) processLine(line.trim());
+      }
+    });
+
     socket.on('timeout', () => {
       socket.destroy();
-      reject(new Error('SMTP sunucu bağlantı zaman aşımı'));
+      reject(new Error('SMTP sunucu bağlantı zaman aşımı (15s)'));
     });
     socket.on('error', (err) => reject(err));
   });

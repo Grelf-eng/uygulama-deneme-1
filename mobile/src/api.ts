@@ -20,6 +20,7 @@ function getCandidateUrls(customUrl?: string | null): string[] {
 
   push(customUrl);
   push(process.env.EXPO_PUBLIC_API_URL);
+  push('https://uygulama-deneme-1.onrender.com/api');
 
   const host = Constants.expoConfig?.hostUri?.split(':')[0];
   if (host && /^\d+\.\d+\.\d+\.\d+$/.test(host)) {
