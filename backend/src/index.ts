@@ -1,12 +1,24 @@
 import cron from 'node-cron';
 import { app } from './app';
 import { config } from './config';
+import { db } from './db';
 import { runAllScrapers } from './scrapers';
 import { seedSampleJobs } from './seed';
-import { initCloudSync } from './services/cloudDb';
+import { initCloudSync, syncLocalJobsToCloud } from './services/cloudDb';
 
 // Neon PostgreSQL kalıcı veritabanı eşitlemesi
-initCloudSync().catch((e) => console.error('[cloud-db] Başlatma hatası:', e.message));
+initCloudSync()
+  .then(async () => {
+    // Gerçek kamu ilanı sayısı 30'dan azsa, arka planda canlı taramayı hemen başlat!
+    const realCount = (db.prepare("SELECT COUNT(*) AS c FROM jobs WHERE source != 'ornek'").get() as { c: number })?.c || 0;
+    if (realCount < 30 || config.scrapeOnStart) {
+      console.log(`[startup] Gerçek ilan sayısı (${realCount}) az, canlı kamu ilanları taranıyor...`);
+      runAllScrapers()
+        .then(() => syncLocalJobsToCloud())
+        .catch((e) => console.error('[startup] Tarama hatası:', e.message));
+    }
+  })
+  .catch((e) => console.error('[cloud-db] Başlatma hatası:', e.message));
 
 if (config.seedSample) {
   const n = seedSampleJobs();

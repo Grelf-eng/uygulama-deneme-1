@@ -43,6 +43,16 @@ jobsRouter.get('/meta', (_req, res) => {
   });
 });
 
+/** Canlı kamu ilanları taramasını tetikler (GET veya POST) */
+jobsRouter.all('/scrape/trigger', async (_req, res) => {
+  const { runAllScrapers } = await import('../scrapers');
+  const { syncLocalJobsToCloud } = await import('../services/cloudDb');
+  runAllScrapers()
+    .then(() => syncLocalJobsToCloud())
+    .catch((e: any) => console.error('[trigger] Tarama hatası:', e.message));
+  res.json({ success: true, message: 'Canlı kamu ilanları taraması başlatıldı. İlanlar birkaç saniye içinde güncellenecektir.' });
+});
+
 /** Profile göre uygun (❌ içermeyen) ilanlar, puana göre sıralı */
 jobsRouter.get('/matches', requireAuth, (req, res) => {
   const parsed = filterSchema.safeParse(req.query);

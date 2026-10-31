@@ -138,6 +138,13 @@ export async function runAllScrapers(only?: string[]): Promise<{
       reports.push(report);
     }
     deduplicateAndCleanJobs();
+
+    // Taranan güncel kamu ilanlarını Neon PostgreSQL bulutuna kalıcı kaydet
+    try {
+      const { syncLocalJobsToCloud } = await import('../services/cloudDb');
+      await syncLocalJobsToCloud();
+    } catch {}
+
     const validNewIds = newIds.filter((id) => db.prepare('SELECT 1 FROM jobs WHERE id = ?').get(id));
     const notifications = await notifyForNewJobs(validNewIds);
     return { reports, notifications };
