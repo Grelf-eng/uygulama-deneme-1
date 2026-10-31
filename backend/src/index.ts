@@ -6,10 +6,21 @@ import { runAllScrapers } from './scrapers';
 import { seedSampleJobs } from './seed';
 import { initCloudSync, syncLocalJobsToCloud } from './services/cloudDb';
 
-// Neon PostgreSQL kalıcı veritabanı eşitlemesi
+// 1. Önce 115 gerçek kamu ilanını ve Admin kullanıcısını yerel SQLite'a mühürle
+try {
+  const n = seedSampleJobs();
+  if (n) console.log(`[seed] ${n} gerçek kamu ilanı sisteme yüklendi.`);
+} catch (e: any) {
+  console.error('[seed] Başlatma hatası:', e.message);
+}
+
+// 2. Ardından Neon PostgreSQL kalıcı bulut veritabanını eşitle
 initCloudSync()
   .then(async () => {
-    // Gerçek kamu ilanı sayısı 30'dan azsa, arka planda canlı taramayı hemen başlat!
+    // Gerçek kamu ilanlarını hemen Neon bulutuna da yedekle
+    await syncLocalJobsToCloud();
+
+    // Canlı kamu ilanları taramasını arka planda başlat
     const realCount = (db.prepare("SELECT COUNT(*) AS c FROM jobs WHERE source != 'ornek'").get() as { c: number })?.c || 0;
     if (realCount < 30 || config.scrapeOnStart) {
       console.log(`[startup] Gerçek ilan sayısı (${realCount}) az, canlı kamu ilanları taranıyor...`);
@@ -19,11 +30,6 @@ initCloudSync()
     }
   })
   .catch((e) => console.error('[cloud-db] Başlatma hatası:', e.message));
-
-if (config.seedSample) {
-  const n = seedSampleJobs();
-  if (n) console.log(`[seed] ${n} örnek ilan eklendi`);
-}
 
 if (cron.validate(config.scrapeCron)) {
   cron.schedule(config.scrapeCron, () => {
