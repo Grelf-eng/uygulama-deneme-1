@@ -1,3 +1,4 @@
+import axios from 'axios';
 import cron from 'node-cron';
 import { app } from './app';
 import { config } from './config';
@@ -43,4 +44,18 @@ if (config.scrapeOnStart) runAllScrapers().catch((e) => console.error(e.message)
 
 app.listen(config.port, '0.0.0.0', () => {
   console.log(`API http://localhost:${config.port} adresinde çalışıyor`);
+
+  // 7/24 Uyanık Tutma (Keep-Alive Self-Ping):
+  // Render Free Tier 15 dakika hareketsizlikte uykuya (spin-down) geçer.
+  // Her 9 dakikada bir kendi /api/health adresine ping atarak sunucuyu daima sıcak tutar.
+  const appUrl = process.env.RENDER_EXTERNAL_URL || process.env.PUBLIC_APP_URL || 'https://uygulama-deneme-1.onrender.com';
+  const PING_INTERVAL = 9 * 60 * 1000;
+  setInterval(async () => {
+    try {
+      const res = await axios.get(`${appUrl}/api/health`, { timeout: 12000 });
+      console.log(`[keep-alive] 🏓 Self-ping başarılı (${res.data?.uptime}s uptime): ${appUrl}/api/health`);
+    } catch (err: any) {
+      console.warn(`[keep-alive] ⚠️ Self-ping uyarısı:`, err.message);
+    }
+  }, PING_INTERVAL);
 });

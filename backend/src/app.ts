@@ -14,6 +14,7 @@ import { profileRouter } from './routes/profile';
 import { applicationsRouter, favoritesRouter } from './routes/userLists';
 import { runAllScrapers } from './scrapers';
 import { ensureAdminUser } from './seed';
+import { syncCloudUser } from './services/cloudDb';
 
 ensureAdminUser();
 
@@ -50,7 +51,18 @@ app.get('/indir', (_req, res) => {
 });
 app.use(express.static(publicDir));
 
-app.get('/api/health', (_req, res) => res.json({ ok: true }));
+app.get('/api/health', (_req, res) => {
+  const jobsCount = (db.prepare('SELECT COUNT(*) AS c FROM jobs').get() as { c: number })?.c || 0;
+  const usersCount = (db.prepare('SELECT COUNT(*) AS c FROM users').get() as { c: number })?.c || 0;
+  res.json({
+    status: 'ok',
+    service: 'kamu-ilan-backend',
+    uptime: Math.round(process.uptime()),
+    jobsCount,
+    usersCount,
+    timestamp: new Date().toISOString(),
+  });
+});
 app.use('/api', mobileInfoRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/profile', profileRouter);
@@ -78,6 +90,37 @@ app.get('/api/admin/stats', optionalAuth, (req: Request, res: Response) => {
     .prepare('SELECT source, COUNT(*) AS count FROM jobs GROUP BY source ORDER BY count DESC')
     .all();
   res.json({ jobCount, userCount, bySource });
+});
+
+// Admin: Kayıtlı kullanıcıları ve onay durumlarını listele
+app.get('/api/admin/users', optionalAuth, (req: Request, res: Response) => {
+  if (!isAdminRequest(req)) {
+    res.status(403).json({ error: 'Yetkisiz' });
+    return;
+  }
+  const users = db.prepare('SELECT id, email, is_admin, is_verified, created_at FROM users ORDER BY id DESC LIMIT 50').all();
+  res.json({ users });
+});
+
+// Admin: Bekleyen bir kullanıcıyı tek tıkla onayla
+app.post('/api/admin/users/:id/verify', optionalAuth, (req: Request, res: Response) => {
+  if (!isAdminRequest(req)) {
+    res.status(403).json({ error: 'Yetkisiz' });
+    return;
+  }
+  const userId = Number(req.params.id);
+  const u = db.prepare('SELECT email, password_hash, is_admin FROM users WHERE id = ?').get(userId) as {
+    email: string;
+    password_hash: string;
+    is_admin: number;
+  } | undefined;
+  if (!u) {
+    res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    return;
+  }
+  db.prepare('UPDATE users SET is_verified = 1 WHERE id = ?').run(userId);
+  syncCloudUser(u.email, u.password_hash, u.is_admin, 1);
+  res.json({ success: true, message: `${u.email} hesabı başarıyla onaylandı.` });
 });
 
 // Manuel scraping tetikleme (Admin oturumu veya x-admin-key başlığı gerekir)

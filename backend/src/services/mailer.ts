@@ -20,6 +20,7 @@ export function generateRandomCode(): string {
 export interface SendCodeResult {
   sent: boolean;
   message: string;
+  sandboxBlocked?: boolean;
 }
 
 /**
@@ -39,12 +40,13 @@ export async function sendVerificationEmail(email: string, code: string): Promis
 
   // 1. Resend API (HTTPS Port 443 - Bulut Güvenlik Duvarını %100 Aşar)
   const resendKey = process.env.RESEND_API_KEY;
+  const fromAddress = process.env.RESEND_FROM || 'Kamu İlan Asistanı <onboarding@resend.dev>';
   if (resendKey) {
     try {
       const res = await axios.post(
         'https://api.resend.com/emails',
         {
-          from: 'Kamu İlan Asistanı <onboarding@resend.dev>',
+          from: fromAddress,
           to: [targetEmail],
           subject: `Kamu İlan Asistanı Doğrulama Kodunuz: ${code}`,
           html: `<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;max-width:520px;margin:20px auto;padding:28px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;">
@@ -88,6 +90,14 @@ export async function sendVerificationEmail(email: string, code: string): Promis
     } catch (err: any) {
       const errMsg = err.response?.data?.message || err.message;
       console.error(`[resend] ⚠️ Resend gönderim hatası: ${errMsg}`);
+      if (err.response?.status === 403 && String(errMsg).toLowerCase().includes('testing emails')) {
+        console.warn(`[resend] ℹ️ Resend sandbox kısıtı: ${targetEmail} sisteme kayıtlı geliştirici hesabı olmadığından Resend reddetti. Domain doğrulandığında tüm adreslere gönderilecektir.`);
+        return {
+          sent: false,
+          sandboxBlocked: true,
+          message: 'Geliştirme test modunda doğrulama e-postası yalnızca sistem sahibine iletilebilmektedir.',
+        };
+      }
     }
   }
 

@@ -263,7 +263,13 @@
           <span id="adminUserLabel" class="badge" style="background:#fef3c7;color:#92400e;"></span>
         </div>
         <div id="adminStatsText" style="font-size:13px;color:#78350f;margin-bottom:10px;">Sistem durumu yükleniyor...</div>
+        <div style="font-size:12px;color:#92400e;margin-bottom:8px;">⚡ <b>7/24 Keep-Alive:</b> Sunucu her 9 dakikada bir otomatik self-ping ile uyanık tutuluyor.</div>
         <button class="btn btn-sm" id="adminScrapeBtn" onclick="triggerAdminScrape()">🔄 Kaynaklardan İlanları Yeniden Çek</button>
+
+        <div style="margin-top:12px;border-top:1px dashed #fde68a;padding-top:8px;">
+          <div style="font-weight:700;font-size:13px;color:#92400e;margin-bottom:6px;">👥 Kayıtlı Kullanıcılar & Onay Durumları:</div>
+          <div id="adminUsersList" style="max-height:150px;overflow-y:auto;font-size:12px;display:flex;flex-direction:column;gap:4px;"></div>
+        </div>
       </div>
       <div class="card">
         <h3 style="margin-top:0">👤 Profilim ve Tercihlerim</h3>
@@ -645,7 +651,30 @@
         const srcSummary = (s.bySource || []).map(x => `${x.source}: ${x.count}`).join(', ');
         document.getElementById('adminStatsText').innerText =
           `Aktif İlan: ${s.jobCount} (${srcSummary || 'yok'}) • Kayıtlı Hesap: ${s.userCount}`;
+
+        const uRes = await api('/admin/users');
+        const box = document.getElementById('adminUsersList');
+        if (box && uRes.users) {
+          box.innerHTML = uRes.users.map(u => `
+            <div style="display:flex;align-items:center;justify-content:space-between;background:#fff;padding:6px 10px;border-radius:8px;border:1px solid #fef3c7;">
+              <span style="font-weight:600;color:#1e293b;">${u.email}</span>
+              <span>
+                ${u.is_verified ? '<span style="color:var(--ok);font-size:11px;font-weight:700;">✓ Onaylı</span>' : `<button class="btn btn-sm" style="padding:2px 8px;font-size:11px;background:var(--ok);color:#fff;" onclick="adminVerifyUser(${u.id})">Onayla</button>`}
+              </span>
+            </div>
+          `).join('') || '<div style="color:#78350f;">Henüz kayıtlı üye yok.</div>';
+        }
       } catch {}
+    }
+
+    async function adminVerifyUser(id) {
+      try {
+        const r = await api(`/admin/users/${id}/verify`, { method: 'POST' });
+        alert(r.message || 'Kullanıcı onaylandı!');
+        await loadAdminStats();
+      } catch (e) {
+        alert(e.message);
+      }
     }
 
     async function triggerAdminScrape() {
