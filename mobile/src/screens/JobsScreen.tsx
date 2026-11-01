@@ -32,7 +32,7 @@ export function JobsScreen({ matchesOnly = false }: { matchesOnly?: boolean }) {
 
   const userCities = profile?.cities || [];
   const filters = matchesOnly
-    ? { minScore: minScore > 0 ? minScore : undefined }
+    ? { minScore: minScore > 0 ? minScore : undefined, jobType: jobType || undefined }
     : { query, kpss, jobType, city, sort };
 
   const header = matchesOnly ? (
@@ -58,13 +58,24 @@ export function JobsScreen({ matchesOnly = false }: { matchesOnly?: boolean }) {
       </View>
 
       <Text style={{ fontSize: 12, fontWeight: '700', color: colors.muted, marginBottom: 6 }}>
-        UYUM ORANINA GÖRE FİLTRELE:
+        1. UYUM ORANINA GÖRE FİLTRELE:
       </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
         <Chip label="Tümü" selected={minScore === 0} onPress={() => setMinScore(0)} />
         <Chip label="💯 %100 Tam Uyum" selected={minScore === 100} onPress={() => setMinScore(100)} />
         <Chip label="⭐ %75 ve Üzeri" selected={minScore === 75} onPress={() => setMinScore(75)} />
         <Chip label="🎯 %50 ve Üzeri" selected={minScore === 50} onPress={() => setMinScore(50)} />
+      </ScrollView>
+
+      <Text style={{ fontSize: 12, fontWeight: '700', color: colors.muted, marginBottom: 6 }}>
+        2. KADRO TÜRÜ (İŞÇİ / MEMUR / SÖZLEŞMELİ):
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
+        <Chip label="Tüm Kadrolar" selected={jobType === ''} onPress={() => setJobType('')} />
+        <Chip label="👔 Memur" selected={jobType === 'memur'} onPress={() => setJobType(jobType === 'memur' ? '' : 'memur')} />
+        <Chip label="📝 Sözleşmeli" selected={jobType === 'sozlesmeli'} onPress={() => setJobType(jobType === 'sozlesmeli' ? '' : 'sozlesmeli')} />
+        <Chip label="👷 Kamu İşçisi" selected={jobType === 'isci'} onPress={() => setJobType(jobType === 'isci' ? '' : 'isci')} />
+        <Chip label="🎓 Akademik" selected={jobType === 'akademik'} onPress={() => setJobType(jobType === 'akademik' ? '' : 'akademik')} />
       </ScrollView>
     </View>
   ) : (
