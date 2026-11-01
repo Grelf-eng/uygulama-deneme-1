@@ -15,7 +15,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 /** Tüm ilanlar (arama + filtre) — `matchesOnly` ise profile uygun ilanlar */
 export function JobsScreen({ matchesOnly = false }: { matchesOnly?: boolean }) {
   const nav = useNavigation<Nav>();
-  const { meta } = useAuth();
+  const { meta, profile } = useAuth();
   const [text, setText] = useState('');
   const [query, setQuery] = useState('');
   const [kpss, setKpss] = useState<'' | 'yes' | 'no'>('');
@@ -23,21 +23,52 @@ export function JobsScreen({ matchesOnly = false }: { matchesOnly?: boolean }) {
   const [city, setCity] = useState('');
   const [sort, setSort] = useState<'newest' | 'deadline'>('newest');
   const [cityModal, setCityModal] = useState(false);
+  const [minScore, setMinScore] = useState<number>(0);
 
   useEffect(() => {
     const t = setTimeout(() => setQuery(text.trim()), 400);
     return () => clearTimeout(t);
   }, [text]);
 
-  const filters = { query, kpss, jobType, city, sort: matchesOnly ? undefined : sort };
+  const userCities = profile?.cities || [];
+  const filters = matchesOnly
+    ? { minScore: minScore > 0 ? minScore : undefined }
+    : { query, kpss, jobType, city, sort };
 
-  const header = (
-    <View style={{ padding: 12, paddingBottom: 0 }}>
-      {matchesOnly ? (
-        <Text style={{ color: colors.muted, marginBottom: 8 }}>
-          Profilinizdeki şartlarla uyuşmayan (❌) ilanlar gizlenir, en uygun olanlar üstte.
+  const header = matchesOnly ? (
+    <View style={{ padding: 12, paddingBottom: 4 }}>
+      <View
+        style={{
+          backgroundColor: '#eff6ff',
+          borderColor: '#bfdbfe',
+          borderWidth: 1,
+          borderRadius: 10,
+          padding: 10,
+          marginBottom: 10,
+        }}
+      >
+        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary, marginBottom: 2 }}>
+          📍 Tercih Ettiğiniz Şehirler:
         </Text>
-      ) : null}
+        <Text style={{ fontSize: 13, color: userCities.length > 0 ? colors.text : colors.fail }}>
+          {userCities.length > 0
+            ? userCities.join(', ')
+            : 'Henüz şehir seçmediniz. Lütfen Profil sekmesinden şehir seçin.'}
+        </Text>
+      </View>
+
+      <Text style={{ fontSize: 12, fontWeight: '700', color: colors.muted, marginBottom: 6 }}>
+        UYUM ORANINA GÖRE FİLTRELE:
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
+        <Chip label="Tümü" selected={minScore === 0} onPress={() => setMinScore(0)} />
+        <Chip label="💯 %100 Tam Uyum" selected={minScore === 100} onPress={() => setMinScore(100)} />
+        <Chip label="⭐ %75 ve Üzeri" selected={minScore === 75} onPress={() => setMinScore(75)} />
+        <Chip label="🎯 %50 ve Üzeri" selected={minScore === 50} onPress={() => setMinScore(50)} />
+      </ScrollView>
+    </View>
+  ) : (
+    <View style={{ padding: 12, paddingBottom: 0 }}>
       <TextInput
         value={text}
         onChangeText={setText}
@@ -63,12 +94,10 @@ export function JobsScreen({ matchesOnly = false }: { matchesOnly?: boolean }) {
           selected={!!city}
           onPress={() => (city ? setCity('') : setCityModal(true))}
         />
-        {!matchesOnly ? (
-          <Chip
-            label={sort === 'deadline' ? '⏰ Son tarihe göre' : '🆕 En yeni'}
-            onPress={() => setSort(sort === 'deadline' ? 'newest' : 'deadline')}
-          />
-        ) : null}
+        <Chip
+          label={sort === 'deadline' ? '⏰ Son tarihe göre' : '🆕 En yeni'}
+          onPress={() => setSort(sort === 'deadline' ? 'newest' : 'deadline')}
+        />
       </ScrollView>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <Chip label="Tüm türler" selected={jobType === ''} onPress={() => setJobType('')} />

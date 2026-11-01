@@ -9,6 +9,7 @@ import { EDUCATION_LABELS, EDUCATION_LEVELS, JOB_TYPE_LABELS, JOB_TYPES, NO_DEPA
 import { describeCatalog } from '../constants/certificates';
 import { KPSS_TYPE_OPTIONS } from '../constants/kpss';
 import { UNDERGRAD_PLUS_DEPARTMENTS, ASSOCIATE_DEPARTMENTS, POOL_ONLY_EDUCATION_LEVELS } from '../constants/departments';
+import { norm } from '../utils/text';
 
 export const jobsRouter = Router();
 
@@ -21,6 +22,7 @@ const filterSchema = z.object({
   source: z.string().trim().optional(),
   certificate: z.string().trim().optional(),
   sort: z.enum(['newest', 'deadline']).optional(),
+  minScore: z.coerce.number().int().min(0).max(100).optional(),
   includeExpired: z
     .enum(['true', 'false'])
     .optional()
@@ -54,22 +56,50 @@ jobsRouter.all('/scrape/trigger', async (_req, res) => {
   res.json({ success: true, message: 'Canlı kamu ilanları taraması başlatıldı. İlanlar birkaç saniye içinde güncellenecektir.' });
 });
 
-/** Profile göre uygun (❌ içermeyen) ilanlar, puana göre sıralı */
+/** Profile göre uygun (❌ içermeyen) ilanlar, sadece kullanıcının profilindeki şehirler ve puana göre sıralı */
 jobsRouter.get('/matches', requireAuth, (req, res) => {
   const parsed = filterSchema.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0].message });
     return;
   }
-  const { page, limit, ...filters } = parsed.data;
+  const { page, limit, minScore, ...filters } = parsed.data;
   const profile = getProfile(req.userId!);
   const state = userJobState(req.userId);
-  const views = allJobs(filters as JobFilters)
+  let views = allJobs(filters as JobFilters)
     .map((j) => toView(j, profile, state, false))
-    .filter((v) => v.eligibility.overall !== 'fail')
-    .sort((a, b) => b.eligibility.score - a.eligibility.score);
+    .filter((v) => v.eligibility.overall !== 'fail');
+
+  // 1. Sadece kullanıcının profilinde seçtiği şehirler
+  const userCities = profile?.cities || [];
+  if (userCities.length > 0) {
+    const normUserCities = userCities.map((c) => norm(c)).filter(Boolean);
+    views = views.filter((v) => {
+      // Şehir belirtilmemişse veya genel/türkiye ilanı ise gösterilebilir
+      if (!v.city) return true;
+      const jc = norm(v.city);
+      if (jc.includes('turkiye') || jc === 'genel' || jc === 'merkez') return true;
+      return normUserCities.some((uc) => jc.includes(uc) || uc.includes(jc));
+    });
+  } else {
+    // Kullanıcı profilinde henüz şehir seçmemişse eşleşenler boş gelsin (profil uyarısı verilir)
+    views = [];
+  }
+
+  // 2. Uyum Oranı Filtrelemesi (%100, %75+, %50+)
+  if (minScore && minScore > 0) {
+    views = views.filter((v) => v.eligibility.score >= minScore);
+  }
+
+  views = views.sort((a, b) => b.eligibility.score - a.eligibility.score);
   const offset = (page - 1) * limit;
-  res.json({ items: views.slice(offset, offset + limit), total: views.length, page, limit });
+  res.json({
+    items: views.slice(offset, offset + limit),
+    total: views.length,
+    page,
+    limit,
+    userCities,
+  });
 });
 
 jobsRouter.get('/', optionalAuth, (req, res) => {

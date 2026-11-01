@@ -274,21 +274,32 @@ function computeScore(job: Job, profile: Profile | null, overall: CheckStatus, c
     const okRatio = hard.length ? hard.filter((c) => c.status === 'ok').length / hard.length : 0;
     return Math.round(okRatio * 30);
   }
-  let score = overall === 'ok' ? 55 : 40;
-  if (profile) {
-    if (job.city && profile.cities.some((c) => norm(c) === norm(job.city))) score += 20;
-    if (profile.jobTypes.includes(job.jobType)) score += 10;
-    if (job.kpssRequired && job.minKpssScore && profile.kpssScore != null) {
-      score += Math.min(10, Math.max(0, Math.round((profile.kpssScore - job.minKpssScore) / 2)));
+
+  const hasWarn = checks.some((c) => c.status === 'warn');
+  const warnCount = checks.filter((c) => c.status === 'warn').length;
+
+  // Şehir kontrolü
+  const cityMatch =
+    !job.city ||
+    !profile ||
+    !profile.cities ||
+    profile.cities.length === 0 ||
+    profile.cities.some((c) => norm(c) === norm(job.city) || norm(job.city).includes(norm(c)));
+
+  if (overall === 'ok') {
+    // Hiçbir şartta eksik/uyarı yoksa ve şehir tutuyorsa %100 tam uyum
+    if (!hasWarn && cityMatch) {
+      return 100;
     }
-    if (job.requiredDepartments.length && checks.find((c) => c.key === 'department')?.status === 'ok') {
-      score += 5;
+    // 1 küçük uyarı varsa (örn. KPSS taban puanı ilanda yazmıyor veya sertifika opsiyonel)
+    if (warnCount === 1) {
+      return cityMatch ? 85 : 75;
     }
-    if (checks.find((c) => c.key === 'certificate')?.status === 'ok') score += 5;
+    return cityMatch ? 75 : 65;
   }
-  if (job.deadline) {
-    const days = (Date.parse(job.deadline) - Date.now()) / 86400000;
-    if (days >= 0 && days <= 7) score += 5; // yaklaşan son tarih öne çıksın
-  }
-  return Math.min(100, score);
+
+  // overall === 'warn' (şartlardan bazıları net teyit edilemedi ama ret de değil)
+  if (warnCount <= 1 && cityMatch) return 70;
+  if (cityMatch) return 60;
+  return 50;
 }

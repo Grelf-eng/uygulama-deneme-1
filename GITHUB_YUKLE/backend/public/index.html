@@ -173,7 +173,8 @@
 
     <!-- İLANLAR & EŞLEŞENLER -->
     <div id="jobsScreen" class="hidden">
-      <div class="card">
+      <!-- GENEL İLANLAR FİLTRE KARTI (Tüm İlanlar sekmesinde görünür) -->
+      <div id="allJobsFilterCard" class="card">
         <input id="searchInput" class="input" placeholder="İlan, kurum veya şehir ara..." oninput="debounceLoadJobs()" />
         <div class="row" style="margin-bottom:8px;">
           <span class="chip active" data-kpss="" onclick="setKpssFilter('')">Tümü</span>
@@ -191,10 +192,30 @@
             <option value="">📜 Tüm Sertifikalar / Belgeler</option>
           </select>
         </div>
-        <div id="matchesNote" class="hidden" style="font-size:13px;color:var(--muted);margin-top:8px;">
-          ✨ Profilinizdeki şartlarla uyuşmayan (❌) ilanlar gizlenir, en yüksek uyum puanlı ilanlar üstte listelenir.
+      </div>
+
+      <!-- EŞLEŞENLER ÖZEL FİLTRE KARTI (Yalnızca Eşleşenler sekmesinde görünür) -->
+      <div id="matchesFilterCard" class="card hidden" style="border-left:4px solid var(--primary);padding:14px 16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px;">
+            <span>✨</span><span>Profilinize Özel Eşleşen İlanlar</span>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" style="margin:0;padding:4px 8px;font-size:11.5px;" onclick="switchTab('profile')">⚙️ Şehirleri Değiştir</button>
+        </div>
+        
+        <div id="userCitiesDisplay" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;line-height:1.4;">
+          📍 <b>Tercih Ettiğiniz Şehirler:</b> <span id="userCitiesList" style="color:var(--primary);font-weight:700;">Yükleniyor...</span>
+        </div>
+
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Uyum Oranına Göre Filtrele:</div>
+        <div class="row" style="gap:6px;flex-wrap:wrap;">
+          <span class="chip active" data-match-score="0" onclick="setMatchScoreFilter(0)">Tümü</span>
+          <span class="chip" data-match-score="100" onclick="setMatchScoreFilter(100)">💯 %100 Tam Uyum</span>
+          <span class="chip" data-match-score="75" onclick="setMatchScoreFilter(75)">⭐ %75 ve Üzeri</span>
+          <span class="chip" data-match-score="50" onclick="setMatchScoreFilter(50)">🎯 %50 ve Üzeri</span>
         </div>
       </div>
+
       <div class="row" style="justify-content:space-between;margin:6px 4px;">
         <div id="jobsCount" style="font-size:12px;color:var(--muted);"></div>
         <button id="liveRefreshBtnWeb" style="background:none;border:none;color:var(--primary);font-size:12px;font-weight:700;cursor:pointer;" onclick="syncLiveJobsWeb()">🔄 Yeni İlanları Çek</button>
@@ -430,6 +451,7 @@
     let isRegister = false;
     let currentTab = 'jobs';
     let kpssFilter = '';
+    let matchScoreFilter = 0;
     const DEFAULT_CITIES = ["Adana","Adıyaman","Afyonkarahisar","Ağrı","Aksaray","Amasya","Ankara","Antalya","Ardahan","Artvin","Aydın","Balıkesir","Bartın","Batman","Bayburt","Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa","Çanakkale","Çankırı","Çorum","Denizli","Diyarbakır","Düzce","Edirne","Elazığ","Erzincan","Erzurum","Eskişehir","Gaziantep","Giresun","Gümüşhane","Hakkari","Hatay","Iğdır","Isparta","İstanbul","İzmir","Kahramanmaraş","Karabük","Karaman","Kars","Kastamonu","Kayseri","Kırıkkale","Kırklareli","Kırşehir","Kilis","Kocaeli","Konya","Kütahya","Malatya","Manisa","Mardin","Mersin","Muğla","Muş","Nevşehir","Niğde","Ordu","Osmaniye","Rize","Sakarya","Samsun","Siirt","Sinop","Sivas","Şanlıurfa","Şırnak","Tekirdağ","Tokat","Trabzon","Tunceli","Uşak","Van","Yalova","Yozgat","Zonguldak"];
     const DEFAULT_CERTIFICATES = [
       "Bilgisayar İşletmenliği Sertifikası",
@@ -1025,11 +1047,23 @@
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
       if (tab === 'jobs' || tab === 'matches') {
         showScreen('jobs');
-        document.getElementById('matchesNote').classList.toggle('hidden', tab !== 'matches');
+        const isMatches = tab === 'matches';
+        const allCard = document.getElementById('allJobsFilterCard');
+        const matchCard = document.getElementById('matchesFilterCard');
+        if (allCard) allCard.classList.toggle('hidden', isMatches);
+        if (matchCard) matchCard.classList.toggle('hidden', !isMatches);
         loadJobs();
       } else {
         showScreen(tab);
       }
+    }
+
+    function setMatchScoreFilter(val) {
+      matchScoreFilter = Number(val);
+      document.querySelectorAll('[data-match-score]').forEach(el => {
+        el.classList.toggle('active', Number(el.dataset.matchScore) === matchScoreFilter);
+      });
+      loadJobs();
     }
 
     function setKpssFilter(val) {
@@ -1140,21 +1174,66 @@
     }
 
     async function loadJobs() {
-      const q = document.getElementById('searchInput').value.trim();
-      const city = document.getElementById('citySelect').value;
-      const jobType = document.getElementById('typeSelect').value;
-      const cert = document.getElementById('certFilterSelect')?.value || '';
+      const isMatches = currentTab === 'matches';
       const params = new URLSearchParams({ limit: '250' });
-      if (q) params.set('query', q);
-      if (city) params.set('city', city);
-      if (jobType) params.set('jobType', jobType);
-      if (cert) params.set('certificate', cert);
-      if (kpssFilter) params.set('kpss', kpssFilter);
 
-      const endpoint = currentTab === 'matches' ? '/jobs/matches?' : '/jobs?';
-      const data = await api(endpoint + params.toString());
-      document.getElementById('jobsCount').innerText = `${data.total} ilan listeleniyor`;
-      document.getElementById('jobsList').innerHTML = data.items.map(renderJobCard).join('') || '<div class="card">Uygun ilan bulunamadı.</div>';
+      if (isMatches) {
+        if (matchScoreFilter > 0) params.set('minScore', String(matchScoreFilter));
+        const data = await api('/jobs/matches?' + params.toString());
+        
+        // Tercih edilen şehirleri ekranda göster
+        const userCities = data.userCities || [];
+        const citiesListEl = document.getElementById('userCitiesList');
+        if (citiesListEl) {
+          if (userCities.length > 0) {
+            citiesListEl.innerText = userCities.join(', ');
+          } else {
+            citiesListEl.innerHTML = '<span style="color:var(--fail);font-weight:700;">Henüz şehir seçmediniz!</span>';
+          }
+        }
+
+        const scoreText = matchScoreFilter === 100 ? '%100 Tam Uyumlu ' : matchScoreFilter > 0 ? `%${matchScoreFilter}+ Uyumlu ` : '';
+        document.getElementById('jobsCount').innerText = `${data.total} ${scoreText}ilan listeleniyor`;
+
+        if (data.total === 0) {
+          if (userCities.length === 0) {
+            document.getElementById('jobsList').innerHTML = `
+              <div class="card" style="text-align:center;padding:28px 16px;">
+                <div style="font-size:38px;margin-bottom:8px;">📍</div>
+                <div style="font-weight:700;font-size:16px;margin-bottom:6px;">Tercih Edilen Şehir Seçilmedi</div>
+                <p style="font-size:13.5px;color:var(--muted);max-width:380px;margin:0 auto 16px;line-height:1.5;">
+                  Eşleşen ilanları görebilmeniz için lütfen profilinizden çalışmak istediğiniz şehirleri seçip kaydedin.
+                </p>
+                <button type="button" class="btn btn-sm" onclick="switchTab('profile')">👤 Profilime Git ve Şehir Seç</button>
+              </div>`;
+          } else {
+            document.getElementById('jobsList').innerHTML = `
+              <div class="card" style="text-align:center;padding:28px 16px;">
+                <div style="font-size:38px;margin-bottom:8px;">🎯</div>
+                <div style="font-weight:700;font-size:16px;margin-bottom:6px;">Uyumlu İlan Bulunamadı</div>
+                <p style="font-size:13.5px;color:var(--muted);max-width:400px;margin:0 auto;line-height:1.5;">
+                  Seçtiğiniz şehirlerde (<b>${userCities.join(', ')}</b>) ve seçilen uyum kriterinde (${matchScoreFilter > 0 ? '%' + matchScoreFilter + ' ve üzeri' : 'tümü'}) şu anda başvuruya açık ilan bulunmuyor.
+                </p>
+              </div>`;
+          }
+        } else {
+          document.getElementById('jobsList').innerHTML = data.items.map(renderJobCard).join('');
+        }
+      } else {
+        const q = document.getElementById('searchInput').value.trim();
+        const city = document.getElementById('citySelect').value;
+        const jobType = document.getElementById('typeSelect').value;
+        const cert = document.getElementById('certFilterSelect')?.value || '';
+        if (q) params.set('query', q);
+        if (city) params.set('city', city);
+        if (jobType) params.set('jobType', jobType);
+        if (cert) params.set('certificate', cert);
+        if (kpssFilter) params.set('kpss', kpssFilter);
+
+        const data = await api('/jobs?' + params.toString());
+        document.getElementById('jobsCount').innerText = `${data.total} ilan listeleniyor`;
+        document.getElementById('jobsList').innerHTML = data.items.map(renderJobCard).join('') || '<div class="card">Uygun ilan bulunamadı.</div>';
+      }
     }
 
     async function openJob(id) {
