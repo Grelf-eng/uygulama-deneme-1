@@ -9,13 +9,16 @@ import { removeCloudVerification, syncCloudUser, syncCloudVerification } from '.
 
 export const authRouter = Router();
 
-const identifierSchema = z
+const emailSchema = z
   .string()
   .trim()
-  .min(3, 'Geçerli bir kullanıcı adı veya e-posta girin')
-  .max(100, 'Kullanıcı adı veya e-posta çok uzun')
-  .refine((v) => !v.includes('@') || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), 'Geçerli bir e-posta girin')
-  .transform((v) => (v.includes('@') ? v.toLowerCase() : v));
+  .min(5, 'Geçerli bir e-posta adresi girin')
+  .max(100, 'E-posta adresi çok uzun')
+  .refine(
+    (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),
+    'Giriş için geçerli bir e-posta adresi gereklidir (örn: ornek@gmail.com). Kullanıcı adı ile giriş kapatılmıştır.'
+  )
+  .transform((v) => v.toLowerCase());
 
 const credentials = z
   .object({
@@ -25,20 +28,20 @@ const credentials = z
     fullName: z.string().trim().max(100).optional(),
   })
   .superRefine((val, ctx) => {
-    const raw = (val.username ?? val.email ?? '').trim();
-    const res = identifierSchema.safeParse(raw);
+    const raw = (val.email ?? val.username ?? '').trim();
+    const res = emailSchema.safeParse(raw);
     if (!res.success) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: res.error.issues[0].message, path: ['email'] });
     }
   });
 
 const verifySchema = z.object({
-  email: z.string().trim().min(1, 'E-posta veya kullanıcı adı gerekli'),
+  email: emailSchema,
   code: z.string().trim().length(6, 'Doğrulama kodu 6 haneli olmalıdır'),
 });
 
 const resendSchema = z.object({
-  email: z.string().trim().min(1, 'E-posta veya kullanıcı adı gerekli'),
+  email: emailSchema,
 });
 
 /**
@@ -63,7 +66,7 @@ authRouter.post('/register', async (req, res) => {
 
   if (existing) {
     if (existing.is_verified === 1) {
-      res.status(409).json({ error: 'Bu kullanıcı adı veya e-posta ile zaten doğrulanmış bir hesap var.' });
+      res.status(409).json({ error: 'Bu e-posta adresi ile zaten kayıtlı ve doğrulanmış bir hesap var.' });
       return;
     }
     // Kullanıcı daha önce kayıt olmuş ama kodunu girmemiş: Yeni rastgele kod üretip gönder
@@ -127,14 +130,14 @@ authRouter.post('/login', (req, res) => {
     res.status(400).json({ error: parsed.error.issues[0].message });
     return;
   }
-  const rawId = (parsed.data.username ?? parsed.data.email ?? '').trim();
+  const rawId = (parsed.data.email ?? parsed.data.username ?? '').trim().toLowerCase();
   const { password } = parsed.data;
   const user = db
     .prepare('SELECT id, email, password_hash, is_admin, is_verified FROM users WHERE LOWER(email) = LOWER(?)')
     .get(rawId) as { id: number; email: string; password_hash: string; is_admin: number; is_verified: number } | undefined;
 
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
-    res.status(401).json({ error: 'Kullanıcı adı/e-posta veya şifre hatalı' });
+    res.status(401).json({ error: 'E-posta adresi veya şifre hatalı.' });
     return;
   }
 

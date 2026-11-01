@@ -51,6 +51,10 @@ export function AuthScreen({ navigation, route }: Props) {
   }, []);
 
   const submit = async () => {
+    if (!email.trim() || !email.includes('@')) {
+      Alert.alert('Geçersiz E-posta', 'Lütfen geçerli bir e-posta adresi girin (örn: ornek@gmail.com).');
+      return;
+    }
     setBusy(true);
     try {
       if (isRegister) {
@@ -78,6 +82,10 @@ export function AuthScreen({ navigation, route }: Props) {
       Alert.alert('Uyarı', 'Lütfen e-postanıza gönderilen 6 haneli kodu eksiksiz girin.');
       return;
     }
+    if (!email.trim() || !email.includes('@')) {
+      Alert.alert('Geçersiz E-posta', 'Lütfen geçerli bir e-posta adresi girin (örn: ornek@gmail.com).');
+      return;
+    }
     setBusy(true);
     try {
       await verifyEmail(verifyTarget || email.trim(), code.trim());
@@ -89,6 +97,10 @@ export function AuthScreen({ navigation, route }: Props) {
   };
 
   const handleResend = async () => {
+    if (!email.trim() || !email.includes('@')) {
+      Alert.alert('Geçersiz E-posta', 'Lütfen geçerli bir e-posta adresi girin (örn: ornek@gmail.com).');
+      return;
+    }
     setBusy(true);
     try {
       const res = await resendCode(verifyTarget || email.trim());
@@ -180,12 +192,13 @@ export function AuthScreen({ navigation, route }: Props) {
               <Field label="Ad Soyad" value={fullName} onChangeText={setFullName} autoComplete="name" />
             ) : null}
             <Field
-              label="Kullanıcı Adı veya E-posta"
+              label="E-posta Adresi"
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
-              keyboardType="default"
-              autoComplete="username"
+              keyboardType="email-address"
+              autoComplete="email"
+              placeholder="ornek@gmail.com"
             />
             <Field
               label="Şifre"

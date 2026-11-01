@@ -140,8 +140,8 @@
           <label>Ad Soyad</label>
           <input id="authName" class="input" placeholder="Ad Soyad" />
         </div>
-        <label>Kullanıcı Adı veya E-posta</label>
-        <input id="authEmail" class="input" type="text" autocomplete="username" placeholder="Kullanıcı adı veya e-posta" onkeydown="if(event.key==='Enter'){submitAuth();}" />
+        <label>E-posta Adresi</label>
+        <input id="authEmail" class="input" type="email" autocomplete="email" placeholder="ornek@gmail.com" onkeydown="if(event.key==='Enter'){submitAuth();}" />
         <label>Şifre</label>
         <input id="authPass" class="input" type="password" autocomplete="current-password" placeholder="Şifreniz" onkeydown="if(event.key==='Enter'){submitAuth();}" />
         <div class="row" style="margin-top:8px;">
@@ -736,10 +736,15 @@
     }
 
     async function submitAuth() {
-      const email = document.getElementById('authEmail').value.trim();
+      const email = document.getElementById('authEmail').value.trim().toLowerCase();
       const password = document.getElementById('authPass').value;
       const fullName = document.getElementById('authName').value.trim();
       document.getElementById('authError').innerText = '';
+
+      if (!email || !email.includes('@') || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        document.getElementById('authError').innerText = 'Lütfen geçerli bir e-posta adresi girin (örn: ornek@gmail.com).';
+        return;
+      }
       try {
         const r = await api(isRegister ? '/auth/register' : '/auth/login', {
           method: 'POST',
