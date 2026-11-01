@@ -107,21 +107,7 @@ authRouter.post('/register', async (req, res) => {
   syncCloudUser(identifier, hash, 0, 0);
   syncCloudVerification(identifier, code, expiresAt);
 
-  const mailRes = await sendVerificationEmail(identifier, code);
-
-  // Eğer Resend sandbox modundaysa veya test modundaysa kullanıcının kilitli kalmaması için otomatik onayla
-  if (mailRes.sandboxBlocked || process.env.AUTO_VERIFY_IF_MAIL_FAILS === 'true') {
-    db.prepare('UPDATE users SET is_verified = 1 WHERE id = ?').run(userId);
-    syncCloudUser(identifier, hash, 0, 1);
-    const token = signToken(userId);
-    res.status(201).json({
-      token,
-      user: { id: userId, email: identifier, username: identifier, isAdmin: false },
-      requiresVerification: false,
-      message: 'Kayıt başarılı! Test modunda olduğundan hesabınız anında onaylandı ve giriş yapıldı.',
-    });
-    return;
-  }
+  await sendVerificationEmail(identifier, code);
 
   res.status(201).json({
     requiresVerification: true,
@@ -271,17 +257,7 @@ authRouter.post('/resend-code', async (req, res) => {
   ).run(user.email, newCode, expiresAt);
   syncCloudVerification(user.email, newCode, expiresAt);
 
-  const mailRes = await sendVerificationEmail(user.email, newCode);
-  if (mailRes.sandboxBlocked || process.env.AUTO_VERIFY_IF_MAIL_FAILS === 'true') {
-    db.prepare('UPDATE users SET is_verified = 1 WHERE id = ?').run(user.id);
-    syncCloudUser(user.email, '', 0, 1);
-    res.json({
-      message: 'Test modunda olduğunuz için hesabınız doğrudan onaylandı. Artık giriş yapabilirsiniz.',
-      autoVerified: true,
-      email: user.email,
-    });
-    return;
-  }
+  await sendVerificationEmail(user.email, newCode);
 
   res.json({
     message: 'Yeni 6 haneli doğrulama kodu e-postanıza gönderildi.',

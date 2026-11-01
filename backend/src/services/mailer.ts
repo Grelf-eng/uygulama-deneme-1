@@ -38,7 +38,65 @@ export function isValidEmailFormat(email: string): boolean {
 export async function sendVerificationEmail(email: string, code: string): Promise<SendCodeResult> {
   const targetEmail = email.trim().toLowerCase();
 
-  // 1. Resend API (HTTPS Port 443 - Bulut Güvenlik Duvarını %100 Aşar)
+  // 1. Brevo (Sendinblue) API (HTTPS Port 443 - Özel Domain Gerektirmez, Dünyadaki Tüm Adreslere Gönderir)
+  const brevoKey = process.env.BREVO_API_KEY;
+  if (brevoKey) {
+    try {
+      const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER || 'otaner963@gmail.com';
+      const senderName = process.env.BREVO_SENDER_NAME || 'Kamu İlan Asistanı';
+
+      const res = await axios.post(
+        'https://api.brevo.com/v3/smtp/email',
+        {
+          sender: { name: senderName, email: senderEmail },
+          to: [{ email: targetEmail }],
+          subject: `Kamu İlan Asistanı Doğrulama Kodunuz: ${code}`,
+          htmlContent: `<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;max-width:520px;margin:20px auto;padding:28px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;">
+            <div style="text-align:center;margin-bottom:20px;">
+              <h2 style="color:#1d4ed8;margin:0 0 6px;font-size:22px;">Kamu İlan Asistanı</h2>
+              <p style="color:#64748b;font-size:14px;margin:0;">Güvenlik Doğrulama Kodu</p>
+            </div>
+            <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 16px;">
+              Merhaba,<br/><br/>
+              Hesabınızı güvenle onaylamak için tek kullanımlık 6 haneli güvenlik kodunuz aşağıdadır:
+            </p>
+            <div style="text-align:center;margin:24px 0;">
+              <div style="display:inline-block;background:#eff6ff;border:2px dashed #3b82f6;color:#1e40af;font-size:32px;font-weight:800;letter-spacing:8px;padding:14px 28px;border-radius:12px;">
+                ${code}
+              </div>
+            </div>
+            <p style="color:#64748b;font-size:13px;line-height:1.5;margin:0 0 16px;">
+              ⏱️ Bu kod <b>15 dakika</b> boyunca geçerlidir. Güvenliğiniz için bu kodu kimseyle paylaşmayınız.
+            </p>
+            <hr style="border:none;border-top:1px solid #f1f5f9;margin:20px 0;"/>
+            <p style="color:#94a3b8;font-size:11px;text-align:center;margin:0;">
+              Bu e-posta Kamu İlan Asistanı güvenlik sistemi tarafından otomatik olarak oluşturulmuştur.
+            </p>
+          </div>`,
+          textContent: `Kamu İlan Asistanı Doğrulama Kodunuz: ${code}\n\nBu kod 15 dakika geçerlidir. Güvenliğiniz için kimseyle paylaşmayınız.`,
+        },
+        {
+          headers: {
+            'api-key': brevoKey,
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          timeout: 10000,
+        }
+      );
+
+      console.log(`[brevo] ✅ 6 haneli kod ${targetEmail} adresine Brevo HTTPS ile başarıyla iletildi (ID: ${res.data?.messageId})`);
+      return {
+        sent: true,
+        message: 'Doğrulama kodu e-posta adresinize başarıyla gönderildi.',
+      };
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || err.message;
+      console.error(`[brevo] ⚠️ Brevo gönderim hatası: ${errMsg}`);
+    }
+  }
+
+  // 2. Resend API (HTTPS Port 443 - Bulut Güvenlik Duvarını %100 Aşar)
   const resendKey = process.env.RESEND_API_KEY;
   const fromAddress = process.env.RESEND_FROM || 'Kamu İlan Asistanı <onboarding@resend.dev>';
   if (resendKey) {
