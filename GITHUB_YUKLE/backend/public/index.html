@@ -171,7 +171,7 @@
       <p id="authError" style="color:var(--fail);font-size:13px;margin-top:10px;"></p>
     </div>
 
-    <!-- İLANLAR & EŞLEŞENLER -->
+    <!-- 1. TÜM İLANLAR EKRANI -->
     <div id="jobsScreen" class="hidden">
       <!-- GENEL İLANLAR FİLTRE KARTI (Tüm İlanlar sekmesinde görünür) -->
       <div id="allJobsFilterCard" class="card">
@@ -182,20 +182,29 @@
           <span class="chip" data-kpss="no" onclick="setKpssFilter('no')">KPSS'siz</span>
         </div>
         <div class="row" style="flex-wrap:wrap;gap:8px;">
-          <select id="citySelect" style="flex:1;min-width:130px;margin:0" onchange="loadJobs()">
+          <select id="citySelect" style="flex:1;min-width:130px;margin:0" onchange="loadAllJobs()">
             <option value="">📍 Tüm Şehirler</option>
           </select>
-          <select id="typeSelect" style="flex:1;min-width:120px;margin:0" onchange="loadJobs()">
+          <select id="typeSelect" style="flex:1;min-width:120px;margin:0" onchange="loadAllJobs()">
             <option value="">Tüm Türler</option>
           </select>
-          <select id="certFilterSelect" style="flex:1.4;min-width:180px;margin:0" onchange="loadJobs()">
+          <select id="certFilterSelect" style="flex:1.4;min-width:180px;margin:0" onchange="loadAllJobs()">
             <option value="">📜 Tüm Sertifikalar / Belgeler</option>
           </select>
         </div>
       </div>
 
-      <!-- EŞLEŞENLER ÖZEL FİLTRE KARTI (Yalnızca Eşleşenler sekmesinde görünür) -->
-      <div id="matchesFilterCard" class="card hidden" style="border-left:4px solid var(--primary);padding:14px 16px;">
+      <div class="row" style="justify-content:space-between;margin:6px 4px;">
+        <div id="jobsCount" style="font-size:12px;color:var(--muted);"></div>
+        <button id="liveRefreshBtnWeb" style="background:none;border:none;color:var(--primary);font-size:12px;font-weight:700;cursor:pointer;" onclick="syncLiveJobsWeb()">🔄 Yeni İlanları Çek</button>
+      </div>
+      <div id="jobsList"></div>
+    </div>
+
+    <!-- 2. EŞLEŞEN İLANLAR EKRANI (TAMAMEN AYRI VE BAĞIMSIZ) -->
+    <div id="matchesScreen" class="hidden">
+      <!-- EŞLEŞENLER ÖZEL FİLTRE KARTI -->
+      <div id="matchesFilterCard" class="card" style="border-left:4px solid var(--primary);padding:14px 16px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <div style="font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px;">
             <span>✨</span><span>Profilinize Özel Eşleşen İlanlar</span>
@@ -226,10 +235,10 @@
       </div>
 
       <div class="row" style="justify-content:space-between;margin:6px 4px;">
-        <div id="jobsCount" style="font-size:12px;color:var(--muted);"></div>
-        <button id="liveRefreshBtnWeb" style="background:none;border:none;color:var(--primary);font-size:12px;font-weight:700;cursor:pointer;" onclick="syncLiveJobsWeb()">🔄 Yeni İlanları Çek</button>
+        <div id="matchesCount" style="font-size:12px;color:var(--muted);"></div>
+        <button style="background:none;border:none;color:var(--primary);font-size:12px;font-weight:700;cursor:pointer;" onclick="loadMatchesJobs(true)">🔄 Eşleşenleri Yenile</button>
       </div>
-      <div id="jobsList"></div>
+      <div id="matchesList"></div>
     </div>
 
     <!-- İLAN DETAYI -->
@@ -780,8 +789,9 @@
       document.getElementById('authScreen').classList.remove('hidden');
       document.getElementById('headerActions').classList.add('hidden');
       document.getElementById('bottomTabs').classList.add('hidden');
-      ['jobsScreen','detailScreen','cvScreen','applicationsScreen','notificationsScreen','profileScreen'].forEach(id => {
-        document.getElementById(id).classList.add('hidden');
+      ['jobsScreen','matchesScreen','detailScreen','cvScreen','applicationsScreen','notificationsScreen','profileScreen'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
       });
     }
 
@@ -1012,6 +1022,7 @@
       };
       try {
         await api('/profile', { method: 'PUT', body });
+        matchesJobsLoaded = false;
         document.getElementById('profMsg').innerText = '✅ Profil kaydedildi! Eşleşen ilanlar güncellendi.';
         const saved = await api('/profile');
         fillProfileForm(saved.profile);
@@ -1041,8 +1052,9 @@
     }
 
     function showScreen(name) {
-      ['jobsScreen','detailScreen','cvScreen','applicationsScreen','notificationsScreen','profileScreen'].forEach(id => {
-        document.getElementById(id).classList.add('hidden');
+      ['jobsScreen','matchesScreen','detailScreen','cvScreen','applicationsScreen','notificationsScreen','profileScreen'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
       });
       document.getElementById(name + 'Screen').classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'instant' });
@@ -1057,17 +1069,18 @@
       if (name === 'notifications') loadNotifications();
     }
 
+    let allJobsLoaded = false;
+    let matchesJobsLoaded = false;
+
     function switchTab(tab) {
       currentTab = tab;
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-      if (tab === 'jobs' || tab === 'matches') {
+      if (tab === 'jobs') {
         showScreen('jobs');
-        const isMatches = tab === 'matches';
-        const allCard = document.getElementById('allJobsFilterCard');
-        const matchCard = document.getElementById('matchesFilterCard');
-        if (allCard) allCard.classList.toggle('hidden', isMatches);
-        if (matchCard) matchCard.classList.toggle('hidden', !isMatches);
-        loadJobs();
+        if (!allJobsLoaded) loadAllJobs();
+      } else if (tab === 'matches') {
+        showScreen('matches');
+        if (!matchesJobsLoaded) loadMatchesJobs();
       } else {
         showScreen(tab);
       }
@@ -1078,7 +1091,7 @@
       document.querySelectorAll('[data-match-score]').forEach(el => {
         el.classList.toggle('active', Number(el.dataset.matchScore) === matchScoreFilter);
       });
-      loadJobs();
+      loadMatchesJobs();
     }
 
     function setMatchTypeFilter(val) {
@@ -1086,18 +1099,18 @@
       document.querySelectorAll('[data-match-type]').forEach(el => {
         el.classList.toggle('active', el.dataset.matchType === matchTypeFilter);
       });
-      loadJobs();
+      loadMatchesJobs();
     }
 
     function setKpssFilter(val) {
       kpssFilter = val;
       document.querySelectorAll('[data-kpss]').forEach(el => el.classList.toggle('active', el.dataset.kpss === val));
-      loadJobs();
+      loadAllJobs();
     }
 
     function debounceLoadJobs() {
       clearTimeout(searchTimer);
-      searchTimer = setTimeout(loadJobs, 300);
+      searchTimer = setTimeout(loadAllJobs, 300);
     }
 
     function findOfficialApplyUrl(desc) {
@@ -1186,9 +1199,13 @@
       try {
         await api('/jobs/scrape/trigger');
       } catch {}
-      await loadJobs();
+      await loadAllJobs();
+      matchesJobsLoaded = false;
+      if (currentTab === 'matches') await loadMatchesJobs(true);
       setTimeout(async () => {
-        await loadJobs();
+        await loadAllJobs();
+        matchesJobsLoaded = false;
+        if (currentTab === 'matches') await loadMatchesJobs(true);
         if (btn) {
           btn.innerText = '✅ İlanlar Güncellendi';
           setTimeout(() => { btn.innerText = '🔄 Yeni İlanları Çek'; }, 2500);
@@ -1196,15 +1213,53 @@
       }, 3000);
     }
 
-    async function loadJobs() {
-      const isMatches = currentTab === 'matches';
+    let allJobsReqId = 0;
+    async function loadAllJobs() {
+      const reqId = ++allJobsReqId;
+      const q = document.getElementById('searchInput')?.value.trim() || '';
+      const city = document.getElementById('citySelect')?.value || '';
+      const jobType = document.getElementById('typeSelect')?.value || '';
+      const cert = document.getElementById('certFilterSelect')?.value || '';
       const params = new URLSearchParams({ limit: '250' });
+      if (q) params.set('query', q);
+      if (city) params.set('city', city);
+      if (jobType) params.set('jobType', jobType);
+      if (cert) params.set('certificate', cert);
+      if (kpssFilter) params.set('kpss', kpssFilter);
 
-      if (isMatches) {
-        if (matchScoreFilter > 0) params.set('minScore', String(matchScoreFilter));
-        if (matchTypeFilter) params.set('jobType', matchTypeFilter);
+      try {
+        const data = await api('/jobs?' + params.toString());
+        if (reqId !== allJobsReqId) return; // Geçersiz eski yanıtı iptal et
+        allJobsLoaded = true;
+        const countEl = document.getElementById('jobsCount');
+        const listEl = document.getElementById('jobsList');
+        if (countEl) countEl.innerText = `${data.total} ilan listeleniyor`;
+        if (listEl) {
+          listEl.innerHTML = data.items.map(renderJobCard).join('') || '<div class="card">Uygun ilan bulunamadı.</div>';
+        }
+      } catch (err) {
+        if (reqId !== allJobsReqId) return;
+        const listEl = document.getElementById('jobsList');
+        if (listEl) listEl.innerHTML = `<div class="card" style="color:var(--fail);">İlanlar yüklenirken bir hata oluştu: ${err.message}</div>`;
+      }
+    }
+
+    let matchesReqId = 0;
+    async function loadMatchesJobs(force = false) {
+      if (matchesJobsLoaded && !force && currentTab === 'matches') {
+        const listEl = document.getElementById('matchesList');
+        if (listEl && listEl.children.length > 0) return; // Zaten yüklüyse tekrar bekleme yapma
+      }
+      const reqId = ++matchesReqId;
+      const params = new URLSearchParams({ limit: '250' });
+      if (matchScoreFilter > 0) params.set('minScore', String(matchScoreFilter));
+      if (matchTypeFilter) params.set('jobType', matchTypeFilter);
+
+      try {
         const data = await api('/jobs/matches?' + params.toString());
-        
+        if (reqId !== matchesReqId) return; // Geçersiz eski yanıtı iptal et
+        matchesJobsLoaded = true;
+
         // Tercih edilen şehirleri ekranda göster
         const userCities = data.userCities || [];
         const citiesListEl = document.getElementById('userCitiesList');
@@ -1218,47 +1273,49 @@
 
         const scoreText = matchScoreFilter === 100 ? '%100 Tam Uyumlu ' : matchScoreFilter > 0 ? `%${matchScoreFilter}+ Uyumlu ` : '';
         const typeText = matchTypeFilter ? (TYPE_LABELS[matchTypeFilter] || matchTypeFilter) + ' ' : '';
-        document.getElementById('jobsCount').innerText = `${data.total} ${typeText}${scoreText}ilan listeleniyor`;
+        const countEl = document.getElementById('matchesCount');
+        const listEl = document.getElementById('matchesList');
+        if (countEl) countEl.innerText = `${data.total} ${typeText}${scoreText}eşleşen ilan listeleniyor`;
 
-        if (data.total === 0) {
-          if (userCities.length === 0) {
-            document.getElementById('jobsList').innerHTML = `
-              <div class="card" style="text-align:center;padding:28px 16px;">
-                <div style="font-size:38px;margin-bottom:8px;">📍</div>
-                <div style="font-weight:700;font-size:16px;margin-bottom:6px;">Tercih Edilen Şehir Seçilmedi</div>
-                <p style="font-size:13.5px;color:var(--muted);max-width:380px;margin:0 auto 16px;line-height:1.5;">
-                  Eşleşen ilanları görebilmeniz için lütfen profilinizden çalışmak istediğiniz şehirleri seçip kaydedin.
-                </p>
-                <button type="button" class="btn btn-sm" onclick="switchTab('profile')">👤 Profilime Git ve Şehir Seç</button>
-              </div>`;
+        if (listEl) {
+          if (data.total === 0) {
+            if (userCities.length === 0) {
+              listEl.innerHTML = `
+                <div class="card" style="text-align:center;padding:28px 16px;">
+                  <div style="font-size:38px;margin-bottom:8px;">📍</div>
+                  <div style="font-weight:700;font-size:16px;margin-bottom:6px;">Tercih Edilen Şehir Seçilmedi</div>
+                  <p style="font-size:13.5px;color:var(--muted);max-width:380px;margin:0 auto 16px;line-height:1.5;">
+                    Eşleşen ilanları görebilmeniz için lütfen profilinizden çalışmak istediğiniz şehirleri seçip kaydedin.
+                  </p>
+                  <button type="button" class="btn btn-sm" onclick="switchTab('profile')">👤 Profilime Git ve Şehir Seç</button>
+                </div>`;
+            } else {
+              const kadroDesc = matchTypeFilter ? `<b>${TYPE_LABELS[matchTypeFilter] || matchTypeFilter}</b> kadrosunda ve ` : '';
+              listEl.innerHTML = `
+                <div class="card" style="text-align:center;padding:28px 16px;">
+                  <div style="font-size:38px;margin-bottom:8px;">🎯</div>
+                  <div style="font-weight:700;font-size:16px;margin-bottom:6px;">Uyumlu İlan Bulunamadı</div>
+                  <p style="font-size:13.5px;color:var(--muted);max-width:400px;margin:0 auto;line-height:1.5;">
+                    Seçtiğiniz şehirlerde (<b>${userCities.join(', ')}</b>) ${kadroDesc}seçilen uyum kriterinde (${matchScoreFilter > 0 ? '%' + matchScoreFilter + ' ve üzeri' : 'tümü'}) şu anda başvuruya açık ilan bulunmuyor.
+                  </p>
+                </div>`;
+            }
           } else {
-            const kadroDesc = matchTypeFilter ? `<b>${TYPE_LABELS[matchTypeFilter] || matchTypeFilter}</b> kadrosunda ve ` : '';
-            document.getElementById('jobsList').innerHTML = `
-              <div class="card" style="text-align:center;padding:28px 16px;">
-                <div style="font-size:38px;margin-bottom:8px;">🎯</div>
-                <div style="font-weight:700;font-size:16px;margin-bottom:6px;">Uyumlu İlan Bulunamadı</div>
-                <p style="font-size:13.5px;color:var(--muted);max-width:400px;margin:0 auto;line-height:1.5;">
-                  Seçtiğiniz şehirlerde (<b>${userCities.join(', ')}</b>) ${kadroDesc}seçilen uyum kriterinde (${matchScoreFilter > 0 ? '%' + matchScoreFilter + ' ve üzeri' : 'tümü'}) şu anda başvuruya açık ilan bulunmuyor.
-                </p>
-              </div>`;
+            listEl.innerHTML = data.items.map(renderJobCard).join('');
           }
-        } else {
-          document.getElementById('jobsList').innerHTML = data.items.map(renderJobCard).join('');
         }
-      } else {
-        const q = document.getElementById('searchInput').value.trim();
-        const city = document.getElementById('citySelect').value;
-        const jobType = document.getElementById('typeSelect').value;
-        const cert = document.getElementById('certFilterSelect')?.value || '';
-        if (q) params.set('query', q);
-        if (city) params.set('city', city);
-        if (jobType) params.set('jobType', jobType);
-        if (cert) params.set('certificate', cert);
-        if (kpssFilter) params.set('kpss', kpssFilter);
+      } catch (err) {
+        if (reqId !== matchesReqId) return;
+        const listEl = document.getElementById('matchesList');
+        if (listEl) listEl.innerHTML = `<div class="card" style="color:var(--fail);">Eşleşen ilanlar yüklenirken hata oluştu: ${err.message}</div>`;
+      }
+    }
 
-        const data = await api('/jobs?' + params.toString());
-        document.getElementById('jobsCount').innerText = `${data.total} ilan listeleniyor`;
-        document.getElementById('jobsList').innerHTML = data.items.map(renderJobCard).join('') || '<div class="card">Uygun ilan bulunamadı.</div>';
+    async function loadJobs() {
+      if (currentTab === 'matches') {
+        await loadMatchesJobs();
+      } else {
+        await loadAllJobs();
       }
     }
 
