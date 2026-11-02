@@ -125,7 +125,11 @@ export function AuthScreen({ navigation, route }: Props) {
 
     setBusy(true);
     try {
-      await socialLogin(provider, target, fullName.trim());
+      const res = await socialLogin(provider, target, fullName.trim());
+      if (res && res.requiresVerification) {
+        setVerifyTarget(res.email || target);
+        setVerifyMode(true);
+      }
     } catch (e: any) {
       Alert.alert('Giriş Başarısız', e.message);
     } finally {

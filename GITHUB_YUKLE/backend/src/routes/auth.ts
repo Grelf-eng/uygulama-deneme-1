@@ -278,10 +278,10 @@ authRouter.post('/resend-code', async (req, res) => {
 
 /**
  * Google ve Apple ile Hızlı Giriş / Kayıt:
- * Google ve Apple hesapları kimlik doğrulaması yapmış olduğu için
- * e-posta doğrudan onaylı (`is_verified = 1`) olarak sisteme dahil edilir ve oturum token'ı üretilir.
+ * Her yeni kullanıcı veya onaylanmamış hesap için 6 haneli doğrulama kodu üretilip
+ * e-postasına gönderilir. Kod onaylanmadan sisteme giriş izni verilmez.
  */
-authRouter.post('/social', (req, res) => {
+authRouter.post('/social', async (req, res) => {
   const parsed = socialAuthSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0].message });
@@ -289,40 +289,65 @@ authRouter.post('/social', (req, res) => {
   }
 
   const { provider, email, fullName } = parsed.data;
-  let user = db
+  const user = db
     .prepare('SELECT id, email, password_hash, is_admin, is_verified FROM users WHERE LOWER(email) = LOWER(?)')
     .get(email) as { id: number; email: string; password_hash: string; is_admin: number; is_verified: number } | undefined;
 
   if (user) {
-    // Kullanıcı varsa ve onaylı değilse Google/Apple sayesinde hemen onaylı yap
-    if (user.is_verified !== 1) {
-      db.prepare('UPDATE users SET is_verified = 1 WHERE id = ?').run(user.id);
-      syncCloudUser(user.email, user.password_hash, user.is_admin, 1);
-      removeCloudVerification(user.email);
+    if (user.is_verified === 1) {
+      // Daha önceden kodunu girip doğrulamış kullanıcı doğrudan oturum açabilir
+      res.json({
+        token: signToken(user.id),
+        user: { id: user.id, email: user.email, username: user.email, isAdmin: user.is_admin === 1 },
+        message: `${provider === 'google' ? 'Google' : 'Apple'} hesabı ile başarıyla giriş yapıldı!`,
+      });
+      return;
     }
-  } else {
-    // Yeni kullanıcı kaydı (otomatik onaylı)
-    const randomPass = crypto.randomBytes(16).toString('hex');
-    const hash = bcrypt.hashSync(randomPass, 10);
-    const info = db
-      .prepare('INSERT INTO users (email, password_hash, is_admin, is_verified) VALUES (?, ?, 0, 1)')
-      .run(email, hash);
-    const userId = Number(info.lastInsertRowid);
-    ensureProfile(userId, fullName || (provider === 'google' ? 'Google Kullanıcısı' : 'Apple Kullanıcısı'));
-    syncCloudUser(email, hash, 0, 1);
 
-    user = {
-      id: userId,
-      email,
-      password_hash: hash,
-      is_admin: 0,
-      is_verified: 1,
-    };
+    // Kullanıcı var ama henüz kodu doğrulamamış: Yeni 6 haneli kod gönder
+    const newCode = generateRandomCode();
+    const expiresAt = Date.now() + 15 * 60 * 1000;
+    db.prepare(
+      `INSERT INTO email_verifications (email, code, expires_at, created_at)
+       VALUES (?, ?, ?, datetime('now'))
+       ON CONFLICT(email) DO UPDATE SET code = excluded.code, expires_at = excluded.expires_at, created_at = excluded.created_at`
+    ).run(user.email, newCode, expiresAt);
+    syncCloudVerification(user.email, newCode, expiresAt);
+
+    await sendVerificationEmail(user.email, newCode);
+
+    res.status(200).json({
+      requiresVerification: true,
+      email: user.email,
+      message: `${provider === 'google' ? 'Google' : 'Apple'} hesabınız henüz doğrulanmamış. Yeni 6 haneli güvenlik kodu e-postanıza gönderildi.`,
+    });
+    return;
   }
 
-  res.json({
-    token: signToken(user.id),
-    user: { id: user.id, email: user.email, username: user.email, isAdmin: user.is_admin === 1 },
-    message: `${provider === 'google' ? 'Google' : 'Apple'} hesabı ile başarıyla giriş yapıldı!`,
+  // Yeni kullanıcı kaydı: is_verified = 0 olarak açılır, mutlaka 6 haneli kod doğrulanmalıdır!
+  const randomPass = crypto.randomBytes(16).toString('hex');
+  const hash = bcrypt.hashSync(randomPass, 10);
+  const info = db
+    .prepare('INSERT INTO users (email, password_hash, is_admin, is_verified) VALUES (?, ?, 0, 0)')
+    .run(email, hash);
+  const userId = Number(info.lastInsertRowid);
+  ensureProfile(userId, fullName || (provider === 'google' ? 'Google Kullanıcısı' : 'Apple Kullanıcısı'));
+  syncCloudUser(email, hash, 0, 0);
+
+  const code = generateRandomCode();
+  const expiresAt = Date.now() + 15 * 60 * 1000;
+  db.prepare(
+    `INSERT INTO email_verifications (email, code, expires_at, created_at)
+     VALUES (?, ?, ?, datetime('now'))
+     ON CONFLICT(email) DO UPDATE SET code = excluded.code, expires_at = excluded.expires_at, created_at = excluded.created_at`
+  ).run(email, code, expiresAt);
+  syncCloudVerification(email, code, expiresAt);
+
+  await sendVerificationEmail(email, code);
+
+  res.status(201).json({
+    requiresVerification: true,
+    email,
+    message: `${provider === 'google' ? 'Google' : 'Apple'} hesabınızı doğrulamak için 6 haneli güvenlik kodu e-postanıza gönderildi.`,
   });
 });

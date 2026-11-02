@@ -12,7 +12,7 @@ interface AuthState {
   login(email: string, password: string): Promise<{ requiresVerification?: boolean; email?: string } | void>;
   register(email: string, password: string, fullName: string): Promise<{ requiresVerification: boolean; email: string; message: string }>;
   verifyEmail(email: string, code: string): Promise<void>;
-  socialLogin(provider: 'google' | 'apple', email: string, fullName?: string): Promise<void>;
+  socialLogin(provider: 'google' | 'apple', email: string, fullName?: string): Promise<{ requiresVerification?: boolean; email?: string; message?: string } | void>;
   resendCode(email: string): Promise<{ message: string }>;
   logout(): Promise<void>;
   saveProfile(p: Profile): Promise<void>;
@@ -106,12 +106,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await loadSession();
       },
       async socialLogin(provider, email, fullName) {
-        const r = await api<{ token: string; message: string }>('/auth/social', {
+        const r = await api<{ token?: string; requiresVerification?: boolean; email?: string; message: string }>('/auth/social', {
           method: 'POST',
           body: { provider, email, fullName },
         });
-        await setToken(r.token);
-        await loadSession();
+        if (r.requiresVerification) {
+          return { requiresVerification: true, email: r.email || email, message: r.message };
+        }
+        if (r.token) {
+          await setToken(r.token);
+          await loadSession();
+        }
       },
       async resendCode(em) {
         return await api<{ message: string }>('/auth/resend-code', {

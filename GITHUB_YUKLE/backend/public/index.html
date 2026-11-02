@@ -858,9 +858,15 @@
           }
         });
 
+        document.getElementById('socialAuthModal').classList.add('hidden');
+
+        if (res && res.requiresVerification) {
+          showVerificationCard(res.email || email, res.message);
+          return;
+        }
+
         token = res.token;
         localStorage.setItem('kamu_token', token);
-        document.getElementById('socialAuthModal').classList.add('hidden');
         await initApp();
       } catch (err) {
         errEl.innerText = err.message || 'Giriş yapılamadı.';
