@@ -605,8 +605,23 @@
         <h3 id="socialModalTitle" style="margin:0 0 4px;font-size:18px;"></h3>
         <p style="margin:0;font-size:12.5px;color:var(--muted);line-height:1.45;">Hesabınız Google/Apple güvencesiyle otomatik olarak onaylanacak ve anında giriş yapılacaktır.</p>
       </div>
+      <!-- KAYITLI / HAZIR HESAP İLE TEK TIKLA GİRİŞ -->
+      <div id="quickAccountBox" class="hidden" style="margin-bottom:12px;">
+        <button type="button" class="btn" id="quickAccountBtn" style="width:100%;background:#f8fafc;color:#1e293b;border:1.5px solid #cbd5e1;text-align:left;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:12px;" onclick="useQuickAccount()">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:22px;">👤</span>
+            <div style="text-align:left;">
+              <div id="quickAccountEmail" style="font-weight:700;font-size:13.5px;color:#0f172a;"></div>
+              <div style="font-size:11.5px;color:var(--muted);">Bu hesapla tek tıkla devam et</div>
+            </div>
+          </div>
+          <span style="font-size:16px;color:var(--primary);font-weight:800;">➔</span>
+        </button>
+        <div style="text-align:center;font-size:12px;color:var(--muted);margin:10px 0 6px;">veya farklı bir hesap yazın:</div>
+      </div>
+
       <label id="socialModalLabel">E-posta Adresi</label>
-      <input id="socialEmailInput" class="input" type="email" placeholder="ornek@gmail.com" onkeydown="if(event.key==='Enter'){submitSocialAuth();}" />
+      <input id="socialEmailInput" class="input" type="email" autocomplete="username email" inputmode="email" placeholder="ornek@gmail.com" onkeydown="if(event.key==='Enter'){submitSocialAuth();}" />
       <button class="btn" id="socialSubmitBtn" style="width:100%;margin-top:8px;" onclick="submitSocialAuth()">Hızlı Giriş Yap</button>
       <button class="btn btn-outline btn-sm" style="width:100%;margin-top:8px;" onclick="closeSocialModal()">İptal</button>
       <p id="socialError" style="color:var(--fail);font-size:12.5px;margin-top:8px;text-align:center;"></p>
@@ -1350,13 +1365,36 @@
       document.getElementById('socialEmailInput').placeholder = isGoogle ? 'adiniz@gmail.com' : 'adiniz@icloud.com';
       document.getElementById('socialEmailInput').value = '';
       document.getElementById('socialError').innerText = '';
+
+      // Varsa son kullanılan hesabı tek tıkla buton olarak göster
+      const savedEmail = localStorage.getItem('kamu_social_last_email') || '';
+      const quickBox = document.getElementById('quickAccountBox');
+      const quickEmailEl = document.getElementById('quickAccountEmail');
+      if (savedEmail && quickBox && quickEmailEl) {
+        quickEmailEl.innerText = savedEmail;
+        quickBox.classList.remove('hidden');
+      } else if (quickBox) {
+        quickBox.classList.add('hidden');
+      }
+
       document.getElementById('socialAuthModal').classList.remove('hidden');
-      setTimeout(() => document.getElementById('socialEmailInput').focus(), 100);
+      if (!savedEmail) {
+        setTimeout(() => document.getElementById('socialEmailInput').focus(), 100);
+      }
+    }
+
+    function useQuickAccount() {
+      const savedEmail = localStorage.getItem('kamu_social_last_email') || '';
+      if (savedEmail) {
+        document.getElementById('socialEmailInput').value = savedEmail;
+        submitSocialAuth();
+      }
     }
 
     // Android Native Seçici Yanıtı
     window.__onNativeSocialAccountSelected = async function(provider, email) {
       if (!email || !email.includes('@')) return;
+      localStorage.setItem('kamu_social_last_email', email);
       document.getElementById('authError').innerText = '⏳ Kod gönderiliyor...';
       try {
         const res = await api('/auth/social', {
@@ -1399,6 +1437,8 @@
         errEl.innerText = 'Lütfen geçerli bir e-posta adresi girin.';
         return;
       }
+
+      localStorage.setItem('kamu_social_last_email', email);
 
       const btn = document.getElementById('socialSubmitBtn');
       btn.innerText = 'Giriş Yapılıyor...';

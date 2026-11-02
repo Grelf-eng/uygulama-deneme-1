@@ -1,5 +1,6 @@
 package tr.kamuilan.asistan;
 
+import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.app.Activity;
 import android.app.Notification;
@@ -166,6 +167,44 @@ public class MainActivity extends Activity {
     @SuppressWarnings("deprecation")
     private void pickGoogleAccount() {
         runOnUiThread(() -> {
+            // Adım 1: Cihazda kayıtlı Google hesaplarını doğrudan listele (Kullanıcıya yazmadan tek tıkla seçtir)
+            try {
+                AccountManager am = AccountManager.get(this);
+                Account[] accounts = am.getAccountsByType("com.google");
+                if (accounts != null && accounts.length > 0) {
+                    if (accounts.length == 1) {
+                        String email = accounts[0].name;
+                        final String safeEmail = email.trim().toLowerCase().replace("\\", "\\\\").replace("'", "\\'");
+                        webView.post(() -> webView.evaluateJavascript(
+                                "window.__onNativeSocialAccountSelected('google', '" + safeEmail + "')",
+                                null
+                        ));
+                        return;
+                    } else {
+                        final String[] names = new String[accounts.length];
+                        for (int i = 0; i < accounts.length; i++) {
+                            names[i] = accounts[i].name;
+                        }
+                        new android.app.AlertDialog.Builder(this)
+                                .setTitle("Google Hesabınızı Seçin")
+                                .setItems(names, (dialog, which) -> {
+                                    String email = names[which];
+                                    final String safeEmail = email.trim().toLowerCase().replace("\\", "\\\\").replace("'", "\\'");
+                                    webView.post(() -> webView.evaluateJavascript(
+                                            "window.__onNativeSocialAccountSelected('google', '" + safeEmail + "')",
+                                            null
+                                    ));
+                                })
+                                .setNegativeButton("İptal", null)
+                                .show();
+                        return;
+                    }
+                }
+            } catch (Exception ignored) {
+                // Güvenlik kısıtlaması varsa sistem intent'ine geç
+            }
+
+            // Adım 2: Sistem Hesap Seçici Ekranını Aç
             try {
                 Intent intent;
                 if (Build.VERSION.SDK_INT >= 23) {
