@@ -86,7 +86,16 @@ jobsRouter.get('/matches', requireAuth, (req, res) => {
     views = [];
   }
 
-  // 2. Uyum Oranı Filtrelemesi (%100, %75+, %50+)
+  // 2. Kullanıcının profilinde seçtiği kadro türleri (Memur, İşçi, Sözleşmeli vb.)
+  const userJobTypes = profile?.jobTypes || [];
+  if (userJobTypes.length > 0) {
+    views = views.filter((v) => {
+      if (!v.jobType) return true;
+      return userJobTypes.includes(v.jobType as any);
+    });
+  }
+
+  // 3. Uyum Oranı Filtrelemesi (%100, %75+, %50+)
   if (minScore && minScore > 0) {
     views = views.filter((v) => v.eligibility.score >= minScore);
   }
@@ -99,6 +108,7 @@ jobsRouter.get('/matches', requireAuth, (req, res) => {
     page,
     limit,
     userCities,
+    userJobTypes,
   });
 });
 

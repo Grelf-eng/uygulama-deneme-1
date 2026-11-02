@@ -225,28 +225,20 @@
           <div style="font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px;">
             <span>✨</span><span>Profilinize Özel Eşleşen İlanlar</span>
           </div>
-          <button type="button" class="btn btn-outline btn-sm" style="margin:0;padding:4px 8px;font-size:11.5px;" onclick="switchTab('profile')">⚙️ Şehirleri Değiştir</button>
+          <button type="button" class="btn btn-outline btn-sm" style="margin:0;padding:4px 8px;font-size:11.5px;" onclick="switchTab('profile')">⚙️ Tercihleri Değiştir</button>
         </div>
         
-        <div id="userCitiesDisplay" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;line-height:1.4;">
-          📍 <b>Tercih Ettiğiniz Şehirler:</b> <span id="userCitiesList" style="color:var(--primary);font-weight:700;">Yükleniyor...</span>
+        <div id="userProfilePreferencesDisplay" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.5;">
+          <div>📍 <b>Tercih Ettiğiniz Şehirler:</b> <span id="userCitiesList" style="color:var(--primary);font-weight:700;">Yükleniyor...</span></div>
+          <div style="margin-top:3px;">👔 <b>Tercih Ettiğiniz Kadrolar:</b> <span id="userJobTypesList" style="color:var(--primary);font-weight:700;">Profilinize göre otomatik</span></div>
         </div>
 
-        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">1. Uyum Oranına Göre Filtrele:</div>
-        <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Uyum Oranına Göre Filtrele:</div>
+        <div class="row" style="gap:6px;flex-wrap:wrap;">
           <span class="chip active" data-match-score="0" onclick="setMatchScoreFilter(0)">Tümü</span>
           <span class="chip" data-match-score="100" onclick="setMatchScoreFilter(100)">💯 %100 Tam Uyum</span>
           <span class="chip" data-match-score="75" onclick="setMatchScoreFilter(75)">⭐ %75 ve Üzeri</span>
           <span class="chip" data-match-score="50" onclick="setMatchScoreFilter(50)">🎯 %50 ve Üzeri</span>
-        </div>
-
-        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">2. Kadro Türü (İşçi / Memur / Sözleşmeli):</div>
-        <div class="row" style="gap:6px;flex-wrap:wrap;">
-          <span class="chip active" data-match-type="" onclick="setMatchTypeFilter('')">Tüm Kadrolar</span>
-          <span class="chip" data-match-type="memur" onclick="setMatchTypeFilter('memur')">👔 Memur</span>
-          <span class="chip" data-match-type="sozlesmeli" onclick="setMatchTypeFilter('sozlesmeli')">📝 Sözleşmeli (4/B)</span>
-          <span class="chip" data-match-type="isci" onclick="setMatchTypeFilter('isci')">👷 Kamu İşçisi</span>
-          <span class="chip" data-match-type="akademik" onclick="setMatchTypeFilter('akademik')">🎓 Akademik</span>
         </div>
       </div>
 
@@ -826,6 +818,17 @@
 
     function promptSocialAuth(provider) {
       activeSocialProvider = provider;
+      if (provider === 'google') {
+        // 1. Android APK içinde çalışıyorsa doğrudan telefonun native Google Hesap Seçicisini aç!
+        if (window.AndroidBridge && typeof window.AndroidBridge.pickGoogleAccount === 'function') {
+          window.AndroidBridge.pickGoogleAccount();
+          return;
+        }
+      }
+      openSocialModal(provider);
+    }
+
+    function openSocialModal(provider) {
       const isGoogle = provider === 'google';
       const iconBox = document.getElementById('socialModalIcon');
       if (iconBox) {
@@ -841,6 +844,37 @@
       document.getElementById('socialAuthModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('socialEmailInput').focus(), 100);
     }
+
+    // Android Native Seçici Yanıtı
+    window.__onNativeSocialAccountSelected = async function(provider, email) {
+      if (!email || !email.includes('@')) return;
+      document.getElementById('authError').innerText = '⏳ Kod gönderiliyor...';
+      try {
+        const res = await api('/auth/social', {
+          method: 'POST',
+          body: {
+            provider: provider,
+            email: email,
+            fullName: provider === 'google' ? 'Google Kullanıcısı' : 'Apple Kullanıcısı'
+          }
+        });
+        document.getElementById('authError').innerText = '';
+        if (res && res.requiresVerification) {
+          showVerificationCard(res.email || email, res.message);
+          return;
+        }
+        token = res.token;
+        localStorage.setItem('kamu_token', token);
+        await initApp();
+      } catch (err) {
+        document.getElementById('authError').innerText = err.message || 'Giriş yapılamadı.';
+      }
+    };
+
+    window.__onNativeSocialAccountFailed = function(provider, err) {
+      console.warn('Native social failed:', provider, err);
+      openSocialModal(provider);
+    };
 
     function closeSocialModal(e) {
       if (e && e.target && e.target !== e.currentTarget) return;
@@ -1451,7 +1485,6 @@
       const reqId = ++matchesReqId;
       const params = new URLSearchParams({ limit: '250' });
       if (matchScoreFilter > 0) params.set('minScore', String(matchScoreFilter));
-      if (matchTypeFilter) params.set('jobType', matchTypeFilter);
 
       try {
         const data = await api('/jobs/matches?' + params.toString());
@@ -1469,11 +1502,21 @@
           }
         }
 
+        // Tercih edilen kadroları ekranda göster
+        const userJobTypes = data.userJobTypes || [];
+        const jobTypesListEl = document.getElementById('userJobTypesList');
+        if (jobTypesListEl) {
+          if (userJobTypes.length > 0) {
+            jobTypesListEl.innerText = userJobTypes.map(t => TYPE_LABELS[t] || t).join(', ');
+          } else {
+            jobTypesListEl.innerText = 'Tüm Kadro Türleri (Memur, İşçi, Sözleşmeli)';
+          }
+        }
+
         const scoreText = matchScoreFilter === 100 ? '%100 Tam Uyumlu ' : matchScoreFilter > 0 ? `%${matchScoreFilter}+ Uyumlu ` : '';
-        const typeText = matchTypeFilter ? (TYPE_LABELS[matchTypeFilter] || matchTypeFilter) + ' ' : '';
         const countEl = document.getElementById('matchesCount');
         const listEl = document.getElementById('matchesList');
-        if (countEl) countEl.innerText = `${data.total} ${typeText}${scoreText}eşleşen ilan listeleniyor`;
+        if (countEl) countEl.innerText = `${data.total} ${scoreText}profilinize eşleşen ilan listeleniyor`;
 
         if (listEl) {
           if (data.total === 0) {
@@ -1488,7 +1531,7 @@
                   <button type="button" class="btn btn-sm" onclick="switchTab('profile')">👤 Profilime Git ve Şehir Seç</button>
                 </div>`;
             } else {
-              const kadroDesc = matchTypeFilter ? `<b>${TYPE_LABELS[matchTypeFilter] || matchTypeFilter}</b> kadrosunda ve ` : '';
+              const kadroDesc = userJobTypes.length > 0 ? `hedef kadrolarınızda (<b>${userJobTypes.map(t => TYPE_LABELS[t] || t).join(', ')}</b>) ve ` : '';
               listEl.innerHTML = `
                 <div class="card" style="text-align:center;padding:28px 16px;">
                   <div style="font-size:38px;margin-bottom:8px;">🎯</div>
@@ -1505,7 +1548,7 @@
       } catch (err) {
         if (reqId !== matchesReqId) return;
         const listEl = document.getElementById('matchesList');
-        if (listEl) listEl.innerHTML = `<div class="card" style="color:var(--fail);">Eşleşen ilanlar yüklenirken hata oluştu: ${err.message}</div>`;
+        if (listEl) listEl.innerHTML = `<div class="card" style="color:var(--fail);">Eşleşen ilanlar yüklenirken bir hata oluştu: ${err.message}</div>`;
       }
     }
 
