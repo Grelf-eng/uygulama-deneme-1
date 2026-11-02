@@ -1,5 +1,6 @@
 package tr.kamuilan.asistan;
 
+import android.accounts.AccountManager;
 import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -31,6 +32,7 @@ import java.nio.charset.Charset;
 public class MainActivity extends Activity {
     private static final String CHANNEL_ID = "kamu_ilan_bildirim";
     private static final int FILE_CHOOSER_REQ = 202;
+    private static final int CHOOSE_ACCOUNT_REQ = 303;
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
     private int notifSeq = 100;
@@ -147,7 +149,52 @@ public class MainActivity extends Activity {
                 filePathCallback.onReceiveValue(results);
                 filePathCallback = null;
             }
+        } else if (requestCode == CHOOSE_ACCOUNT_REQ) {
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                String accountName = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
+                if (accountName != null && !accountName.trim().isEmpty()) {
+                    final String safeEmail = accountName.trim().toLowerCase();
+                    webView.post(() -> webView.evaluateJavascript(
+                            "window.__onNativeSocialAccountSelected('google', '" + safeEmail + "')",
+                            null
+                    ));
+                }
+            }
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void pickGoogleAccount() {
+        runOnUiThread(() -> {
+            try {
+                Intent intent;
+                if (Build.VERSION.SDK_INT >= 23) {
+                    intent = AccountManager.newChooseAccountIntent(
+                            null,
+                            null,
+                            new String[]{"com.google"},
+                            null,
+                            null,
+                            null,
+                            null
+                    );
+                } else {
+                    intent = AccountManager.newChooseAccountIntent(
+                            null,
+                            null,
+                            new String[]{"com.google"},
+                            false,
+                            null,
+                            null,
+                            null,
+                            null
+                    );
+                }
+                startActivityForResult(intent, CHOOSE_ACCOUNT_REQ);
+            } catch (Exception e) {
+                webView.post(() -> webView.evaluateJavascript("window.__onNativeSocialAccountFailed('google', '" + e.getMessage() + "')", null));
+            }
+        });
     }
 
     @Override
@@ -178,6 +225,11 @@ public class MainActivity extends Activity {
     }
 
     public class Bridge {
+        @JavascriptInterface
+        public void pickGoogleAccount() {
+            MainActivity.this.pickGoogleAccount();
+        }
+
         @JavascriptInterface
         public void exitApp() {
             runOnUiThread(MainActivity.this::finish);

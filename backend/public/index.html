@@ -826,6 +826,17 @@
 
     function promptSocialAuth(provider) {
       activeSocialProvider = provider;
+      if (provider === 'google') {
+        // 1. Android APK içinde çalışıyorsa doğrudan telefonun native Google Hesap Seçicisini aç!
+        if (window.AndroidBridge && typeof window.AndroidBridge.pickGoogleAccount === 'function') {
+          window.AndroidBridge.pickGoogleAccount();
+          return;
+        }
+      }
+      openSocialModal(provider);
+    }
+
+    function openSocialModal(provider) {
       const isGoogle = provider === 'google';
       const iconBox = document.getElementById('socialModalIcon');
       if (iconBox) {
@@ -841,6 +852,37 @@
       document.getElementById('socialAuthModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('socialEmailInput').focus(), 100);
     }
+
+    // Android Native Seçici Yanıtı
+    window.__onNativeSocialAccountSelected = async function(provider, email) {
+      if (!email || !email.includes('@')) return;
+      document.getElementById('authError').innerText = '⏳ Kod gönderiliyor...';
+      try {
+        const res = await api('/auth/social', {
+          method: 'POST',
+          body: {
+            provider: provider,
+            email: email,
+            fullName: provider === 'google' ? 'Google Kullanıcısı' : 'Apple Kullanıcısı'
+          }
+        });
+        document.getElementById('authError').innerText = '';
+        if (res && res.requiresVerification) {
+          showVerificationCard(res.email || email, res.message);
+          return;
+        }
+        token = res.token;
+        localStorage.setItem('kamu_token', token);
+        await initApp();
+      } catch (err) {
+        document.getElementById('authError').innerText = err.message || 'Giriş yapılamadı.';
+      }
+    };
+
+    window.__onNativeSocialAccountFailed = function(provider, err) {
+      console.warn('Native social failed:', provider, err);
+      openSocialModal(provider);
+    };
 
     function closeSocialModal(e) {
       if (e && e.target && e.target !== e.currentTarget) return;
