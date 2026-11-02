@@ -325,7 +325,7 @@ adminRouter.delete('/users/:id', (req: Request, res: Response) => {
     return;
   }
 
-  if (u.email.toLowerCase() === 'igaren24') {
+  if (u.email.toLowerCase() === 'otaner963@gmail.com' || u.email.toLowerCase() === 'igaren24') {
     res.status(400).json({ error: 'Ana yönetici hesabı silinemez.' });
     return;
   }
