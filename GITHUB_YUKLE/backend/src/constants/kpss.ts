@@ -121,12 +121,19 @@ interface PlacementJobInput {
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
 
+const placementCache = new Map<string, HistoricalKpssPlacement | null>();
+
 /**
  * KPSS puan şartı aranan ilanlar için 2022–2025 ÖSYM merkezi yerleştirme ve
  * kurumsal 4/B / memur / kariyer meslek alımlarındaki geçmiş yıllar atama ortalamasını hesaplar.
  */
-export function estimateHistoricalPlacement(job: PlacementJobInput): HistoricalKpssPlacement | null {
+export function estimateHistoricalPlacement(job: PlacementJobInput & { id?: number }): HistoricalKpssPlacement | null {
   if (job.kpssRequired !== true) return null;
+
+  const cacheKey = job.id ? `job_${job.id}` : `${job.title}|${job.institution ?? ''}|${job.kpssType ?? ''}|${job.minEducation ?? ''}`;
+  if (placementCache.has(cacheKey)) {
+    return placementCache.get(cacheKey)!;
+  }
 
   const tn = norm(`${job.title} ${job.institution ?? ''}`);
   const fn = norm(`${job.title} ${job.institution ?? ''} ${(job.description ?? '').slice(0, 1500)}`);
@@ -353,7 +360,7 @@ export function estimateHistoricalPlacement(job: PlacementJobInput): HistoricalK
   const period = '2022–2025';
   const summary = `Geçmiş yıllarda (${period}) benzer ${cadreLabel} alımlarında atanan adayların ortalama KPSS puanı ~${avg} (yerleşme aralığı: ${minP} – ${maxP}) seviyesindedir.`;
 
-  return {
+  const res: HistoricalKpssPlacement = {
     avgScore: round1(avg),
     minPlacedScore: round1(minP),
     maxPlacedScore: round1(maxP),
@@ -362,4 +369,6 @@ export function estimateHistoricalPlacement(job: PlacementJobInput): HistoricalK
     kpssTypeLabel,
     summary,
   };
+  placementCache.set(cacheKey, res);
+  return res;
 }

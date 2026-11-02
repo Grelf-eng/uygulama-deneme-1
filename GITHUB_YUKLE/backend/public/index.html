@@ -25,6 +25,14 @@
       --warn: #d97706; --warn-bg: #fef3c7;
       --fail: #dc2626; --fail-bg: #fee2e2;
     }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .spin {
+      display: inline-block;
+      animation: spin 0.8s linear infinite;
+    }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { margin: 0; background: var(--bg); color: var(--text); overscroll-behavior-y: contain; }
     header {
@@ -242,9 +250,11 @@
         </div>
       </div>
 
-      <div class="row" style="justify-content:space-between;margin:6px 4px;">
+      <div class="row" style="justify-content:space-between;align-items:center;margin:6px 4px;">
         <div id="matchesCount" style="font-size:12px;color:var(--muted);"></div>
-        <button style="background:none;border:none;color:var(--primary);font-size:12px;font-weight:700;cursor:pointer;" onclick="loadMatchesJobs(true)">🔄 Eşleşenleri Yenile</button>
+        <button id="matchesRefreshBtn" style="background:none;border:none;color:var(--primary);font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:4px 6px;border-radius:6px;" onclick="loadMatchesJobs(true)">
+          <span id="matchesRefreshIcon">🔄</span><span id="matchesRefreshText">Eşleşenleri Yenile</span>
+        </button>
       </div>
       <div id="matchesList"></div>
     </div>
@@ -1484,19 +1494,42 @@
     }
 
     let matchesReqId = 0;
+    let isMatchesLoading = false;
     async function loadMatchesJobs(force = false) {
+      if (isMatchesLoading && force) return; // Çift tıklamayı ve donmayı engelle
       if (matchesJobsLoaded && !force && currentTab === 'matches') {
         const listEl = document.getElementById('matchesList');
         if (listEl && listEl.children.length > 0) return; // Zaten yüklüyse tekrar bekleme yapma
       }
       const reqId = ++matchesReqId;
-      const params = new URLSearchParams({ limit: '250' });
+      isMatchesLoading = true;
+
+      const refreshBtn = document.getElementById('matchesRefreshBtn');
+      const refreshIcon = document.getElementById('matchesRefreshIcon');
+      const refreshText = document.getElementById('matchesRefreshText');
+      if (refreshBtn && force) {
+        refreshBtn.disabled = true;
+        if (refreshIcon) refreshIcon.className = 'spin';
+        if (refreshText) refreshText.innerText = 'Yenileniyor...';
+      }
+
+      const listEl = document.getElementById('matchesList');
+      if (force && listEl && listEl.children.length > 0) {
+        listEl.style.opacity = '0.55';
+        listEl.style.transition = 'opacity 0.2s ease';
+      }
+
+      const params = new URLSearchParams({ limit: '100' });
       if (matchScoreFilter > 0) params.set('minScore', String(matchScoreFilter));
 
       try {
         const data = await api('/jobs/matches?' + params.toString());
         if (reqId !== matchesReqId) return; // Geçersiz eski yanıtı iptal et
         matchesJobsLoaded = true;
+
+        if (listEl) {
+          listEl.style.opacity = '1';
+        }
 
         // Tercih edilen şehirleri ekranda göster
         const userCities = data.userCities || [];
@@ -1522,7 +1555,6 @@
 
         const scoreText = matchScoreFilter === 100 ? '%100 Tam Uyumlu ' : matchScoreFilter > 0 ? `%${matchScoreFilter}+ Uyumlu ` : '';
         const countEl = document.getElementById('matchesCount');
-        const listEl = document.getElementById('matchesList');
         if (countEl) countEl.innerText = `${data.total} ${scoreText}profilinize eşleşen ilan listeleniyor`;
 
         if (listEl) {
@@ -1552,10 +1584,28 @@
             listEl.innerHTML = data.items.map(renderJobCard).join('');
           }
         }
+
+        if (refreshBtn && force) {
+          if (refreshIcon) refreshIcon.className = '';
+          if (refreshText) refreshText.innerText = '✓ Güncellendi';
+          setTimeout(() => {
+            if (refreshText) refreshText.innerText = 'Eşleşenleri Yenile';
+            if (refreshBtn) refreshBtn.disabled = false;
+          }, 1200);
+        }
       } catch (err) {
         if (reqId !== matchesReqId) return;
-        const listEl = document.getElementById('matchesList');
-        if (listEl) listEl.innerHTML = `<div class="card" style="color:var(--fail);">Eşleşen ilanlar yüklenirken bir hata oluştu: ${err.message}</div>`;
+        if (listEl) {
+          listEl.style.opacity = '1';
+          listEl.innerHTML = `<div class="card" style="color:var(--fail);">Eşleşen ilanlar yüklenirken bir hata oluştu: ${err.message}</div>`;
+        }
+        if (refreshBtn) {
+          if (refreshIcon) refreshIcon.className = '';
+          if (refreshText) refreshText.innerText = 'Eşleşenleri Yenile';
+          refreshBtn.disabled = false;
+        }
+      } finally {
+        isMatchesLoading = false;
       }
     }
 
