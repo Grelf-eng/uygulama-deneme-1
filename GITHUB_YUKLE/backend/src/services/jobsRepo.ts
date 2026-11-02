@@ -100,6 +100,7 @@ export interface JobFilters {
   jobType?: string;
   education?: string;
   source?: string;
+  certificate?: string;
   includeExpired?: boolean;
   sort?: 'newest' | 'deadline';
 }
@@ -130,6 +131,10 @@ function buildWhere(f: JobFilters): { where: string; params: any[] } {
   if (f.education) {
     clauses.push('min_education = ?');
     params.push(f.education);
+  }
+  if (f.certificate) {
+    clauses.push('required_certificates LIKE ?');
+    params.push(`%${f.certificate}%`);
   }
   if (f.source) {
     clauses.push('source = ?');

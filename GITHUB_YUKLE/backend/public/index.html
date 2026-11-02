@@ -110,6 +110,78 @@
       background: #fff; width: 100%; max-width: 500px; border-radius: 20px 20px 0 0;
       padding: 20px 20px calc(24px + env(safe-area-inset-bottom, 0px));
     }
+    /* Yönetici Paneli Stilleri */
+    .admin-stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .admin-stat-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .admin-stat-card .val {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1.1;
+    }
+    .admin-stat-card .lbl {
+      font-size: 11.5px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .admin-nav-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      margin-bottom: 12px;
+      scrollbar-width: none;
+    }
+    .admin-nav-tabs::-webkit-scrollbar { display: none; }
+    .admin-nav-tab {
+      padding: 8px 13px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--muted);
+      cursor: pointer;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      user-select: none;
+    }
+    .admin-nav-tab.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .admin-user-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 13px 15px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+      transition: border-color 0.15s;
+    }
+    .admin-user-card.pending-border {
+      border-left: 4px solid #f59e0b;
+    }
+    .admin-user-card.subscribed-border {
+      border-left: 4px solid #8b5cf6;
+    }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -122,7 +194,7 @@
     <div class="row">
       <a href="/indir" id="desktopQrBtn" class="btn btn-outline btn-sm">📱 Telefona Yükle</a>
       <div id="headerActions" class="row hidden">
-        <span id="adminHeaderBadge" class="badge hidden" style="background:#fef3c7;color:#b45309;">🛡️ Yönetici</span>
+        <button id="adminHeaderBadge" class="btn btn-sm hidden" style="background:#fef3c7;color:#b45309;font-weight:700;border:1px solid #fde68a;" onclick="switchTab('admin')">🛡️ Panel</button>
         <button class="btn btn-outline btn-sm" onclick="showScreen('notifications')" id="notifBtn">🔔</button>
         <button class="btn btn-danger btn-sm" onclick="logout()">Çıkış</button>
       </div>
@@ -324,8 +396,7 @@
         <button class="btn btn-sm" id="adminScrapeBtn" onclick="triggerAdminScrape()">🔄 Kaynaklardan İlanları Yeniden Çek</button>
 
         <div style="margin-top:12px;border-top:1px dashed #fde68a;padding-top:8px;">
-          <div style="font-weight:700;font-size:13px;color:#92400e;margin-bottom:6px;">👥 Kayıtlı Kullanıcılar & Onay Durumları:</div>
-          <div id="adminUsersList" style="max-height:150px;overflow-y:auto;font-size:12px;display:flex;flex-direction:column;gap:4px;"></div>
+          <button class="btn" style="width:100%;background:#b45309;border-color:#b45309;" onclick="switchTab('admin')">👑 Yönetici Kontrol Panelini Aç (Tüm Kullanıcılar & Aboneler)</button>
         </div>
       </div>
       <div class="card">
@@ -398,6 +469,123 @@
         <p id="profMsg" style="color:var(--ok);font-size:13px;margin-top:8px;"></p>
       </div>
     </div>
+
+    <!-- YÖNETİCİ KONTROL PANELİ -->
+    <div id="adminScreen" class="hidden">
+      <!-- Başlık Kartı -->
+      <div class="card" style="border:1.5px solid #f59e0b;background:linear-gradient(180deg, #fffbeb 0%, #fff 100%);">
+        <div class="row" style="justify-content:space-between;margin-bottom:6px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:24px;">🛡️</span>
+            <div>
+              <h2 style="margin:0;font-size:18px;color:#92400e;">Yönetici Kontrol Paneli</h2>
+              <div style="font-size:12px;color:#b45309;">Kayıtlı adaylar, aboneler ve sistem durumu</div>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-outline" style="border-color:#f59e0b;color:#b45309;" onclick="loadAdminDashboard()">🔄 Yenile</button>
+        </div>
+
+        <!-- Metrik İstatistik Kutuları -->
+        <div class="admin-stat-grid" style="margin-top:12px;">
+          <div class="admin-stat-card">
+            <span class="val" id="adminStatTotalUsers">-</span>
+            <span class="lbl">👥 Toplam Kullanıcı</span>
+          </div>
+          <div class="admin-stat-card">
+            <span class="val" style="color:var(--ok);" id="adminStatVerifiedUsers">-</span>
+            <span class="lbl">✅ Onaylı Hesap</span>
+          </div>
+          <div class="admin-stat-card">
+            <span class="val" style="color:#d97706;" id="adminStatPendingUsers">-</span>
+            <span class="lbl">⏳ Onay Bekleyen</span>
+          </div>
+          <div class="admin-stat-card">
+            <span class="val" style="color:#7c3aed;" id="adminStatSubscribedUsers">-</span>
+            <span class="lbl">👑 VIP Abone</span>
+          </div>
+          <div class="admin-stat-card">
+            <span class="val" style="color:#0284c7;" id="adminStatNotifUsers">-</span>
+            <span class="lbl">🔔 Bildirim Abonesi</span>
+          </div>
+          <div class="admin-stat-card">
+            <span class="val" style="color:#059669;" id="adminStatTotalJobs">-</span>
+            <span class="lbl">📋 Aktif İlan</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Yönetici İç Sekmeleri -->
+      <div class="admin-nav-tabs">
+        <button class="admin-nav-tab active" id="btnSubTabUsers" onclick="switchAdminSubTab('users')">👥 Kayıtlı Kişiler (<span id="adminTabUsersBadge">0</span>)</button>
+        <button class="admin-nav-tab" id="btnSubTabSubscribers" onclick="switchAdminSubTab('subscribers')">⭐ Abone Olanlar (<span id="adminTabSubscribersBadge">0</span>)</button>
+        <button class="admin-nav-tab" id="btnSubTabBroadcast" onclick="switchAdminSubTab('broadcast')">📣 Toplu Bildirim / Duyuru</button>
+        <button class="admin-nav-tab" id="btnSubTabSystem" onclick="switchAdminSubTab('system')">⚙️ Sistem & Tarama</button>
+      </div>
+
+      <!-- SEKME 1 & 2: KULLANICI VE ABONE LİSTESİ -->
+      <div id="adminUsersSection">
+        <div class="card" style="padding:12px;">
+          <div class="row" style="gap:8px;margin-bottom:8px;">
+            <input id="adminSearchInput" class="input" style="flex:1;margin-bottom:0;" placeholder="🔍 E-posta, Ad Soyad, Bölüm veya Şehir ara..." oninput="handleAdminSearch()" />
+            <button class="btn btn-outline btn-sm" onclick="exportAdminUsersCsv()" title="CSV Olarak İndir">📥 CSV İndir</button>
+          </div>
+          <div class="row" style="gap:6px;">
+            <button class="chip active" id="filterChipAll" onclick="setAdminFilter('all')">Tümü</button>
+            <button class="chip" id="filterChipPending" onclick="setAdminFilter('pending')">⏳ Onay Bekleyenler</button>
+            <button class="chip" id="filterChipVerified" onclick="setAdminFilter('verified')">✅ Onaylılar</button>
+            <button class="chip" id="filterChipVip" onclick="setAdminFilter('vip')">👑 VIP Aboneler</button>
+            <button class="chip" id="filterChipNotifications" onclick="setAdminFilter('notifications')">🔔 Bildirim Aboneleri</button>
+          </div>
+        </div>
+
+        <div id="adminUsersCountLabel" style="font-size:12px;color:var(--muted);margin:4px 6px 10px;font-weight:600;"></div>
+        <div id="adminUsersListContainer"></div>
+      </div>
+
+      <!-- SEKME 3: TOPLU BİLDİRİM / DUYURU -->
+      <div id="adminBroadcastSection" class="hidden">
+        <div class="card">
+          <h3 style="margin-top:0;color:#1e3a8a;">📣 Kullanıcılara Uygulama İçi Bildirim Gönder</h3>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.45;">
+            Bu bölümden sistem genelinde kayıtlı adaylara veya yalnızca abonelere anında bildirim duyurusu yapabilirsiniz.
+          </p>
+
+          <label>Bildirim Başlığı</label>
+          <input id="adminNotifTitle" class="input" placeholder="Örn: Yeni Kamu İlanları Yayınlandı!" maxlength="150" />
+
+          <label>Bildirim Mesajı (Detay)</label>
+          <textarea id="adminNotifBody" class="input" style="height:90px;" placeholder="Örn: 2026 yılı 1.500 memur ve sözleşmeli personel alım ilanları sisteme eklendi. Tercihlerinize uygun ilanları görmek için Eşleşenler sekmesine göz atın." maxlength="1000"></textarea>
+
+          <label>Gönderilecek Hedef Kitle</label>
+          <select id="adminNotifTarget" class="input">
+            <option value="all">👥 Tüm Kayıtlı Kullanıcılar</option>
+            <option value="subscribers">⭐ Yalnızca Aboneler (VIP ve İlan Bildirimi Açık Olanlar)</option>
+            <option value="verified">✅ Yalnızca Onaylanmış Hesaplar</option>
+          </select>
+
+          <button class="btn" style="width:100%;margin-top:8px;" id="adminBroadcastBtn" onclick="submitAdminBroadcast()">📣 Bildirimi Şimdi Gönder</button>
+          <p id="adminBroadcastResult" style="font-size:13px;margin-top:8px;font-weight:600;"></p>
+        </div>
+      </div>
+
+      <!-- SEKME 4: SİSTEM & İLAN TARAMA -->
+      <div id="adminSystemSection" class="hidden">
+        <div class="card">
+          <h3 style="margin-top:0;color:#b45309;">⚙️ Sistem Durumu & Otomasyon</h3>
+          <div style="font-size:13px;line-height:1.6;color:#334155;margin-bottom:12px;">
+            <div>⚡ <b>7/24 Kesintisiz Çalışma (Keep-Alive):</b> Sunucu her 9 dakikada bir otomatik self-ping ile uyanık tutulmaktadır.</div>
+            <div>☁️ <b>Veritabanı Kalıcılığı:</b> Tüm kullanıcılar ve ilanlar Neon PostgreSQL bulutunda saklanmaktadır.</div>
+          </div>
+          <button class="btn" id="adminSystemScrapeBtn" onclick="triggerAdminScrape()" style="width:100%;">🔄 Resmi Kaynaklardan İlanları Şimdi Tara (Scrape)</button>
+          <p id="adminScrapeStatus" style="font-size:12.5px;color:var(--muted);margin-top:8px;"></p>
+
+          <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px;">
+            <div style="font-weight:700;font-size:13px;margin-bottom:8px;">📊 Kaynaklara Göre İlan Dağılımı:</div>
+            <div id="adminSourcesList" style="display:flex;flex-direction:column;gap:6px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- MOBİL KURULUM YARDIM PENCERESİ (iOS / Tarayıcı Menüsü İçin) -->
@@ -444,6 +632,7 @@
     <button class="tab-btn" data-tab="cv" onclick="switchTab('cv')"><span class="ico">📄</span><span>CV Analiz</span></button>
     <button class="tab-btn" data-tab="applications" onclick="switchTab('applications')"><span class="ico">✅</span><span>Başvurular</span></button>
     <button class="tab-btn" data-tab="profile" onclick="switchTab('profile')"><span class="ico">👤</span><span>Profil</span></button>
+    <button id="adminTabBtn" class="tab-btn hidden" data-tab="admin" onclick="switchTab('admin')"><span class="ico">🛡️</span><span>Panel</span></button>
   </nav>
 
   <script>
@@ -734,52 +923,361 @@
       }
     }
 
-    async function loadAdminStats() {
-      try {
-        const s = await api('/admin/stats');
-        const srcSummary = (s.bySource || []).map(x => `${x.source}: ${x.count}`).join(', ');
-        document.getElementById('adminStatsText').innerText =
-          `Aktif İlan: ${s.jobCount} (${srcSummary || 'yok'}) • Kayıtlı Hesap: ${s.userCount}`;
+    let adminStatsData = null;
+    let adminUsersList = [];
+    let currentAdminFilter = 'all';
+    let currentAdminSubTab = 'users';
+    let adminSearchQuery = '';
 
-        const uRes = await api('/admin/users');
-        const box = document.getElementById('adminUsersList');
-        if (box && uRes.users) {
-          box.innerHTML = uRes.users.map(u => `
-            <div style="display:flex;align-items:center;justify-content:space-between;background:#fff;padding:6px 10px;border-radius:8px;border:1px solid #fef3c7;">
-              <span style="font-weight:600;color:#1e293b;">${u.email}</span>
-              <span>
-                ${u.is_verified ? '<span style="color:var(--ok);font-size:11px;font-weight:700;">✓ Onaylı</span>' : `<button class="btn btn-sm" style="padding:2px 8px;font-size:11px;background:var(--ok);color:#fff;" onclick="adminVerifyUser(${u.id})">Onayla</button>`}
-              </span>
-            </div>
-          `).join('') || '<div style="color:#78350f;">Henüz kayıtlı üye yok.</div>';
+    async function loadAdminDashboard() {
+      try {
+        const [stats, usersRes] = await Promise.all([
+          api('/admin/stats'),
+          api('/admin/users?limit=500')
+        ]);
+        adminStatsData = stats;
+        adminUsersList = usersRes.users || [];
+
+        // Metrik kutularını doldur
+        const elTotal = document.getElementById('adminStatTotalUsers');
+        if (elTotal) elTotal.innerText = stats.totalUsers ?? 0;
+        const elVerif = document.getElementById('adminStatVerifiedUsers');
+        if (elVerif) elVerif.innerText = stats.verifiedUsers ?? 0;
+        const elPend = document.getElementById('adminStatPendingUsers');
+        if (elPend) elPend.innerText = stats.pendingUsers ?? 0;
+        const elSub = document.getElementById('adminStatSubscribedUsers');
+        if (elSub) elSub.innerText = stats.subscribedUsers ?? 0;
+        const elNotif = document.getElementById('adminStatNotifUsers');
+        if (elNotif) elNotif.innerText = stats.notificationSubscribers ?? 0;
+        const elJobs = document.getElementById('adminStatTotalJobs');
+        if (elJobs) elJobs.innerText = stats.totalJobs ?? 0;
+
+        // Sekme sayaçları
+        const tabUsersBadge = document.getElementById('adminTabUsersBadge');
+        if (tabUsersBadge) tabUsersBadge.innerText = stats.totalUsers ?? 0;
+        const totalSubscribers = adminUsersList.filter(u => u.isSubscribed || u.notificationsEnabled).length;
+        const tabSubBadge = document.getElementById('adminTabSubscribersBadge');
+        if (tabSubBadge) tabSubBadge.innerText = totalSubscribers;
+
+        // Profildeki özet kartı güncelle
+        const srcSummary = (stats.bySource || []).map(x => `${x.source}: ${x.count}`).join(', ');
+        const statsSummaryEl = document.getElementById('adminStatsText');
+        if (statsSummaryEl) {
+          statsSummaryEl.innerText = `Aktif İlan: ${stats.totalJobs} (${srcSummary || 'yok'}) • Kayıtlı Hesap: ${stats.totalUsers} • Abone: ${stats.subscribedUsers}`;
         }
-      } catch {}
+
+        // Kaynak dağılımı listesi (Sistem sekmesi)
+        const sourcesBox = document.getElementById('adminSourcesList');
+        if (sourcesBox && stats.bySource) {
+          sourcesBox.innerHTML = stats.bySource.map(s => `
+            <div style="display:flex;justify-content:space-between;background:#f8fafc;padding:6px 10px;border-radius:8px;border:1px solid #e2e8f0;font-size:12.5px;">
+              <span style="font-weight:600;text-transform:capitalize;">🏛️ ${escapeHtml(s.source)}</span>
+              <span class="badge" style="background:#e0e7ff;color:#3730a3;font-weight:700;">${s.count} İlan</span>
+            </div>
+          `).join('');
+        }
+
+        renderAdminUsers();
+      } catch (e) {
+        console.error('Admin paneli yükleme hatası:', e);
+      }
+    }
+
+    async function loadAdminStats() {
+      return loadAdminDashboard();
+    }
+
+    function switchAdminSubTab(subTab) {
+      currentAdminSubTab = subTab;
+      document.getElementById('btnSubTabUsers').classList.toggle('active', subTab === 'users');
+      document.getElementById('btnSubTabSubscribers').classList.toggle('active', subTab === 'subscribers');
+      document.getElementById('btnSubTabBroadcast').classList.toggle('active', subTab === 'broadcast');
+      document.getElementById('btnSubTabSystem').classList.toggle('active', subTab === 'system');
+
+      document.getElementById('adminUsersSection').classList.toggle('hidden', subTab === 'broadcast' || subTab === 'system');
+      document.getElementById('adminBroadcastSection').classList.toggle('hidden', subTab !== 'broadcast');
+      document.getElementById('adminSystemSection').classList.toggle('hidden', subTab !== 'system');
+
+      if (subTab === 'subscribers') {
+        setAdminFilter('subscribers');
+      } else if (subTab === 'users') {
+        setAdminFilter('all');
+      }
+    }
+
+    function setAdminFilter(filter) {
+      currentAdminFilter = filter;
+      ['All', 'Pending', 'Verified', 'Vip', 'Notifications'].forEach(f => {
+        const el = document.getElementById('filterChip' + f);
+        if (el) el.classList.toggle('active', f.toLowerCase() === filter.toLowerCase());
+      });
+      renderAdminUsers();
+    }
+
+    function handleAdminSearch() {
+      adminSearchQuery = (document.getElementById('adminSearchInput').value || '').trim().toLowerCase();
+      renderAdminUsers();
+    }
+
+    function renderAdminUsers() {
+      const container = document.getElementById('adminUsersListContainer');
+      const countLabel = document.getElementById('adminUsersCountLabel');
+      if (!container) return;
+
+      let filtered = adminUsersList.slice();
+
+      // Filtreleme
+      if (currentAdminFilter === 'pending') {
+        filtered = filtered.filter(u => !u.isVerified);
+      } else if (currentAdminFilter === 'verified') {
+        filtered = filtered.filter(u => u.isVerified);
+      } else if (currentAdminFilter === 'vip') {
+        filtered = filtered.filter(u => u.isSubscribed);
+      } else if (currentAdminFilter === 'notifications') {
+        filtered = filtered.filter(u => u.notificationsEnabled);
+      } else if (currentAdminFilter === 'subscribers') {
+        filtered = filtered.filter(u => u.isSubscribed || u.notificationsEnabled);
+      }
+
+      // Arama filtresi
+      if (adminSearchQuery) {
+        filtered = filtered.filter(u => {
+          const email = (u.email || '').toLowerCase();
+          const name = (u.fullName || '').toLowerCase();
+          const dept = (u.department || '').toLowerCase();
+          const cities = (u.cities || []).join(' ').toLowerCase();
+          return email.includes(adminSearchQuery) || name.includes(adminSearchQuery) || dept.includes(adminSearchQuery) || cities.includes(adminSearchQuery);
+        });
+      }
+
+      if (countLabel) {
+        countLabel.innerText = `Listelenen Kullanıcı: ${filtered.length} / ${adminUsersList.length}`;
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="card" style="text-align:center;padding:24px 14px;color:var(--muted);">
+            <div style="font-size:32px;margin-bottom:6px;">🔍</div>
+            <div style="font-weight:700;font-size:14px;color:var(--text);">Eşleşen Kullanıcı Bulunamadı</div>
+            <div style="font-size:12.5px;margin-top:4px;">Arama kriterlerinizi veya filtre seçimini değiştirebilirsiniz.</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(u => {
+        const isPending = !u.isVerified;
+        const isSubscribed = Boolean(u.isSubscribed);
+        const cardClass = isPending ? 'admin-user-card pending-border' : (isSubscribed ? 'admin-user-card subscribed-border' : 'admin-user-card');
+
+        const kpssInfo = u.kpssScore ? `${u.kpssType || 'KPSS'}: ${u.kpssScore}` : 'KPSS Yok';
+        const eduInfo = u.educationLevel ? escapeHtml(u.educationLevel) : 'Belirtilmedi';
+        const deptInfo = u.department ? ` - ${escapeHtml(u.department)}` : '';
+        const citiesInfo = (u.cities && u.cities.length > 0) ? u.cities.slice(0, 3).join(', ') + (u.cities.length > 3 ? ` (+${u.cities.length - 3})` : '') : 'Tüm Türkiye';
+
+        return `
+          <div class="${cardClass}">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;">
+              <div>
+                <div style="font-weight:800;font-size:14.5px;color:#1e293b;display:flex;align-items:center;gap:6px;">
+                  <span>${escapeHtml(u.fullName || u.email)}</span>
+                  ${u.isAdmin ? '<span class="badge" style="background:#fee2e2;color:#991b1b;font-size:10.5px;">🛡️ Yönetici</span>' : ''}
+                </div>
+                <div style="font-size:12px;color:var(--muted);">${escapeHtml(u.email)} • Kayıt: ${escapeHtml(u.createdAt ? u.createdAt.substring(0, 16) : '')}</div>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;">
+                ${u.isVerified
+                  ? '<span class="badge" style="background:#dcfce7;color:#15803d;font-size:11px;">✓ Onaylı</span>'
+                  : '<span class="badge" style="background:#fef3c7;color:#b45309;font-size:11px;">⏳ Kod Bekliyor</span>'
+                }
+                ${isSubscribed
+                  ? '<span class="badge" style="background:#f3e8ff;color:#7e22ce;font-size:11px;font-weight:700;">👑 VIP Abone</span>'
+                  : ''
+                }
+                ${u.notificationsEnabled
+                  ? '<span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:11px;">🔔 İlan Alarmı</span>'
+                  : '<span class="badge" style="background:#f1f5f9;color:#64748b;font-size:11px;">🔕 Bildirim Kapalı</span>'
+                }
+              </div>
+            </div>
+
+            <!-- Profil Detayları -->
+            <div style="background:#f8fafc;padding:8px 10px;border-radius:8px;font-size:12px;color:#334155;margin-bottom:10px;display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:6px;">
+              <div>🎓 <b>Eğitim:</b> ${eduInfo}${deptInfo}</div>
+              <div>📊 <b>Puan:</b> ${escapeHtml(kpssInfo)}</div>
+              <div>📍 <b>Şehirler:</b> ${escapeHtml(citiesInfo)}</div>
+              <div>⭐ <b>Takip:</b> ${u.favoritesCount || 0} Favori • ${u.applicationsCount || 0} Başvuru</div>
+            </div>
+
+            <!-- Yönetici İşlem Butonları -->
+            <div class="row" style="gap:6px;justify-content:flex-end;">
+              ${!u.isVerified ? `
+                <button class="btn btn-sm" style="background:var(--ok);border-color:var(--ok);padding:4px 9px;font-size:11.5px;" onclick="adminVerifyUser(${u.id})">
+                  ✓ Hesabı Onayla
+                </button>
+              ` : ''}
+
+              <button class="btn btn-sm btn-outline" style="padding:4px 9px;font-size:11.5px;color:#7c3aed;border-color:#7c3aed;" onclick="adminToggleSubscription(${u.id}, ${isSubscribed})">
+                ${isSubscribed ? '❌ VIP İptal Et' : '👑 VIP Abone Yap'}
+              </button>
+
+              <button class="btn btn-sm btn-outline" style="padding:4px 9px;font-size:11.5px;color:#475569;border-color:#cbd5e1;" onclick="adminToggleAdmin(${u.id}, ${u.isAdmin})">
+                ${u.isAdmin ? '🛡️ Yetkiyi Kaldır' : '🛡️ Yönetici Yap'}
+              </button>
+
+              ${!u.isAdmin ? `
+                <button class="btn btn-sm btn-outline" style="padding:4px 9px;font-size:11.5px;color:#ef4444;border-color:#fca5a5;" onclick="adminDeleteUser(${u.id}, '${escapeHtml(u.email)}')">
+                  🗑️ Sil
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
     async function adminVerifyUser(id) {
       try {
         const r = await api(`/admin/users/${id}/verify`, { method: 'POST' });
         alert(r.message || 'Kullanıcı onaylandı!');
-        await loadAdminStats();
+        await loadAdminDashboard();
       } catch (e) {
-        alert(e.message);
+        alert(e.message || 'Onaylama başarısız oldu.');
       }
+    }
+
+    async function adminToggleSubscription(id, currentStatus) {
+      const nextStatus = !currentStatus;
+      const promptTier = nextStatus ? (prompt('Abonelik türü belirleyin (standart, vip, pro):', 'vip') || 'vip') : 'standart';
+      try {
+        const r = await api(`/admin/users/${id}/toggle-subscription`, {
+          method: 'POST',
+          body: { isSubscribed: nextStatus, tier: promptTier }
+        });
+        alert(r.message || 'Abonelik durumu güncellendi.');
+        await loadAdminDashboard();
+      } catch (e) {
+        alert(e.message || 'Abonelik güncellenemedi.');
+      }
+    }
+
+    async function adminToggleAdmin(id, currentAdmin) {
+      if (!confirm(`Bu kullanıcının yöneticilik yetkisini ${currentAdmin ? 'kaldırmak' : 'vermek'} istediğinize emin misiniz?`)) return;
+      try {
+        const r = await api(`/admin/users/${id}/toggle-admin`, { method: 'POST' });
+        alert(r.message || 'Yetki güncellendi.');
+        await loadAdminDashboard();
+      } catch (e) {
+        alert(e.message || 'Yetki değiştirilemedi.');
+      }
+    }
+
+    async function adminDeleteUser(id, email) {
+      if (!confirm(`${email} hesabını tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
+      try {
+        const r = await api(`/admin/users/${id}`, { method: 'DELETE' });
+        alert(r.message || 'Hesap başarıyla silindi.');
+        await loadAdminDashboard();
+      } catch (e) {
+        alert(e.message || 'Hesap silinemedi.');
+      }
+    }
+
+    async function submitAdminBroadcast() {
+      const title = (document.getElementById('adminNotifTitle').value || '').trim();
+      const body = (document.getElementById('adminNotifBody').value || '').trim();
+      const target = document.getElementById('adminNotifTarget').value;
+      const resultEl = document.getElementById('adminBroadcastResult');
+      const btn = document.getElementById('adminBroadcastBtn');
+
+      if (!title || !body) {
+        alert('Lütfen hem bildirim başlığını hem de mesajını doldurun.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = '⏳ Gönderiliyor...';
+      resultEl.innerText = '';
+
+      try {
+        const r = await api('/admin/broadcast', {
+          method: 'POST',
+          body: { title, body, target }
+        });
+        resultEl.style.color = 'var(--ok)';
+        resultEl.innerText = '✅ ' + (r.message || 'Bildirim başarıyla gönderildi.');
+        document.getElementById('adminNotifTitle').value = '';
+        document.getElementById('adminNotifBody').value = '';
+      } catch (e) {
+        resultEl.style.color = 'var(--fail)';
+        resultEl.innerText = '❌ ' + (e.message || 'Bildirim gönderilemedi.');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '📣 Bildirimi Şimdi Gönder';
+      }
+    }
+
+    function exportAdminUsersCsv() {
+      if (!adminUsersList || adminUsersList.length === 0) {
+        alert('Dışa aktarılacak kullanıcı bulunamadı.');
+        return;
+      }
+
+      const headers = ['ID', 'E-posta', 'Ad Soyad', 'Onaylı', 'Abone', 'Abonelik Türü', 'İlan Alarmı', 'Eğitim', 'Bölüm', 'KPSS Puanı', 'KPSS Türü', 'Şehirler', 'Kayıt Tarihi'];
+      const rows = adminUsersList.map(u => [
+        u.id,
+        `"${(u.email || '').replace(/"/g, '""')}"`,
+        `"${(u.fullName || '').replace(/"/g, '""')}"`,
+        u.isVerified ? 'Evet' : 'Hayır',
+        u.isSubscribed ? 'Evet' : 'Hayır',
+        u.subscriptionTier || 'standart',
+        u.notificationsEnabled ? 'Açık' : 'Kapalı',
+        `"${(u.educationLevel || '').replace(/"/g, '""')}"`,
+        `"${(u.department || '').replace(/"/g, '""')}"`,
+        u.kpssScore || '',
+        u.kpssType || '',
+        `"${(u.cities || []).join(', ').replace(/"/g, '""')}"`,
+        u.createdAt || ''
+      ]);
+
+      const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(';')].concat(rows.map(e => e.join(';'))).join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `kamu_ilan_kullanicilar_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
 
     async function triggerAdminScrape() {
       const btn = document.getElementById('adminScrapeBtn');
-      btn.disabled = true;
-      btn.innerText = '⏳ İlanlar çekiliyor...';
+      const sysBtn = document.getElementById('adminSystemScrapeBtn');
+      const statusEl = document.getElementById('adminScrapeStatus');
+      if (btn) { btn.disabled = true; btn.innerText = '⏳ İlanlar çekiliyor...'; }
+      if (sysBtn) { sysBtn.disabled = true; sysBtn.innerText = '⏳ Resmi kaynaklar taranıyor...'; }
+      if (statusEl) statusEl.innerText = '⏳ Resmi Gazete, Kariyer Kapısı ve İŞKUR taranıyor, lütfen bekleyin...';
+
       try {
-        await api('/admin/scrape', { method: 'POST' });
-        await loadAdminStats();
-        btn.innerText = '✅ Güncellendi!';
+        const r = await api('/admin/scrape', { method: 'POST' });
+        await loadAdminDashboard();
+        if (btn) btn.innerText = '✅ Güncellendi!';
+        if (sysBtn) sysBtn.innerText = '✅ Tarama Tamamlandı!';
+        if (statusEl) statusEl.innerText = '✅ Tarama başarıyla tamamlandı. Yeni ilanlar eklendi.';
       } catch (e) {
-        alert(e.message);
-        btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek';
+        alert(e.message || 'Scraping sırasında hata oluştu.');
+        if (btn) btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek';
+        if (sysBtn) sysBtn.innerText = '🔄 Resmi Kaynaklardan İlanları Şimdi Tara (Scrape)';
+        if (statusEl) statusEl.innerText = '❌ Tarama başarısız: ' + e.message;
       } finally {
-        btn.disabled = false;
-        setTimeout(() => { btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek'; }, 2500);
+        if (btn) {
+          btn.disabled = false;
+          setTimeout(() => { btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek'; }, 2500);
+        }
+        if (sysBtn) {
+          sysBtn.disabled = false;
+          setTimeout(() => { sysBtn.innerText = '🔄 Resmi Kaynaklardan İlanları Şimdi Tara (Scrape)'; }, 2500);
+        }
       }
     }
 
@@ -942,11 +1440,13 @@
       document.getElementById('authPass').value = '';
       clearCvForm();
       document.getElementById('adminHeaderBadge').classList.add('hidden');
+      const adminTabBtn = document.getElementById('adminTabBtn');
+      if (adminTabBtn) adminTabBtn.classList.add('hidden');
       document.getElementById('adminPanelCard').classList.add('hidden');
       document.getElementById('authScreen').classList.remove('hidden');
       document.getElementById('headerActions').classList.add('hidden');
       document.getElementById('bottomTabs').classList.add('hidden');
-      ['jobsScreen','matchesScreen','detailScreen','cvScreen','applicationsScreen','notificationsScreen','profileScreen'].forEach(id => {
+      ['jobsScreen','matchesScreen','detailScreen','cvScreen','applicationsScreen','notificationsScreen','profileScreen','adminScreen'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
       });
@@ -992,10 +1492,12 @@
 
         const isAdmin = Boolean(me.isAdmin);
         document.getElementById('adminHeaderBadge').classList.toggle('hidden', !isAdmin);
+        const adminTabBtn = document.getElementById('adminTabBtn');
+        if (adminTabBtn) adminTabBtn.classList.toggle('hidden', !isAdmin);
         document.getElementById('adminPanelCard').classList.toggle('hidden', !isAdmin);
         if (isAdmin) {
           document.getElementById('adminUserLabel').innerText = me.username || me.email || 'Admin';
-          loadAdminStats();
+          loadAdminDashboard();
         }
 
         fillProfileForm(me.profile);
@@ -1210,7 +1712,7 @@
     }
 
     function showScreen(name) {
-      ['jobsScreen','matchesScreen','detailScreen','cvScreen','applicationsScreen','notificationsScreen','profileScreen'].forEach(id => {
+      ['jobsScreen','matchesScreen','detailScreen','cvScreen','applicationsScreen','notificationsScreen','profileScreen','adminScreen'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
       });
@@ -1225,6 +1727,7 @@
       if (name === 'cv') loadSavedCv();
       if (name === 'applications') loadApplications();
       if (name === 'notifications') loadNotifications();
+      if (name === 'admin') loadAdminDashboard();
     }
 
     let allJobsLoaded = false;
@@ -1246,6 +1749,9 @@
       } else if (tab === 'matches') {
         showScreen('matches');
         if (!matchesJobsLoaded) loadMatchesJobs();
+      } else if (tab === 'admin') {
+        showScreen('admin');
+        loadAdminDashboard();
       } else {
         showScreen(tab);
       }

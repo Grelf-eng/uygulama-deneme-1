@@ -11,11 +11,14 @@ db.pragma('foreign_keys = ON');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
-  id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  email         TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
-  is_verified   INTEGER NOT NULL DEFAULT 0,
-  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  email             TEXT NOT NULL UNIQUE,
+  password_hash     TEXT NOT NULL,
+  is_admin          INTEGER NOT NULL DEFAULT 0,
+  is_verified       INTEGER NOT NULL DEFAULT 0,
+  is_subscribed     INTEGER NOT NULL DEFAULT 0,
+  subscription_tier TEXT NOT NULL DEFAULT 'standart',
+  created_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS profiles (
@@ -118,6 +121,8 @@ function addColumnIfMissing(table: string, column: string, ddl: string): void {
 }
 addColumnIfMissing('users', 'is_admin', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'is_verified', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('users', 'is_subscribed', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('users', 'subscription_tier', "TEXT NOT NULL DEFAULT 'standart'");
 addColumnIfMissing('profiles', 'certificates', "TEXT NOT NULL DEFAULT '[]'");
 addColumnIfMissing('jobs', 'required_certificates', "TEXT NOT NULL DEFAULT '[]'");
 addColumnIfMissing('jobs', 'certificate_mode', "TEXT NOT NULL DEFAULT 'all'");
