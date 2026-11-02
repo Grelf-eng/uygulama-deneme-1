@@ -7,7 +7,7 @@ import {
 } from '../types';
 import { certificatesMatch } from '../constants/certificates';
 import { norm, todayISO } from '../utils/text';
-import { formatKpssType, normalizeKpssType } from '../constants/kpss';
+import { formatKpssType, normalizeKpssType, estimateHistoricalPlacement } from '../constants/kpss';
 
 export type CheckStatus = 'ok' | 'fail' | 'warn';
 
@@ -80,12 +80,22 @@ export function checkEligibility(job: Job, profile: Profile | null): Eligibility
         detail: `KPSS${typeLabel} aranıyor; profilinize KPSS puanınızı ekleyin`,
       });
     } else if (job.minKpssScore == null) {
-      checks.push({
-        key: 'kpss',
-        label: 'KPSS',
-        status: 'warn',
-        detail: `KPSS${typeLabel} aranıyor, taban puan ilanda belirtilmemiş (puanınız: ${profile.kpssScore})`,
-      });
+      const historical = estimateHistoricalPlacement(job);
+      if (historical && profile.kpssScore >= historical.avgScore) {
+        checks.push({
+          key: 'kpss',
+          label: 'KPSS (Ortalama Üstü)',
+          status: 'ok',
+          detail: `🏆 Taban puan ilanda belirtilmemiş ancak puanınız (${profile.kpssScore}) geçmiş atama ortalamasının (${historical.avgScore.toFixed(1)}) üzerinde!`,
+        });
+      } else {
+        checks.push({
+          key: 'kpss',
+          label: 'KPSS',
+          status: 'warn',
+          detail: `KPSS${typeLabel} aranıyor, taban puan ilanda belirtilmemiş (puanınız: ${profile.kpssScore})`,
+        });
+      }
     } else if (profile.kpssScore < job.minKpssScore) {
       checks.push({
         key: 'kpss',
@@ -102,11 +112,15 @@ export function checkEligibility(job: Job, profile: Profile | null): Eligibility
         detail: `Puan yeterli (${profile.kpssScore} ≥ ${job.minKpssScore}) ancak ilan ${jobTypeLabel} istiyor, sizin türünüz ${profTypeLabel}`,
       });
     } else {
+      const historical = estimateHistoricalPlacement(job);
+      const isAboveAvg = historical && profile.kpssScore >= historical.avgScore;
       checks.push({
         key: 'kpss',
-        label: 'KPSS',
+        label: isAboveAvg ? 'KPSS (Ortalama Üstü)' : 'KPSS',
         status: 'ok',
-        detail: `Puanınız yeterli (${profile.kpssScore} ≥ ${job.minKpssScore})`,
+        detail: isAboveAvg
+          ? `🏆 Puanınız yeterli ve geçmiş atama ortalamasının üzerinde! (${profile.kpssScore} ≥ ${historical.avgScore.toFixed(1)} ort.)`
+          : `Puanınız yeterli (${profile.kpssScore} ≥ ${job.minKpssScore})`,
       });
     }
   }
@@ -286,19 +300,32 @@ function computeScore(job: Job, profile: Profile | null, overall: CheckStatus, c
     profile.cities.length === 0 ||
     profile.cities.some((c) => norm(c) === norm(job.city) || norm(job.city).includes(norm(c)));
 
+  const historical = estimateHistoricalPlacement(job);
+  const isKpssAboveAvg = Boolean(
+    profile?.kpssScore != null && historical && profile.kpssScore >= historical.avgScore
+  );
+
   if (overall === 'ok') {
+    // KPSS ortalamadan yüksekse ve şehir uyuyorsa direkt %100 Uyum
+    if (isKpssAboveAvg && cityMatch) {
+      return 100;
+    }
     // Hiçbir şartta eksik/uyarı yoksa ve şehir tutuyorsa %100 tam uyum
     if (!hasWarn && cityMatch) {
       return 100;
     }
-    // 1 küçük uyarı varsa (örn. KPSS taban puanı ilanda yazmıyor veya sertifika opsiyonel)
+    // 1 küçük uyarı varsa (örn. sertifika opsiyonel)
     if (warnCount === 1) {
-      return cityMatch ? 85 : 75;
+      return isKpssAboveAvg ? 95 : (cityMatch ? 85 : 75);
     }
-    return cityMatch ? 75 : 65;
+    return isKpssAboveAvg ? 90 : (cityMatch ? 75 : 65);
   }
 
   // overall === 'warn' (şartlardan bazıları net teyit edilemedi ama ret de değil)
+  if (isKpssAboveAvg && cityMatch) {
+    // KPSS puanı atama ortalamasının üzerindeyse uyum oranını yüksek tut (85)
+    return 85;
+  }
   if (warnCount <= 1 && cityMatch) return 70;
   if (cityMatch) return 60;
   return 50;
