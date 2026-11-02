@@ -46,8 +46,20 @@ jobsRouter.get('/meta', (_req, res) => {
   });
 });
 
-/** Canlı kamu ilanları taramasını tetikler (GET veya POST) */
+/** Canlı kamu ilanları taramasını tetikler (GET veya POST) - 3 dakikalık anti-DoS korumalı */
+let lastScrapeTrigger = 0;
 jobsRouter.all('/scrape/trigger', async (_req, res) => {
+  const now = Date.now();
+  if (now - lastScrapeTrigger < 3 * 60 * 1000) {
+    const waitSec = Math.ceil((3 * 60 * 1000 - (now - lastScrapeTrigger)) / 1000);
+    res.json({
+      success: true,
+      throttled: true,
+      message: `Tarama zaten yakın zamanda çalıştırıldı. Tekrar çalıştırmak için lütfen ${waitSec} saniye bekleyin.`,
+    });
+    return;
+  }
+  lastScrapeTrigger = now;
   const { runAllScrapers } = await import('../scrapers');
   const { syncLocalJobsToCloud } = await import('../services/cloudDb');
   runAllScrapers()

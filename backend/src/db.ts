@@ -105,6 +105,8 @@ CREATE TABLE IF NOT EXISTS email_verifications (
   email       TEXT PRIMARY KEY,
   code        TEXT NOT NULL,
   expires_at  INTEGER NOT NULL,
+  attempts    INTEGER NOT NULL DEFAULT 0,
+  last_sent   INTEGER NOT NULL DEFAULT 0,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `);
@@ -119,3 +121,5 @@ addColumnIfMissing('users', 'is_verified', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('profiles', 'certificates', "TEXT NOT NULL DEFAULT '[]'");
 addColumnIfMissing('jobs', 'required_certificates', "TEXT NOT NULL DEFAULT '[]'");
 addColumnIfMissing('jobs', 'certificate_mode', "TEXT NOT NULL DEFAULT 'all'");
+addColumnIfMissing('email_verifications', 'attempts', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('email_verifications', 'last_sent', 'INTEGER NOT NULL DEFAULT 0');

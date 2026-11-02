@@ -1411,23 +1411,23 @@
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
             <div style="flex:1" onclick="openJob(${j.id})">
-              <div class="job-title">${j.title}</div>
-              <div class="sub">${[j.institution, j.city, srcName].filter(Boolean).join(' • ')}</div>
+              <div class="job-title">${escapeHtml(j.title)}</div>
+              <div class="sub">${[escapeHtml(j.institution), escapeHtml(j.city), escapeHtml(srcName)].filter(Boolean).join(' • ')}</div>
             </div>
           </div>
           <div class="row" style="margin-bottom:8px;" onclick="openJob(${j.id})">
-            <span class="badge" style="background:var(--border);color:var(--text)">${TYPE_LABELS[j.jobType] || j.jobType}</span>
-            <span class="badge" style="background:${kb.bg};color:${kb.color}">${kb.text}</span>
-            ${j.positions ? `<span class="badge" style="background:var(--border)">${j.positions} kişi</span>` : ''}
-            ${j.applicationStatus ? `<span class="badge" style="background:var(--primary-light);color:var(--primary)">${APP_LABELS[j.applicationStatus]}</span>` : ''}
+            <span class="badge" style="background:var(--border);color:var(--text)">${escapeHtml(TYPE_LABELS[j.jobType] || j.jobType)}</span>
+            <span class="badge" style="background:${kb.bg};color:${kb.color}">${escapeHtml(kb.text)}</span>
+            ${j.positions ? `<span class="badge" style="background:var(--border)">${escapeHtml(j.positions)} kişi</span>` : ''}
+            ${j.applicationStatus ? `<span class="badge" style="background:var(--primary-light);color:var(--primary)">${escapeHtml(APP_LABELS[j.applicationStatus] || j.applicationStatus)}</span>` : ''}
           </div>
-          ${(j.requiredCertificates || []).length ? `<div class="sub" style="margin-bottom:8px">📜 Aranan belge: ${j.requiredCertificates.join(j.certificateMode === 'any' ? ' veya ' : ', ')}</div>` : ''}
+          ${(j.requiredCertificates || []).length ? `<div class="sub" style="margin-bottom:8px">📜 Aranan belge: ${escapeHtml(j.requiredCertificates.join(j.certificateMode === 'any' ? ' veya ' : ', '))}</div>` : ''}
           ${j.historicalPlacement ? `
             <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;padding:6px 10px;font-size:12.5px;color:#166534;margin-bottom:8px;">
-              📊 <b>Geçmiş Yıl Atama Ortalaması:</b> ~${j.historicalPlacement.avgScore} Puan (${j.historicalPlacement.period} · ${j.historicalPlacement.minPlacedScore} - ${j.historicalPlacement.maxPlacedScore})
+              📊 <b>Geçmiş Yıl Atama Ortalaması:</b> ~${escapeHtml(j.historicalPlacement.avgScore)} Puan (${escapeHtml(j.historicalPlacement.period)} · ${escapeHtml(j.historicalPlacement.minPlacedScore)} - ${escapeHtml(j.historicalPlacement.maxPlacedScore)})
               ${currentUserProfile && currentUserProfile.kpssScore != null && currentUserProfile.kpssScore >= j.historicalPlacement.avgScore ? `
                 <div style="margin-top:4px;font-weight:700;color:#15803d;display:flex;align-items:center;gap:4px;">
-                  <span>🏆</span><span>KPSS Puanınız (${currentUserProfile.kpssScore}) atama ortalamasının üzerinde — Yüksek Uyum!</span>
+                  <span>🏆</span><span>KPSS Puanınız (${escapeHtml(currentUserProfile.kpssScore)}) atama ortalamasının üzerinde — Yüksek Uyum!</span>
                 </div>
               ` : ''}
             </div>
@@ -1436,7 +1436,7 @@
             <span class="badge" style="background:${m.bg};color:${m.color};padding:5px 10px;font-size:13px;">
               ${m.emoji} ${m.label} · Uyum %${j.eligibility.score}
             </span>
-            ${j.deadline ? `<span style="font-size:12px;color:var(--muted)">⏰ Son: ${j.deadline}</span>` : ''}
+            ${j.deadline ? `<span style="font-size:12px;color:var(--muted)">⏰ Son: ${escapeHtml(j.deadline)}</span>` : ''}
           </div>
         </div>
       `;
@@ -1639,12 +1639,12 @@
       document.getElementById('detailScreen').innerHTML = `
         <button class="btn btn-outline" style="margin-bottom:12px" onclick="switchTab(currentTab)">← Listeye Dön</button>
         <div class="card">
-          <h2 style="margin:0 0 6px 0;font-size:19px;">${j.title}</h2>
-          <div class="sub">${[j.institution, j.city, 'Kaynak: ' + srcName].filter(Boolean).join(' • ')}</div>
+          <h2 style="margin:0 0 6px 0;font-size:19px;">${escapeHtml(j.title)}</h2>
+          <div class="sub">${[escapeHtml(j.institution), escapeHtml(j.city), 'Kaynak: ' + escapeHtml(srcName)].filter(Boolean).join(' • ')}</div>
           <div class="row" style="margin-top:12px;">
-            ${j.url ? `<a class="btn" style="flex:1" href="${j.url}" target="_blank" rel="noopener noreferrer">İlan Sayfasına Git ↗</a>` : ''}
-            ${applyUrl && applyUrl !== j.url ? `<a class="btn btn-outline" style="flex:1" href="${applyUrl}" target="_blank" rel="noopener noreferrer">Başvuru Ekranı ↗</a>` : ''}
-            <button class="btn btn-outline" style="flex:1" onclick="openCvForJobType('${j.jobType}')">📄 CV Puanımı Gör</button>
+            ${j.url && safeUrl(j.url) ? `<a class="btn" style="flex:1" href="${safeUrl(j.url)}" target="_blank" rel="noopener noreferrer">İlan Sayfasına Git ↗</a>` : ''}
+            ${applyUrl && safeUrl(applyUrl) && safeUrl(applyUrl) !== safeUrl(j.url) ? `<a class="btn btn-outline" style="flex:1" href="${safeUrl(applyUrl)}" target="_blank" rel="noopener noreferrer">Başvuru Ekranı ↗</a>` : ''}
+            <button class="btn btn-outline" style="flex:1" onclick="openCvForJobType('${escapeHtml(j.jobType)}')">📄 CV Puanımı Gör</button>
           </div>
         </div>
         ${j.historicalPlacement ? `
@@ -1655,13 +1655,13 @@
           </div>
           ${currentUserProfile && currentUserProfile.kpssScore != null && currentUserProfile.kpssScore >= j.historicalPlacement.avgScore ? `
             <div style="background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-weight:700;color:#166534;font-size:13px;display:flex;align-items:center;gap:6px;">
-              <span>🏆</span><span>KPSS Puanınız (${currentUserProfile.kpssScore}) geçmiş atama ortalamasının (~${j.historicalPlacement.avgScore}) üzerinde! Atanma şansınız çok yüksek.</span>
+              <span>🏆</span><span>KPSS Puanınız (${escapeHtml(currentUserProfile.kpssScore)}) geçmiş atama ortalamasının (~${escapeHtml(j.historicalPlacement.avgScore)}) üzerinde! Atanma şansınız çok yüksek.</span>
             </div>
           ` : ''}
           <div class="row" style="gap:8px;">
-            <span class="badge" style="background:#dcfce7;color:#15803d;font-size:13px;padding:5px 9px;">Ortalama Atama: ~${j.historicalPlacement.avgScore} Puan</span>
-            <span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:13px;padding:5px 9px;">Yerleşme Aralığı: ${j.historicalPlacement.minPlacedScore} - ${j.historicalPlacement.maxPlacedScore}</span>
-            <span class="badge" style="background:#fef3c7;color:#92400e;font-size:13px;padding:5px 9px;">Referans Dönem: ${j.historicalPlacement.period}</span>
+            <span class="badge" style="background:#dcfce7;color:#15803d;font-size:13px;padding:5px 9px;">Ortalama Atama: ~${escapeHtml(j.historicalPlacement.avgScore)} Puan</span>
+            <span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:13px;padding:5px 9px;">Yerleşme Aralığı: ${escapeHtml(j.historicalPlacement.minPlacedScore)} - ${escapeHtml(j.historicalPlacement.maxPlacedScore)}</span>
+            <span class="badge" style="background:#fef3c7;color:#92400e;font-size:13px;padding:5px 9px;">Referans Dönem: ${escapeHtml(j.historicalPlacement.period)}</span>
           </div>
         </div>
         ` : ''}
@@ -1679,7 +1679,7 @@
         </div>
         <div class="card">
           <h3 style="margin-top:0">İlan Açıklaması</h3>
-          <div style="line-height:1.68;white-space:pre-line;word-break:break-word;font-size:14.5px;color:#1f2937;">${j.description}</div>
+          <div style="line-height:1.68;white-space:pre-line;word-break:break-word;font-size:14.5px;color:#1f2937;">${escapeHtml(j.description)}</div>
         </div>
       `;
       showScreen('detail');
@@ -1690,7 +1690,17 @@
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function safeUrl(u) {
+      if (!u) return '';
+      try {
+        const p = new URL(u);
+        if (p.protocol === 'http:' || p.protocol === 'https:') return p.href;
+      } catch (e) {}
+      return '';
     }
 
     let cvLoadedOnce = false;

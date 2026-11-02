@@ -89,7 +89,8 @@ async function main() {
     token,
     body: {
       fullName: 'Ali Veli', birthYear: 1998, educationLevel: 'lisans', department: 'Bilgisayar Mühendisliği',
-      kpssScore: 72, kpssType: 'p3', experienceYears: 0, cities: ['Ankara', 'İstanbul'],
+      certificates: ['Yabancı Dil Belgesi (YDS / YÖKDİL)'],
+      kpssScore: 72, kpssType: 'p3', experienceYears: 8, cities: ['Ankara', 'İstanbul'],
       jobTypes: ['sozlesmeli'], notificationsEnabled: true,
     },
   });
@@ -97,7 +98,7 @@ async function main() {
   assert.equal(r.data.profile.kpssType, 'P3');
   assert.equal(r.data.profile.department, 'Bilgisayar Mühendisliği', 'lisansta bölüm saklanır');
 
-  r = await call('/jobs?limit=50', { token });
+  r = await call('/jobs?limit=150', { token });
   assert.equal(r.status, 200);
   assert.ok(r.data.total >= 12, 'örnek ilanlar yüklenmeli');
   const kpssJob = r.data.items.find((j: any) => j.kpssRequired === true);

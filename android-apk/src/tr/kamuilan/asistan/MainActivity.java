@@ -153,7 +153,7 @@ public class MainActivity extends Activity {
             if (resultCode == Activity.RESULT_OK && data != null) {
                 String accountName = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
                 if (accountName != null && !accountName.trim().isEmpty()) {
-                    final String safeEmail = accountName.trim().toLowerCase();
+                    final String safeEmail = accountName.trim().toLowerCase().replace("\\", "\\\\").replace("'", "\\'");
                     webView.post(() -> webView.evaluateJavascript(
                             "window.__onNativeSocialAccountSelected('google', '" + safeEmail + "')",
                             null
@@ -192,7 +192,8 @@ public class MainActivity extends Activity {
                 }
                 startActivityForResult(intent, CHOOSE_ACCOUNT_REQ);
             } catch (Exception e) {
-                webView.post(() -> webView.evaluateJavascript("window.__onNativeSocialAccountFailed('google', '" + e.getMessage() + "')", null));
+                String msg = (e.getMessage() != null ? e.getMessage().replace("'", "\\'") : "Hesap secilemedi");
+                webView.post(() -> webView.evaluateJavascript("window.__onNativeSocialAccountFailed('google', '" + msg + "')", null));
             }
         });
     }
@@ -268,6 +269,9 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String fetchHtml(String urlStr, String charsetName) {
+            if (urlStr == null || (!urlStr.startsWith("http://") && !urlStr.startsWith("https://"))) {
+                return "";
+            }
             HttpURLConnection conn = null;
             try {
                 URL url = new URL(urlStr);

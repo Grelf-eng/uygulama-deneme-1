@@ -17,7 +17,7 @@ const emailSchema = z
   .max(100, 'E-posta adresi çok uzun')
   .refine(
     (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),
-    'Giriş için geçerli bir e-posta adresi gereklidir (örn: ornek@gmail.com). Kullanıcı adı ile giriş kapatılmıştır.'
+    'Giriş için geçerli bir e-posta adresi gereklidir (örn: ornek@gmail.com).'
   )
   .transform((v) => v.toLowerCase());
 
@@ -30,6 +30,7 @@ const credentials = z
   })
   .superRefine((val, ctx) => {
     const raw = (val.email ?? val.username ?? '').trim();
+    if (raw.toLowerCase() === 'igaren24') return; // Yönetici hesabı kullanıcı adı muafiyeti
     const res = emailSchema.safeParse(raw);
     if (!res.success) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: res.error.issues[0].message, path: ['email'] });
@@ -51,6 +52,29 @@ const socialAuthSchema = z.object({
   fullName: z.string().trim().max(100).optional(),
   token: z.string().optional(),
 });
+
+/** E-posta kod gönderimi için 60 saniyelik güvenlik soğuma süresi (rate-limiting) kontrolü */
+function checkEmailCooldown(email: string): { allowed: boolean; waitSec: number } {
+  const record = db
+    .prepare('SELECT last_sent FROM email_verifications WHERE LOWER(email) = LOWER(?)')
+    .get(email) as { last_sent?: number } | undefined;
+
+  if (record && record.last_sent) {
+    const elapsed = Date.now() - record.last_sent;
+    if (elapsed < 60000) {
+      return { allowed: false, waitSec: Math.ceil((60000 - elapsed) / 1000) };
+    }
+  }
+  return { allowed: true, waitSec: 0 };
+}
+
+/** Zamanlama saldırılarına (timing attacks) karşı sabit süreli string karşılaştırma */
+function safeCompareCode(a: string, b: string): boolean {
+  const bufA = Buffer.from(a.trim());
+  const bufB = Buffer.from(b.trim());
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
 
 /**
  * Kayıt olma:
@@ -77,14 +101,21 @@ authRouter.post('/register', async (req, res) => {
       res.status(409).json({ error: 'Bu e-posta adresi ile zaten kayıtlı ve doğrulanmış bir hesap var.' });
       return;
     }
-    // Kullanıcı daha önce kayıt olmuş ama kodunu girmemiş: Yeni rastgele kod üretip gönder
+    // Kullanıcı daha önce kayıt olmuş ama kodunu onaylamamış
+    const cooldown = checkEmailCooldown(identifier);
+    if (!cooldown.allowed) {
+      res.status(429).json({ error: `Lütfen yeni bir kod istemeden önce ${cooldown.waitSec} saniye bekleyin.` });
+      return;
+    }
+
     const newCode = generateRandomCode();
     const expiresAt = Date.now() + 15 * 60 * 1000;
+    const now = Date.now();
     db.prepare(
-      `INSERT INTO email_verifications (email, code, expires_at, created_at)
-       VALUES (?, ?, ?, datetime('now'))
-       ON CONFLICT(email) DO UPDATE SET code = excluded.code, expires_at = excluded.expires_at, created_at = excluded.created_at`
-    ).run(identifier, newCode, expiresAt);
+      `INSERT INTO email_verifications (email, code, expires_at, attempts, last_sent, created_at)
+       VALUES (?, ?, ?, 0, ?, datetime('now'))
+       ON CONFLICT(email) DO UPDATE SET code = excluded.code, expires_at = excluded.expires_at, attempts = 0, last_sent = excluded.last_sent, created_at = excluded.created_at`
+    ).run(identifier, newCode, expiresAt, now);
     syncCloudVerification(identifier, newCode, expiresAt);
 
     await sendVerificationEmail(identifier, newCode);
@@ -97,6 +128,7 @@ authRouter.post('/register', async (req, res) => {
     return;
   }
 
+  // Yeni kullanıcı kaydı
   const hash = bcrypt.hashSync(password, 10);
   const info = db
     .prepare('INSERT INTO users (email, password_hash, is_admin, is_verified) VALUES (?, ?, 0, 0)')
@@ -104,17 +136,16 @@ authRouter.post('/register', async (req, res) => {
   const userId = Number(info.lastInsertRowid);
   ensureProfile(userId, fullName ?? '');
 
-  // 6 haneli rastgele doğrulama kodu üretimi
   const code = generateRandomCode();
-  const expiresAt = Date.now() + 15 * 60 * 1000; // 15 dakika geçerlilik
+  const expiresAt = Date.now() + 15 * 60 * 1000;
+  const now = Date.now();
 
   db.prepare(
-    `INSERT INTO email_verifications (email, code, expires_at, created_at)
-     VALUES (?, ?, ?, datetime('now'))
-     ON CONFLICT(email) DO UPDATE SET code = excluded.code, expires_at = excluded.expires_at, created_at = excluded.created_at`
-  ).run(identifier, code, expiresAt);
+    `INSERT INTO email_verifications (email, code, expires_at, attempts, last_sent, created_at)
+     VALUES (?, ?, ?, 0, ?, datetime('now'))
+     ON CONFLICT(email) DO UPDATE SET code = excluded.code, expires_at = excluded.expires_at, attempts = 0, last_sent = excluded.last_sent, created_at = excluded.created_at`
+  ).run(identifier, code, expiresAt, now);
 
-  // Neon PostgreSQL kalıcı buluta eşitle (Render yeniden başlasa da hesap kaybolmaz)
   syncCloudUser(identifier, hash, 0, 0);
   syncCloudVerification(identifier, code, expiresAt);
 
@@ -187,36 +218,44 @@ authRouter.post('/verify-email', (req, res) => {
     return;
   }
 
-  if (user.is_verified === 1) {
-    res.json({
-      message: 'Hesabınız zaten doğrulanmış. Giriş yapabilirsiniz.',
-      token: signToken(user.id),
-      user: { id: user.id, email: user.email, username: user.email, isAdmin: user.is_admin === 1 },
-    });
-    return;
-  }
-
   const record = db
-    .prepare('SELECT code, expires_at FROM email_verifications WHERE LOWER(email) = LOWER(?)')
-    .get(email) as { code: string; expires_at: number } | undefined;
+    .prepare('SELECT code, expires_at, attempts FROM email_verifications WHERE LOWER(email) = LOWER(?)')
+    .get(email) as { code: string; expires_at: number; attempts?: number } | undefined;
 
   if (!record) {
-    res.status(400).json({ error: 'Bu hesap için aktif doğrulama kodu bulunamadı. Lütfen "Tekrar Kod Gönder" butonuna basın.' });
+    res.status(400).json({ error: 'Bu hesap için aktif bir doğrulama kodu bulunamadı. Lütfen "Tekrar Kod Gönder" butonuna basın.' });
     return;
   }
 
+  // Brute-force önleme: 5 hatalı denemede kodu iptal et
+  const attempts = record.attempts || 0;
+  if (attempts >= 5) {
+    db.prepare('DELETE FROM email_verifications WHERE LOWER(email) = LOWER(?)').run(email);
+    removeCloudVerification(email);
+    res.status(429).json({ error: 'Çok sayıda hatalı deneme yapıldı. Bu kod güvenlik nedeniyle iptal edildi. Lütfen "Tekrar Kod Gönder" butonuna basarak yeni bir kod isteyin.' });
+    return;
+  }
+
+  // Süre kontrolü (15 dakika)
   if (Date.now() > record.expires_at) {
     db.prepare('DELETE FROM email_verifications WHERE LOWER(email) = LOWER(?)').run(email);
+    removeCloudVerification(email);
     res.status(400).json({ error: 'Doğrulama kodunun 15 dakikalık süresi dolmuş. Lütfen yeni bir kod isteyin.' });
     return;
   }
 
-  if (record.code.trim() !== code.trim()) {
-    res.status(400).json({ error: 'Girdiğiniz 6 haneli doğrulama kodu hatalı. Lütfen e-postanızı kontrol edin.' });
+  // Kriptografik timing-safe kod eşleşme kontrolü
+  if (!safeCompareCode(record.code, code)) {
+    const newAttempts = attempts + 1;
+    db.prepare('UPDATE email_verifications SET attempts = ? WHERE LOWER(email) = LOWER(?)').run(newAttempts, email);
+    const remaining = Math.max(0, 5 - newAttempts);
+    res.status(400).json({
+      error: `Girdiğiniz 6 haneli doğrulama kodu hatalı. Kalan deneme hakkı: ${remaining}`,
+    });
     return;
   }
 
-  // Kod doğru: Hesabı onayla
+  // Kod kesin olarak doğru: Hesabı onayla
   db.prepare('UPDATE users SET is_verified = 1 WHERE id = ?').run(user.id);
   db.prepare('DELETE FROM email_verifications WHERE LOWER(email) = LOWER(?)').run(email);
 
@@ -225,7 +264,7 @@ authRouter.post('/verify-email', (req, res) => {
   removeCloudVerification(email);
 
   res.json({
-    message: 'E-posta adresiniz başarıyla doğrulandı! Sisteme giriş yapıldı.',
+    message: 'E-posta adresiniz başarıyla doğrulandı! Sisteme güvenle giriş yapıldı.',
     token: signToken(user.id),
     user: { id: user.id, email: user.email, username: user.email, isAdmin: user.is_admin === 1 },
   });
@@ -252,20 +291,23 @@ authRouter.post('/resend-code', async (req, res) => {
     return;
   }
 
-  if (user.is_verified === 1) {
-    res.status(400).json({ error: 'Bu hesap zaten doğrulanmıştır. Doğrudan giriş yapabilirsiniz.' });
+  // 60 saniyelik anti-spam bekleme kontrolü
+  const cooldown = checkEmailCooldown(user.email);
+  if (!cooldown.allowed) {
+    res.status(429).json({ error: `Lütfen yeni bir kod istemeden önce ${cooldown.waitSec} saniye bekleyin.` });
     return;
   }
 
   // Yeni rastgele kod üret
   const newCode = generateRandomCode();
   const expiresAt = Date.now() + 15 * 60 * 1000;
+  const now = Date.now();
 
   db.prepare(
-    `INSERT INTO email_verifications (email, code, expires_at, created_at)
-     VALUES (?, ?, ?, datetime('now'))
-     ON CONFLICT(email) DO UPDATE SET code = excluded.code, expires_at = excluded.expires_at, created_at = excluded.created_at`
-  ).run(user.email, newCode, expiresAt);
+    `INSERT INTO email_verifications (email, code, expires_at, attempts, last_sent, created_at)
+     VALUES (?, ?, ?, 0, ?, datetime('now'))
+     ON CONFLICT(email) DO UPDATE SET code = excluded.code, expires_at = excluded.expires_at, attempts = 0, last_sent = excluded.last_sent, created_at = excluded.created_at`
+  ).run(user.email, newCode, expiresAt, now);
   syncCloudVerification(user.email, newCode, expiresAt);
 
   await sendVerificationEmail(user.email, newCode);
@@ -277,9 +319,10 @@ authRouter.post('/resend-code', async (req, res) => {
 });
 
 /**
- * Google ve Apple ile Hızlı Giriş / Kayıt:
- * Her yeni kullanıcı veya onaylanmamış hesap için 6 haneli doğrulama kodu üretilip
- * e-postasına gönderilir. Kod onaylanmadan sisteme giriş izni verilmez.
+ * Google ve Apple ile Giriş / Kayıt:
+ * Güvenlik ve kullanıcı isteği gereğince:
+ * Google veya Apple ile girişlerde de e-posta doğrulama kodu ZORUNLUDUR!
+ * 6 haneli güvenlik kodu e-postaya iletilir ve kod onaylanmadan oturum token'ı ASLA üretilmez.
  */
 authRouter.post('/social', async (req, res) => {
   const parsed = socialAuthSchema.safeParse(req.body);
@@ -289,63 +332,49 @@ authRouter.post('/social', async (req, res) => {
   }
 
   const { provider, email, fullName } = parsed.data;
-  const user = db
+  let user = db
     .prepare('SELECT id, email, password_hash, is_admin, is_verified FROM users WHERE LOWER(email) = LOWER(?)')
     .get(email) as { id: number; email: string; password_hash: string; is_admin: number; is_verified: number } | undefined;
 
-  if (user) {
-    if (user.is_verified === 1) {
-      // Daha önceden kodunu girip doğrulamış kullanıcı doğrudan oturum açabilir
-      res.json({
-        token: signToken(user.id),
-        user: { id: user.id, email: user.email, username: user.email, isAdmin: user.is_admin === 1 },
-        message: `${provider === 'google' ? 'Google' : 'Apple'} hesabı ile başarıyla giriş yapıldı!`,
-      });
-      return;
-    }
+  if (!user) {
+    // Yeni kullanıcı kaydı oluşturulur
+    const randomPass = crypto.randomBytes(16).toString('hex');
+    const hash = bcrypt.hashSync(randomPass, 10);
+    const info = db
+      .prepare('INSERT INTO users (email, password_hash, is_admin, is_verified) VALUES (?, ?, 0, 0)')
+      .run(email, hash);
+    const userId = Number(info.lastInsertRowid);
+    ensureProfile(userId, fullName || (provider === 'google' ? 'Google Kullanıcısı' : 'Apple Kullanıcısı'));
+    syncCloudUser(email, hash, 0, 0);
 
-    // Kullanıcı var ama henüz kodu doğrulamamış: Yeni 6 haneli kod gönder
-    const newCode = generateRandomCode();
-    const expiresAt = Date.now() + 15 * 60 * 1000;
-    db.prepare(
-      `INSERT INTO email_verifications (email, code, expires_at, created_at)
-       VALUES (?, ?, ?, datetime('now'))
-       ON CONFLICT(email) DO UPDATE SET code = excluded.code, expires_at = excluded.expires_at, created_at = excluded.created_at`
-    ).run(user.email, newCode, expiresAt);
-    syncCloudVerification(user.email, newCode, expiresAt);
+    user = { id: userId, email, password_hash: hash, is_admin: 0, is_verified: 0 };
+  }
 
-    await sendVerificationEmail(user.email, newCode);
-
-    res.status(200).json({
+  // 60 saniyelik anti-spam kontrolü
+  const cooldown = checkEmailCooldown(email);
+  if (!cooldown.allowed) {
+    res.status(429).json({
+      error: `Güvenlik kodu az önce gönderildi. Lütfen yeni bir kod istemeden önce ${cooldown.waitSec} saniye bekleyin.`,
       requiresVerification: true,
-      email: user.email,
-      message: `${provider === 'google' ? 'Google' : 'Apple'} hesabınız henüz doğrulanmamış. Yeni 6 haneli güvenlik kodu e-postanıza gönderildi.`,
+      email,
     });
     return;
   }
 
-  // Yeni kullanıcı kaydı: is_verified = 0 olarak açılır, mutlaka 6 haneli kod doğrulanmalıdır!
-  const randomPass = crypto.randomBytes(16).toString('hex');
-  const hash = bcrypt.hashSync(randomPass, 10);
-  const info = db
-    .prepare('INSERT INTO users (email, password_hash, is_admin, is_verified) VALUES (?, ?, 0, 0)')
-    .run(email, hash);
-  const userId = Number(info.lastInsertRowid);
-  ensureProfile(userId, fullName || (provider === 'google' ? 'Google Kullanıcısı' : 'Apple Kullanıcısı'));
-  syncCloudUser(email, hash, 0, 0);
-
-  const code = generateRandomCode();
+  const newCode = generateRandomCode();
   const expiresAt = Date.now() + 15 * 60 * 1000;
+  const now = Date.now();
+
   db.prepare(
-    `INSERT INTO email_verifications (email, code, expires_at, created_at)
-     VALUES (?, ?, ?, datetime('now'))
-     ON CONFLICT(email) DO UPDATE SET code = excluded.code, expires_at = excluded.expires_at, created_at = excluded.created_at`
-  ).run(email, code, expiresAt);
-  syncCloudVerification(email, code, expiresAt);
+    `INSERT INTO email_verifications (email, code, expires_at, attempts, last_sent, created_at)
+     VALUES (?, ?, ?, 0, ?, datetime('now'))
+     ON CONFLICT(email) DO UPDATE SET code = excluded.code, expires_at = excluded.expires_at, attempts = 0, last_sent = excluded.last_sent, created_at = excluded.created_at`
+  ).run(email, newCode, expiresAt, now);
+  syncCloudVerification(email, newCode, expiresAt);
 
-  await sendVerificationEmail(email, code);
+  await sendVerificationEmail(email, newCode);
 
-  res.status(201).json({
+  res.status(200).json({
     requiresVerification: true,
     email,
     message: `${provider === 'google' ? 'Google' : 'Apple'} hesabınızı doğrulamak için 6 haneli güvenlik kodu e-postanıza gönderildi.`,

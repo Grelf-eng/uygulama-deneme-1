@@ -19,6 +19,17 @@ import { syncCloudUser } from './services/cloudDb';
 ensureAdminUser();
 
 export const app = express();
+app.disable('x-powered-by');
+
+// Güvenlik Başlıkları (Security Headers)
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
 app.use(cors());
 app.use(express.json({ limit: '8mb' }));
 
