@@ -20,7 +20,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Login' | 'Register'>;
 
 export function AuthScreen({ navigation, route }: Props) {
   const isRegister = route.name === 'Register';
-  const { login, register, verifyEmail, resendCode } = useAuth();
+  const { login, register, verifyEmail, resendCode, socialLogin } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -107,6 +107,27 @@ export function AuthScreen({ navigation, route }: Props) {
       Alert.alert('Başarılı', res.message || 'Yeni doğrulama kodu e-postanıza gönderildi.');
     } catch (e) {
       Alert.alert('Hata', (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSocial = async (provider: 'google' | 'apple') => {
+    const provName = provider === 'google' ? 'Google' : 'Apple';
+    const target = email.trim();
+    if (!target || !target.includes('@')) {
+      Alert.alert(
+        `${provName} ile Giriş`,
+        `Lütfen yukarıdaki E-posta Adresi alanına ${provName} hesabınıza ait e-posta adresinizi girip ardından bu butona tıklayın.`
+      );
+      return;
+    }
+
+    setBusy(true);
+    try {
+      await socialLogin(provider, target, fullName.trim());
+    } catch (e: any) {
+      Alert.alert('Giriş Başarısız', e.message);
     } finally {
       setBusy(false);
     }
@@ -213,6 +234,28 @@ export function AuthScreen({ navigation, route }: Props) {
               title={isRegister ? 'Zaten hesabım var (Giriş)' : 'Yeni hesap oluştur'}
               variant="outline"
               onPress={() => navigation.replace(isRegister ? 'Login' : 'Register')}
+            />
+
+            <View style={{ marginVertical: 14, flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+              <Text style={{ marginHorizontal: 10, fontSize: 12, fontWeight: '700', color: colors.muted }}>
+                VEYA HIZLI GİRİŞ
+              </Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+            </View>
+
+            <Button
+              title="🌐 Google ile Devam Et"
+              variant="outline"
+              onPress={() => handleSocial('google')}
+              loading={busy}
+            />
+            <View style={{ height: 8 }} />
+            <Button
+              title=" Apple ile Devam Et"
+              variant="outline"
+              onPress={() => handleSocial('apple')}
+              loading={busy}
             />
           </View>
         )}

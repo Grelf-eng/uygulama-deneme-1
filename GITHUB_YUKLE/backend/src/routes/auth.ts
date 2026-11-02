@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { db } from '../db';
@@ -42,6 +43,13 @@ const verifySchema = z.object({
 
 const resendSchema = z.object({
   email: emailSchema,
+});
+
+const socialAuthSchema = z.object({
+  provider: z.enum(['google', 'apple']),
+  email: emailSchema,
+  fullName: z.string().trim().max(100).optional(),
+  token: z.string().optional(),
 });
 
 /**
@@ -265,5 +273,56 @@ authRouter.post('/resend-code', async (req, res) => {
   res.json({
     message: 'Yeni 6 haneli doğrulama kodu e-postanıza gönderildi.',
     email: user.email,
+  });
+});
+
+/**
+ * Google ve Apple ile Hızlı Giriş / Kayıt:
+ * Google ve Apple hesapları kimlik doğrulaması yapmış olduğu için
+ * e-posta doğrudan onaylı (`is_verified = 1`) olarak sisteme dahil edilir ve oturum token'ı üretilir.
+ */
+authRouter.post('/social', (req, res) => {
+  const parsed = socialAuthSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0].message });
+    return;
+  }
+
+  const { provider, email, fullName } = parsed.data;
+  let user = db
+    .prepare('SELECT id, email, password_hash, is_admin, is_verified FROM users WHERE LOWER(email) = LOWER(?)')
+    .get(email) as { id: number; email: string; password_hash: string; is_admin: number; is_verified: number } | undefined;
+
+  if (user) {
+    // Kullanıcı varsa ve onaylı değilse Google/Apple sayesinde hemen onaylı yap
+    if (user.is_verified !== 1) {
+      db.prepare('UPDATE users SET is_verified = 1 WHERE id = ?').run(user.id);
+      syncCloudUser(user.email, user.password_hash, user.is_admin, 1);
+      removeCloudVerification(user.email);
+    }
+  } else {
+    // Yeni kullanıcı kaydı (otomatik onaylı)
+    const randomPass = crypto.randomBytes(16).toString('hex');
+    const hash = bcrypt.hashSync(randomPass, 10);
+    const info = db
+      .prepare('INSERT INTO users (email, password_hash, is_admin, is_verified) VALUES (?, ?, 0, 1)')
+      .run(email, hash);
+    const userId = Number(info.lastInsertRowid);
+    ensureProfile(userId, fullName || (provider === 'google' ? 'Google Kullanıcısı' : 'Apple Kullanıcısı'));
+    syncCloudUser(email, hash, 0, 1);
+
+    user = {
+      id: userId,
+      email,
+      password_hash: hash,
+      is_admin: 0,
+      is_verified: 1,
+    };
+  }
+
+  res.json({
+    token: signToken(user.id),
+    user: { id: user.id, email: user.email, username: user.email, isAdmin: user.is_admin === 1 },
+    message: `${provider === 'google' ? 'Google' : 'Apple'} hesabı ile başarıyla giriş yapıldı!`,
   });
 });

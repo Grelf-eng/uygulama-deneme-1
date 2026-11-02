@@ -12,6 +12,7 @@ interface AuthState {
   login(email: string, password: string): Promise<{ requiresVerification?: boolean; email?: string } | void>;
   register(email: string, password: string, fullName: string): Promise<{ requiresVerification: boolean; email: string; message: string }>;
   verifyEmail(email: string, code: string): Promise<void>;
+  socialLogin(provider: 'google' | 'apple', email: string, fullName?: string): Promise<void>;
   resendCode(email: string): Promise<{ message: string }>;
   logout(): Promise<void>;
   saveProfile(p: Profile): Promise<void>;
@@ -100,6 +101,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const r = await api<{ token: string; message: string }>('/auth/verify-email', {
           method: 'POST',
           body: { email: em, code },
+        });
+        await setToken(r.token);
+        await loadSession();
+      },
+      async socialLogin(provider, email, fullName) {
+        const r = await api<{ token: string; message: string }>('/auth/social', {
+          method: 'POST',
+          body: { provider, email, fullName },
         });
         await setToken(r.token);
         await loadSession();
