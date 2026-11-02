@@ -5,7 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, Pressable, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/AuthContext';
 import { AuthStackParamList, RootStackParamList, TabParamList } from './src/navigation';
@@ -71,7 +71,31 @@ function Navigation() {
     const sub = Notifications.addNotificationResponseReceivedListener((r) =>
       open(r.notification.request.content.data),
     );
-    return () => sub.remove();
+
+    const onBackPress = () => {
+      if (!navRef.isReady()) return false;
+      if (navRef.canGoBack()) {
+        navRef.goBack();
+        return true;
+      }
+      Alert.alert(
+        'Uygulamadan Çıkış',
+        'Uygulamadan çıkmak istediğinize emin misiniz?',
+        [
+          { text: 'Hayır', style: 'cancel' },
+          { text: 'Evet', onPress: () => BackHandler.exitApp() },
+        ],
+        { cancelable: true }
+      );
+      return true;
+    };
+
+    const backSub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+    return () => {
+      sub.remove();
+      backSub.remove();
+    };
   }, []);
 
   if (loading) {

@@ -423,6 +423,19 @@
     </div>
   </div>
 
+  <!-- UYGULAMADAN ÇIKIŞ ONAY PENCERESİ (Web / PWA / Modal) -->
+  <div id="exitConfirmModal" class="modal-backdrop hidden" onclick="closeExitModal(event)">
+    <div class="modal-sheet" onclick="event.stopPropagation()" style="max-width:340px;text-align:center;">
+      <div style="font-size:36px;margin-bottom:8px;">🚪</div>
+      <h3 style="margin:0 0 6px;font-size:18px;">Uygulamadan Çıkış</h3>
+      <p style="margin:0 0 16px;font-size:13.5px;color:var(--muted);line-height:1.5;">Uygulamadan çıkmak istediğinize emin misiniz?</p>
+      <div class="row" style="gap:10px;">
+        <button class="btn btn-outline" style="flex:1;" onclick="closeExitModal()">Hayır, Kal</button>
+        <button class="btn" style="flex:1;background:var(--fail);border-color:var(--fail);" onclick="confirmExitApp()">Evet, Çık</button>
+      </div>
+    </div>
+  </div>
+
   <nav id="bottomTabs" class="tabs hidden">
     <button class="tab-btn active" data-tab="jobs" onclick="switchTab('jobs')"><span class="ico">📋</span><span>İlanlar</span></button>
     <button class="tab-btn" data-tab="matches" onclick="switchTab('matches')"><span class="ico">✨</span><span>Eşleşenler</span></button>
@@ -1170,8 +1183,15 @@
 
     let allJobsLoaded = false;
     let matchesJobsLoaded = false;
+    let screenHistory = [];
+    let isNavigatingBack = false;
 
-    function switchTab(tab) {
+    function switchTab(tab, recordHistory = true) {
+      if (recordHistory && !isNavigatingBack && currentTab && currentTab !== tab) {
+        if (!screenHistory.includes(currentTab)) {
+          screenHistory.push(currentTab);
+        }
+      }
       currentTab = tab;
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
       if (tab === 'jobs') {
@@ -1183,6 +1203,85 @@
       } else {
         showScreen(tab);
       }
+    }
+
+    function closeExitModal(e) {
+      if (e && e.target && e.target !== e.currentTarget) return;
+      const modal = document.getElementById('exitConfirmModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function confirmExitApp() {
+      if (window.AndroidBridge && window.AndroidBridge.exitApp) {
+        window.AndroidBridge.exitApp();
+      } else {
+        closeExitModal();
+        try { window.close(); } catch {}
+      }
+    }
+
+    // Android Geri Tuşu ve Tarayıcı Geri Butonu Entegrasyonu
+    window.__handleAndroidBack = function() {
+      // 1. Açık herhangi bir modal varsa önce modalı kapat
+      const exitModal = document.getElementById('exitConfirmModal');
+      if (exitModal && !exitModal.classList.contains('hidden')) {
+        closeExitModal();
+        return 'handled';
+      }
+      const socialModal = document.getElementById('socialAuthModal');
+      if (socialModal && !socialModal.classList.contains('hidden')) {
+        closeSocialModal();
+        return 'handled';
+      }
+      const installModal = document.getElementById('installGuideModal');
+      if (installModal && !installModal.classList.contains('hidden')) {
+        installModal.classList.add('hidden');
+        return 'handled';
+      }
+
+      // 2. İlan Detay ekranı açıksa listeye geri dön
+      const detailScreen = document.getElementById('detailScreen');
+      if (detailScreen && !detailScreen.classList.contains('hidden')) {
+        switchTab(currentTab || 'jobs', false);
+        return 'handled';
+      }
+
+      // 3. E-posta doğrulama ekranı açıksa giriş formuna dön
+      const verifyWrap = document.getElementById('verifyWrap');
+      if (verifyWrap && !verifyWrap.classList.contains('hidden')) {
+        cancelVerification();
+        return 'handled';
+      }
+
+      // 4. Farklı bir sekmedeyse (Eşleşenler, CV, Başvurular, Profil) bir önceki sekmeye dön
+      if (screenHistory.length > 0) {
+        isNavigatingBack = true;
+        const prev = screenHistory.pop() || 'jobs';
+        switchTab(prev, false);
+        isNavigatingBack = false;
+        return 'handled';
+      } else if (currentTab !== 'jobs') {
+        isNavigatingBack = true;
+        switchTab('jobs', false);
+        isNavigatingBack = false;
+        return 'handled';
+      }
+
+      // 5. Zaten ana ekrandaysa ve öncesinde başka ekran yoksa çıkış sor
+      return 'exit';
+    };
+
+    // Web tarayıcılarında tarayıcı geri tuşuna basıldığında
+    window.addEventListener('popstate', () => {
+      const result = window.__handleAndroidBack();
+      if (result === 'exit') {
+        const exitModal = document.getElementById('exitConfirmModal');
+        if (exitModal) exitModal.classList.remove('hidden');
+      }
+    });
+
+    if (window.history && window.history.pushState) {
+      window.history.pushState({ page: 'root' }, '');
     }
 
     function setMatchScoreFilter(val) {

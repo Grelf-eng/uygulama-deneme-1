@@ -154,20 +154,35 @@ public class MainActivity extends Activity {
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
         if (webView == null) {
-            super.onBackPressed();
+            showExitConfirmDialog();
             return;
         }
         webView.evaluateJavascript(
                 "(window.__handleAndroidBack ? window.__handleAndroidBack() : 'exit')",
                 value -> {
                     if (!"\"handled\"".equals(value)) {
-                        runOnUiThread(MainActivity.super::onBackPressed);
+                        runOnUiThread(this::showExitConfirmDialog);
                     }
                 }
         );
     }
 
+    private void showExitConfirmDialog() {
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Uygulamadan Çıkış")
+                .setMessage("Uygulamadan çıkmak istediğinize emin misiniz?")
+                .setPositiveButton("Evet", (dialog, which) -> finish())
+                .setNegativeButton("Hayır", (dialog, which) -> dialog.dismiss())
+                .setCancelable(true)
+                .show();
+    }
+
     public class Bridge {
+        @JavascriptInterface
+        public void exitApp() {
+            runOnUiThread(MainActivity.this::finish);
+        }
+
         @JavascriptInterface
         public void openExternal(String url) {
             openInBrowser(url);
