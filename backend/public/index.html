@@ -184,6 +184,8 @@
     }
     .hidden { display: none !important; }
   </style>
+  <!-- Google Identity Services (Resmi Google ile Oturum Açma SDK) -->
+  <script src="https://accounts.google.com/gsi/client" async defer onload="if(window.initGoogleAuth)window.initGoogleAuth()"></script>
 </head>
 <body>
   <header>
@@ -1339,6 +1341,102 @@
     }
 
     let activeSocialProvider = 'google';
+    const GOOGLE_CLIENT_ID = atob('NDE2MjUzMTY5NTMyLTl0NjlwNXZiMDRudnI2azgxdXVyOXU2cjU5MnA1cnE0LmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29t');
+    let googleTokenClient = null;
+
+    function parseJwt(jwtToken) {
+      try {
+        const base64Url = jwtToken.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+      } catch {
+        return null;
+      }
+    }
+
+    window.initGoogleAuth = function() {
+      if (typeof google === 'undefined' || !google.accounts) return;
+
+      // 1. Google One Tap Client
+      try {
+        google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+
+        const authScreen = document.getElementById('authScreen');
+        if (authScreen && !authScreen.classList.contains('hidden') && !token) {
+          google.accounts.id.prompt();
+        }
+      } catch (err) {
+        console.warn('Google One Tap init error:', err);
+      }
+
+      // 2. Resmi Google OAuth Popup Client (Büyük uygulamaların kullandığı resmi hesap seçici pencere)
+      try {
+        if (google.accounts.oauth2) {
+          googleTokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: 'email profile openid',
+            callback: async (tokenResponse) => {
+              if (tokenResponse && tokenResponse.access_token) {
+                try {
+                  const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: 'Bearer ' + tokenResponse.access_token }
+                  });
+                  const user = await res.json();
+                  if (user && user.email) {
+                    await handleGoogleUserLoggedIn(user.email, user.name || '');
+                  }
+                } catch (e) {
+                  document.getElementById('authError').innerText = 'Google kullanıcı bilgisi alınamadı: ' + e.message;
+                }
+              }
+            },
+          });
+        }
+      } catch (err) {
+        console.warn('Google OAuth Token Client error:', err);
+      }
+    };
+
+    async function handleGoogleCredentialResponse(response) {
+      if (!response || !response.credential) return;
+      const data = parseJwt(response.credential);
+      if (data && data.email) {
+        await handleGoogleUserLoggedIn(data.email, data.name || '');
+      }
+    }
+
+    async function handleGoogleUserLoggedIn(email, fullName) {
+      localStorage.setItem('kamu_social_last_email', email);
+      document.getElementById('authError').innerText = '⏳ Güvenlik kodu gönderiliyor...';
+      try {
+        const res = await api('/auth/social', {
+          method: 'POST',
+          body: {
+            provider: 'google',
+            email: email,
+            fullName: fullName || 'Google Kullanıcısı'
+          }
+        });
+        document.getElementById('authError').innerText = '';
+        if (res && res.requiresVerification) {
+          showVerificationCard(res.email || email, res.message);
+          return;
+        }
+        token = res.token;
+        localStorage.setItem('kamu_token', token);
+        await initApp();
+      } catch (err) {
+        document.getElementById('authError').innerText = err.message || 'Giriş yapılamadı.';
+      }
+    }
 
     function promptSocialAuth(provider) {
       activeSocialProvider = provider;
@@ -1346,6 +1444,18 @@
         // 1. Android APK içinde çalışıyorsa doğrudan telefonun native Google Hesap Seçicisini aç!
         if (window.AndroidBridge && typeof window.AndroidBridge.pickGoogleAccount === 'function') {
           window.AndroidBridge.pickGoogleAccount();
+          return;
+        }
+
+        // 2. Resmi Google OAuth Popup Client hazırsa resmi Google hesap seçici penceresini aç!
+        if (googleTokenClient) {
+          googleTokenClient.requestAccessToken({ prompt: 'select_account' });
+          return;
+        }
+
+        // 3. One Tap hazırsa prompt aç
+        if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+          google.accounts.id.prompt();
           return;
         }
       }
@@ -2527,6 +2637,7 @@
     }
 
     setupDefaultMetaUi();
+    setTimeout(() => { if (window.initGoogleAuth) window.initGoogleAuth(); }, 500);
     if (token) initApp();
   </script>
 </body>

@@ -18,6 +18,8 @@ export const config = {
   scrapeCron: process.env.SCRAPE_CRON ?? '0 */3 * * *',
   scrapeOnStart: process.env.SCRAPE_ON_START === 'true',
   adminKey: process.env.ADMIN_KEY ?? '',
+  googleClientId: process.env.GOOGLE_CLIENT_ID ?? '',
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
   notifyMinScore: Number(process.env.NOTIFY_MIN_SCORE ?? 50),
   expoAccessToken: process.env.EXPO_ACCESS_TOKEN || undefined,
 };
