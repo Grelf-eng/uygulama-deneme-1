@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { config } from '../config';
 import { db } from '../db';
 import { runAllScrapers } from '../scrapers';
-import { syncCloudSession, syncCloudSubscription, syncCloudUser } from '../services/cloudDb';
+import { deleteCloudUser, syncCloudSession, syncCloudSubscription, syncCloudUser } from '../services/cloudDb';
 import { resetProfileLimit } from '../services/profileRepo';
 
 export const adminRouter = Router();
@@ -373,6 +373,7 @@ adminRouter.delete('/users/:id', (req: Request, res: Response) => {
   }
 
   db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+  deleteCloudUser(u.email);
   res.json({ success: true, message: `${u.email} hesabı başarıyla silindi.` });
 });
 
