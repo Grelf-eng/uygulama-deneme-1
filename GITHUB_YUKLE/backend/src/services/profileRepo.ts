@@ -53,6 +53,88 @@ export function setPushToken(userId: number, token: string | null): void {
   db.prepare('UPDATE profiles SET push_token = ? WHERE user_id = ?').run(token, userId);
 }
 
+export interface ProfileLimitInfo {
+  editCount: number;
+  initialRemaining: number;
+  canEditNow: boolean;
+  cooldownHours: number;
+  cooldownRemainingMs: number;
+  waitHours: number;
+  waitMinutes: number;
+  nextAllowedAt: number | null;
+}
+
+/**
+ * 3 Kez Art Arda Değiştirme ve Sonrasında 48 Saat Soğuma Kuralı (Anti-Account Sharing)
+ */
+export function getProfileLimit(userId: number, isAdmin: boolean = false): ProfileLimitInfo {
+  if (isAdmin) {
+    return {
+      editCount: 0,
+      initialRemaining: 3,
+      canEditNow: true,
+      cooldownHours: 48,
+      cooldownRemainingMs: 0,
+      waitHours: 0,
+      waitMinutes: 0,
+      nextAllowedAt: null,
+    };
+  }
+  const r = db
+    .prepare('SELECT profile_edit_count, last_profile_update FROM profiles WHERE user_id = ?')
+    .get(userId) as { profile_edit_count?: number; last_profile_update?: number } | undefined;
+
+  const count = r?.profile_edit_count || 0;
+  const lastUpdate = r?.last_profile_update || 0;
+  const COOLDOWN_MS = 48 * 60 * 60 * 1000; // 48 saat
+
+  if (count < 3) {
+    return {
+      editCount: count,
+      initialRemaining: 3 - count,
+      canEditNow: true,
+      cooldownHours: 48,
+      cooldownRemainingMs: 0,
+      waitHours: 0,
+      waitMinutes: 0,
+      nextAllowedAt: null,
+    };
+  }
+
+  const elapsed = Date.now() - lastUpdate;
+  const remainingMs = Math.max(0, COOLDOWN_MS - elapsed);
+  const canEdit = remainingMs === 0;
+
+  return {
+    editCount: count,
+    initialRemaining: 0,
+    canEditNow: canEdit,
+    cooldownHours: 48,
+    cooldownRemainingMs: remainingMs,
+    waitHours: Math.floor(remainingMs / (1000 * 60 * 60)),
+    waitMinutes: Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60)),
+    nextAllowedAt: remainingMs > 0 ? lastUpdate + COOLDOWN_MS : null,
+  };
+}
+
+export function incrementProfileEditCount(userId: number): void {
+  db.prepare(`
+    UPDATE profiles
+    SET profile_edit_count = profile_edit_count + 1,
+        last_profile_update = ?
+    WHERE user_id = ?
+  `).run(Date.now(), userId);
+}
+
+export function resetProfileLimit(userId: number): void {
+  db.prepare(`
+    UPDATE profiles
+    SET profile_edit_count = 0,
+        last_profile_update = 0
+    WHERE user_id = ?
+  `).run(userId);
+}
+
 export interface NotifiableUser {
   userId: number;
   pushToken: string | null;

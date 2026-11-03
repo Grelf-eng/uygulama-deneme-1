@@ -81,8 +81,13 @@ export async function initCloudSync(): Promise<void> {
         cities TEXT NOT NULL DEFAULT '[]',
         job_types TEXT NOT NULL DEFAULT '["memur","sozlesmeli","isci","akademik"]',
         notifications_enabled INTEGER DEFAULT 1,
+        profile_edit_count INTEGER DEFAULT 0,
+        last_profile_update BIGINT DEFAULT 0,
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE cloud_profiles ADD COLUMN IF NOT EXISTS profile_edit_count INTEGER DEFAULT 0;
+      ALTER TABLE cloud_profiles ADD COLUMN IF NOT EXISTS last_profile_update BIGINT DEFAULT 0;
 
       CREATE TABLE IF NOT EXISTS cloud_jobs (
         id SERIAL PRIMARY KEY,
@@ -193,8 +198,9 @@ export async function initCloudSync(): Promise<void> {
         db.prepare(`
           INSERT INTO profiles (
             user_id, full_name, birth_year, education_level, department,
-            certificates, kpss_score, kpss_type, experience_years, cities, job_types, notifications_enabled
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            certificates, kpss_score, kpss_type, experience_years, cities, job_types, notifications_enabled,
+            profile_edit_count, last_profile_update
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(user_id) DO UPDATE SET
             full_name = excluded.full_name,
             birth_year = excluded.birth_year,
@@ -206,11 +212,14 @@ export async function initCloudSync(): Promise<void> {
             experience_years = excluded.experience_years,
             cities = excluded.cities,
             job_types = excluded.job_types,
-            notifications_enabled = excluded.notifications_enabled
+            notifications_enabled = excluded.notifications_enabled,
+            profile_edit_count = excluded.profile_edit_count,
+            last_profile_update = excluded.last_profile_update
         `).run(
           u.id, cp.full_name || '', cp.birth_year, cp.education_level, cp.department || '',
           cp.certificates || '[]', cp.kpss_score, cp.kpss_type, cp.experience_years ?? 0,
-          cp.cities || '[]', cp.job_types || '["memur","sozlesmeli","isci","akademik"]', cp.notifications_enabled ?? 1
+          cp.cities || '[]', cp.job_types || '["memur","sozlesmeli","isci","akademik"]', cp.notifications_enabled ?? 1,
+          cp.profile_edit_count || 0, cp.last_profile_update || 0
         );
       }
     }
@@ -417,11 +426,19 @@ export async function syncCloudProfile(email: string, p: any): Promise<void> {
   const pool = getPool();
   if (!pool || !email) return;
   try {
+    const localProf = db.prepare(`
+      SELECT p.profile_edit_count, p.last_profile_update
+      FROM profiles p
+      JOIN users u ON u.id = p.user_id
+      WHERE LOWER(u.email) = LOWER(?)
+    `).get(email) as { profile_edit_count?: number; last_profile_update?: number } | undefined;
+
     await pool.query(`
       INSERT INTO cloud_profiles (
         user_email, full_name, birth_year, education_level, department,
-        certificates, kpss_score, kpss_type, experience_years, cities, job_types, notifications_enabled, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP)
+        certificates, kpss_score, kpss_type, experience_years, cities, job_types, notifications_enabled,
+        profile_edit_count, last_profile_update, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP)
       ON CONFLICT(user_email) DO UPDATE SET
         full_name = EXCLUDED.full_name,
         birth_year = EXCLUDED.birth_year,
@@ -434,6 +451,8 @@ export async function syncCloudProfile(email: string, p: any): Promise<void> {
         cities = EXCLUDED.cities,
         job_types = EXCLUDED.job_types,
         notifications_enabled = EXCLUDED.notifications_enabled,
+        profile_edit_count = EXCLUDED.profile_edit_count,
+        last_profile_update = EXCLUDED.last_profile_update,
         updated_at = CURRENT_TIMESTAMP
     `, [
       email.toLowerCase(),
@@ -447,7 +466,9 @@ export async function syncCloudProfile(email: string, p: any): Promise<void> {
       p.experienceYears ?? 0,
       JSON.stringify(p.cities || []),
       JSON.stringify(p.jobTypes || ['memur', 'sozlesmeli', 'isci', 'akademik']),
-      p.notificationsEnabled ? 1 : 0
+      p.notificationsEnabled ? 1 : 0,
+      localProf?.profile_edit_count || 0,
+      localProf?.last_profile_update || 0,
     ]);
   } catch (err: any) {
     console.error(`[cloud-db] Profil buluta yedeklenirken hata:`, err.message);

@@ -6,7 +6,7 @@ import { normalizeKpssType } from '../constants/kpss';
 import { isPoolOnlyDepartmentLevel, resolveDepartmentFromPool } from '../constants/departments';
 import { db } from '../db';
 import { requireAuth } from '../middleware/auth';
-import { ensureProfile, getProfile, saveProfile, setPushToken } from '../services/profileRepo';
+import { ensureProfile, getProfile, getProfileLimit, incrementProfileEditCount, saveProfile, setPushToken } from '../services/profileRepo';
 import { syncCloudProfile } from '../services/cloudDb';
 import { EDUCATION_LEVELS, JOB_TYPES } from '../types';
 
@@ -52,10 +52,33 @@ profileRouter.get('/', (req, res) => {
     email: string;
     is_admin: number;
   } | undefined;
-  res.json({ email: user?.email || '', username: user?.email || '', isAdmin: user?.is_admin === 1, profile: profile || {} });
+  const isAdmin = user?.is_admin === 1;
+  const editLimit = getProfileLimit(req.userId!, isAdmin);
+  res.json({ email: user?.email || '', username: user?.email || '', isAdmin, profile: profile || {}, editLimit });
 });
 
 profileRouter.put('/', (req, res) => {
+  const user = db.prepare('SELECT email, is_admin FROM users WHERE id = ?').get(req.userId!) as {
+    email: string;
+    is_admin: number;
+  } | undefined;
+  const isAdmin = user?.is_admin === 1;
+
+  ensureProfile(req.userId!);
+  const limitInfo = getProfileLimit(req.userId!, isAdmin);
+
+  if (!limitInfo.canEditNow) {
+    const timeStr = limitInfo.waitHours > 0
+      ? `${limitInfo.waitHours} saat ${limitInfo.waitMinutes} dakika`
+      : `${limitInfo.waitMinutes} dakika`;
+    res.status(403).json({
+      error: `İlk 3 serbest profil güncelleme hakkınızı kullandınız. Güvenlik nedeniyle profil değişiklikleri 48 saatte bir yapılabilir. Kalan bekleme süreniz: ${timeStr}.`,
+      code: 'PROFILE_COOLDOWN',
+      editLimit: limitInfo,
+    });
+    return;
+  }
+
   const parsed = profileSchema.safeParse(req.body);
   if (!parsed.success) {
     const i = parsed.error.issues[0];
@@ -77,13 +100,17 @@ profileRouter.put('/', (req, res) => {
     }
     data.department = resolved;
   }
-  ensureProfile(req.userId!);
+
   saveProfile(req.userId!, data);
-  const user = db.prepare('SELECT email FROM users WHERE id = ?').get(req.userId!) as { email: string } | undefined;
+  if (!isAdmin) {
+    incrementProfileEditCount(req.userId!);
+  }
+
   if (user?.email) {
     syncCloudProfile(user.email, data).catch((e: any) => console.error('[cloud-db] Profil senkronizasyon hatası:', e.message));
   }
-  res.json({ profile: getProfile(req.userId!) });
+  const updatedLimit = getProfileLimit(req.userId!, isAdmin);
+  res.json({ profile: getProfile(req.userId!), editLimit: updatedLimit });
 });
 
 profileRouter.put('/push-token', (req, res) => {

@@ -5,6 +5,7 @@ import { config } from '../config';
 import { db } from '../db';
 import { runAllScrapers } from '../scrapers';
 import { syncCloudSession, syncCloudSubscription, syncCloudUser } from '../services/cloudDb';
+import { resetProfileLimit } from '../services/profileRepo';
 
 export const adminRouter = Router();
 
@@ -156,6 +157,8 @@ adminRouter.get('/users', (req: Request, res: Response) => {
         p.cities,
         p.job_types,
         COALESCE(p.notifications_enabled, 1) AS notifications_enabled,
+        COALESCE(p.profile_edit_count, 0) AS profile_edit_count,
+        COALESCE(p.last_profile_update, 0) AS last_profile_update,
         CASE WHEN p.push_token IS NOT NULL AND p.push_token != '' THEN 1 ELSE 0 END AS has_push_token,
         p.updated_at AS profile_updated_at,
         (SELECT COUNT(*) FROM favorites f WHERE f.user_id = u.id) AS favorites_count,
@@ -196,6 +199,8 @@ adminRouter.get('/users', (req: Request, res: Response) => {
         certificates,
         jobTypes,
         notificationsEnabled: r.notifications_enabled === 1,
+        profileEditCount: r.profile_edit_count || 0,
+        lastProfileUpdate: r.last_profile_update || 0,
         hasPushToken: r.has_push_token === 1,
         profileUpdatedAt: r.profile_updated_at,
         favoritesCount: r.favorites_count || 0,
@@ -324,6 +329,24 @@ adminRouter.post('/users/:id/kick', (req: Request, res: Response) => {
   res.json({
     success: true,
     message: `${u.email} kullanıcısının tüm açık oturumları sonlandırıldı. Tekrar giriş yapana kadar erişemez.`,
+  });
+});
+
+/**
+ * POST /api/admin/users/:id/reset-profile-limit
+ * Kullanıcının profil güncelleme hakkını ve 48 saatlik soğuma sayacını sıfırla
+ */
+adminRouter.post('/users/:id/reset-profile-limit', (req: Request, res: Response) => {
+  const userId = Number(req.params.id);
+  const u = db.prepare('SELECT email FROM users WHERE id = ?').get(userId) as { email: string } | undefined;
+  if (!u) {
+    res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+    return;
+  }
+  resetProfileLimit(userId);
+  res.json({
+    success: true,
+    message: `${u.email} kullanıcısının profil güncelleme hakkı sıfırlandı (3 serbest güncelleme hakkı yeniden tanımlandı).`,
   });
 });
 
