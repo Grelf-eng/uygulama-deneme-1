@@ -12,6 +12,27 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
   <title>Kamu İlan Asistanı</title>
+  <script>
+    // Gece saatleri ve kayıtlı tema kontrolü (Açılışta parlamayı önler)
+    (function() {
+      try {
+        const saved = localStorage.getItem('kamu_theme');
+        let isDark = false;
+        if (saved === 'dark') {
+          isDark = true;
+        } else if (saved === 'light') {
+          isDark = false;
+        } else {
+          // Gece saatlerinde (20:00 - 07:00 arası) otomatik karanlık mod
+          const h = new Date().getHours();
+          isDark = (h >= 20 || h < 7);
+        }
+        if (isDark) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
   <style>
     :root {
       --primary: #1d4ed8;
@@ -25,6 +46,21 @@
       --warn: #d97706; --warn-bg: #fef3c7;
       --fail: #dc2626; --fail-bg: #fee2e2;
     }
+    [data-theme="dark"] {
+      --primary: #3b82f6;
+      --primary-light: #1e3a8a;
+      --bg: #0b0f19;
+      --card: #151e2e;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --border: #243044;
+      --ok: #22c55e;
+      --ok-bg: #052e16;
+      --warn: #f59e0b;
+      --warn-bg: #451a03;
+      --fail: #ef4444;
+      --fail-bg: #450a0a;
+    }
     @keyframes spin {
       from { transform: rotate(0deg); }
       to { transform: rotate(360deg); }
@@ -34,42 +70,47 @@
       animation: spin 0.8s linear infinite;
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { margin: 0; background: var(--bg); color: var(--text); overscroll-behavior-y: contain; }
+    body { margin: 0; background: var(--bg); color: var(--text); overscroll-behavior-y: contain; transition: background 0.25s ease, color 0.25s ease; }
     header {
       background: var(--card);
       border-bottom: 1px solid var(--border);
-      padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+      padding: calc(10px + env(safe-area-inset-top, 0px)) calc(14px + env(safe-area-inset-right, 0px)) 10px calc(14px + env(safe-area-inset-left, 0px));
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 8px;
       position: sticky;
       top: 0;
       z-index: 20;
+      transition: background 0.25s ease, border-color 0.25s ease;
     }
-    .brand { display: flex; align-items: center; gap: 9px; }
-    .brand img { width: 30px; height: 30px; border-radius: 7px; }
-    header h1 { margin: 0; font-size: 17px; color: var(--primary); font-weight: 800; }
+    .brand { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+    .brand img { width: 30px; height: 30px; border-radius: 7px; flex-shrink: 0; }
+    header h1 { margin: 0; font-size: 16.5px; color: var(--primary); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; flex-wrap: nowrap; }
+    .header-actions { display: flex; align-items: center; gap: 5px; flex-wrap: nowrap; }
     .container { max-width: 720px; margin: 0 auto; padding: 14px; padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
-    .card { background: var(--card); border-radius: 15px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+    .card { background: var(--card); border-radius: 15px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); transition: background 0.25s ease, border-color 0.25s ease; }
     .btn { background: var(--primary); color: #fff; border: 1.5px solid var(--primary); border-radius: 10px; padding: 10px 14px; font-weight: 700; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
     .btn-sm { padding: 7px 11px; font-size: 13px; border-radius: 9px; }
     .btn-outline { background: transparent; color: var(--primary); }
     .btn-danger { background: var(--fail); border-color: var(--fail); }
-    .input, select, textarea { width: 100%; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 16px; margin-bottom: 10px; background: #fff; color: var(--text); }
+    .input, select, textarea { width: 100%; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 16px; margin-bottom: 10px; background: var(--card); color: var(--text); }
     label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
     .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
     .badge { padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-block; }
-    .chip { padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 13px; cursor: pointer; user-select: none; }
+    .chip { padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 13px; cursor: pointer; user-select: none; }
     .chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
     .tabs {
       position: fixed;
       bottom: 0; left: 0; right: 0;
-      background: #fff;
+      background: var(--card);
       border-top: 1px solid var(--border);
       display: flex;
       justify-content: space-around;
       padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
       z-index: 20;
+      transition: background 0.25s ease, border-color 0.25s ease;
     }
     .tab-btn { background: none; border: none; font-size: 11px; color: var(--muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; font-weight: 700; flex: 1; }
     .tab-btn .ico { font-size: 18px; line-height: 1.1; }
@@ -182,6 +223,202 @@
     .admin-user-card.subscribed-border {
       border-left: 4px solid #8b5cf6;
     }
+
+    /* GECE / GÜNDÜZ MODU KAYAR ANAHTAR (SLIDING TOGGLE SWITCH) */
+    .theme-switch-wrap {
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .theme-switch {
+      width: 52px;
+      height: 28px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 6px;
+      transition: background 0.3s ease, border-color 0.3s ease;
+      border: 1.5px solid var(--border);
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .theme-switch .theme-icon {
+      font-size: 12.5px;
+      line-height: 1;
+      z-index: 1;
+      pointer-events: none;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+    .theme-thumb {
+      position: absolute;
+      top: 2.5px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      background: #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.22);
+      transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s ease;
+      z-index: 2;
+    }
+
+    /* Karanlık Mod Aktif Olduğunda Tuş Sağa Kayar */
+    [data-theme="dark"] .theme-switch {
+      background: #1e293b;
+      border-color: #3b82f6;
+    }
+    [data-theme="dark"] .theme-thumb {
+      transform: translateX(24px);
+      background: #3b82f6;
+      box-shadow: 0 2px 7px rgba(59,130,246,0.5);
+    }
+    [data-theme="dark"] .theme-icon.sun {
+      opacity: 0.35;
+      transform: scale(0.85);
+    }
+    [data-theme="dark"] .theme-icon.moon {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+    :not([data-theme="dark"]) .theme-icon.sun {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+    :not([data-theme="dark"]) .theme-icon.moon {
+      opacity: 0.35;
+      transform: scale(0.85);
+    }
+
+    /* Karanlık Mod Bileşen Uyumlulukları */
+    [data-theme="dark"] .input,
+    [data-theme="dark"] select,
+    [data-theme="dark"] textarea {
+      background: #0b0f19;
+      color: var(--text);
+      border-color: var(--border);
+    }
+    [data-theme="dark"] .chip {
+      background: var(--card);
+      border-color: var(--border);
+      color: #cbd5e1;
+    }
+    [data-theme="dark"] .chip.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    [data-theme="dark"] .modal-sheet {
+      background: var(--card);
+      color: var(--text);
+    }
+    [data-theme="dark"] .admin-stat-card {
+      background: var(--card);
+      border-color: var(--border);
+    }
+    [data-theme="dark"] .admin-nav-tab {
+      background: var(--card);
+      border-color: var(--border);
+      color: var(--muted);
+    }
+    [data-theme="dark"] .admin-user-card {
+      background: var(--card);
+      border-color: var(--border);
+    }
+    [data-theme="dark"] .admin-user-card div[style*="background:#f8fafc"] {
+      background: #0b0f19 !important;
+      color: #cbd5e1 !important;
+    }
+    [data-theme="dark"] #certChips,
+    [data-theme="dark"] #cityChips {
+      background: #0b0f19 !important;
+      border-color: var(--border) !important;
+    }
+    [data-theme="dark"] #googleAuthBtn {
+      background: #1e293b !important;
+      color: #f1f5f9 !important;
+      border-color: #334155 !important;
+    }
+    [data-theme="dark"] #quickAccountBtn {
+      background: #1e293b !important;
+      color: #f1f5f9 !important;
+      border-color: #334155 !important;
+    }
+    [data-theme="dark"] #adminPanelCard {
+      background: #1c1917 !important;
+      border-color: #92400e !important;
+    }
+    [data-theme="dark"] #adminStatsText {
+      color: #fde68a !important;
+    }
+    [data-theme="dark"] div[style*="background:#f0fdf4"] {
+      background: #052e16 !important;
+      border-color: #166534 !important;
+      color: #86efac !important;
+    }
+    [data-theme="dark"] div[style*="background:#eff6ff"] {
+      background: #172554 !important;
+      border-color: #1e40af !important;
+      color: #93c5fd !important;
+    }
+    [data-theme="dark"] div[style*="background:#fef2f2"] {
+      background: #450a0a !important;
+      border-color: #991b1b !important;
+      color: #fca5a5 !important;
+    }
+    [data-theme="dark"] div[style*="color:#1f2937"],
+    [data-theme="dark"] div[style*="color:#1e293b"],
+    [data-theme="dark"] span[style*="color:#1e293b"] {
+      color: var(--text) !important;
+    }
+
+    @media (max-width: 640px) {
+      header {
+        padding: calc(8px + env(safe-area-inset-top, 0px)) calc(10px + env(safe-area-inset-right, 0px)) 8px calc(10px + env(safe-area-inset-left, 0px));
+      }
+      header h1 {
+        font-size: 14.5px;
+      }
+      #desktopQrBtn {
+        display: none !important;
+      }
+      .theme-switch {
+        width: 46px;
+        height: 24px;
+        padding: 0 5px;
+      }
+      .theme-thumb {
+        width: 17px;
+        height: 17px;
+        top: 2px;
+        left: 2px;
+      }
+      [data-theme="dark"] .theme-thumb {
+        transform: translateX(21px);
+      }
+      .theme-switch .theme-icon {
+        font-size: 11px;
+      }
+      .header-right {
+        gap: 4px;
+      }
+      .header-actions {
+        gap: 4px;
+      }
+      .header-actions .btn-sm {
+        padding: 5px 8px;
+        font-size: 11.5px;
+        border-radius: 8px;
+      }
+      #adminHeaderBadge {
+        padding: 4px 7px;
+        font-size: 11px;
+      }
+    }
+
     .hidden { display: none !important; }
   </style>
   <!-- Google Identity Services (Resmi Google ile Oturum Açma SDK) -->
@@ -193,9 +430,17 @@
       <img src="/icons/icon-192.png" alt="Logo" />
       <h1>Kamu İlan Asistanı</h1>
     </div>
-    <div class="row">
+    <div class="header-right">
+      <!-- GECE / GÜNDÜZ MODU KAYAR TUŞU -->
+      <div class="theme-switch-wrap" onclick="toggleTheme()" title="Gece / Gündüz Modu (Karanlık Mod)">
+        <div class="theme-switch" id="themeSwitch" aria-label="Gece Modu">
+          <span class="theme-icon sun">☀️</span>
+          <span class="theme-icon moon">🌙</span>
+          <div class="theme-thumb" id="themeThumb"></div>
+        </div>
+      </div>
       <a href="/indir" id="desktopQrBtn" class="btn btn-outline btn-sm">📱 Telefona Yükle</a>
-      <div id="headerActions" class="row hidden">
+      <div id="headerActions" class="header-actions hidden">
         <button id="adminHeaderBadge" class="btn btn-sm hidden" style="background:#fef3c7;color:#b45309;font-weight:700;border:1px solid #fde68a;" onclick="switchTab('admin')">🛡️ Panel</button>
         <button class="btn btn-outline btn-sm" onclick="showScreen('notifications')" id="notifBtn">🔔</button>
         <button class="btn btn-danger btn-sm" onclick="logout()">Çıkış</button>
@@ -237,7 +482,7 @@
           <hr style="flex:1;border:none;border-top:1px solid var(--border);" />
         </div>
 
-        <button type="button" class="btn" style="width:100%;margin-bottom:8px;background:#ffffff;color:#1f2937;border:1.5px solid #d1d5db;display:flex;align-items:center;justify-content:center;gap:10px;font-weight:600;font-size:14px;box-shadow:0 1px 2px rgba(0,0,0,0.05);" onclick="promptSocialAuth('google')">
+        <button type="button" class="btn" id="googleAuthBtn" style="width:100%;margin-bottom:8px;background:#ffffff;color:#1f2937;border:1.5px solid #d1d5db;display:flex;align-items:center;justify-content:center;gap:10px;font-weight:600;font-size:14px;box-shadow:0 1px 2px rgba(0,0,0,0.05);" onclick="promptSocialAuth('google')">
           <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
           Google ile Devam Et
         </button>
@@ -466,7 +711,10 @@
         <input id="cityFilter" class="input" style="margin-bottom:6px" placeholder="Şehir ara... (seçmek için üzerine basın)" oninput="renderCityChips()" />
         <div id="cityChips" class="row" style="max-height:175px;overflow-y:auto;padding:8px;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;background:#fff;"></div>
 
-        <button class="btn" style="width:100%;margin-top:6px;" onclick="saveProfile()">Profili Kaydet</button>
+        <!-- Profil Güncelleme 48 Saat Kuralı & Kalan Hak Kartı -->
+        <div id="profLimitCard" style="margin-top:10px;margin-bottom:8px;"></div>
+
+        <button class="btn" id="saveProfBtn" style="width:100%;margin-top:4px;" onclick="saveProfile()">Profili Kaydet</button>
         <button class="btn btn-outline" style="width:100%;margin-top:8px;" onclick="sendTestNotif()">🔔 Test Bildirimi Gönder</button>
         <p id="profMsg" style="color:var(--ok);font-size:13px;margin-top:8px;"></p>
       </div>
@@ -718,6 +966,32 @@
       }
     }
 
+    function updateThemeMeta(isDark) {
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', isDark ? '#0b0f19' : '#1d4ed8');
+    }
+
+    function initTheme() {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      updateThemeMeta(isDark);
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const nextDark = !isDark;
+      if (nextDark) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.body.setAttribute('data-theme', 'dark');
+        localStorage.setItem('kamu_theme', 'dark');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        document.body.removeAttribute('data-theme');
+        localStorage.setItem('kamu_theme', 'light');
+      }
+      updateThemeMeta(nextDark);
+    }
+    initTheme();
+
     let token = localStorage.getItem('kamu_token');
     let isRegister = false;
     let currentTab = 'jobs';
@@ -836,6 +1110,20 @@
       }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (res.status === 401 && path !== '/auth/login' && path !== '/auth/register') {
+          const isRevoked = data.code === 'SESSION_REVOKED';
+          if (!window._isSessionAlertShowing) {
+            window._isSessionAlertShowing = true;
+            logout();
+            if (isRevoked) {
+              alert('⚠️ ' + (data.error || 'Hesabınıza başka bir cihazdan giriş yapıldı. Güvenliğiniz için bu cihazdaki oturum sonlandırıldı.'));
+            }
+            setTimeout(() => { window._isSessionAlertShowing = false; }, 2500);
+          }
+          const err = new Error(data.error || 'Oturum sonlandı.');
+          err.status = 401;
+          throw err;
+        }
         if (res.status === 502 || res.status === 503 || res.status === 504) {
           const err = new Error('Tünel geçici olarak yanıt vermedi (502). Kesintisiz bağlantı için http://192.168.1.31:4000 veya http://localhost:4000 adresini kullanın.');
           err.status = res.status;
@@ -1124,6 +1412,7 @@
               <div>📊 <b>Puan:</b> ${escapeHtml(kpssInfo)}</div>
               <div>📍 <b>Şehirler:</b> ${escapeHtml(citiesInfo)}</div>
               <div>⭐ <b>Takip:</b> ${u.favoritesCount || 0} Favori • ${u.applicationsCount || 0} Başvuru</div>
+              <div>🔄 <b>Profil Değişikliği:</b> ${u.profileEditCount || 0} kez ${u.profileEditCount >= 3 ? '<span class="badge" style="background:#fee2e2;color:#991b1b;font-size:10px;">🔒 48s Kilitli</span>' : '<span class="badge" style="background:#dcfce7;color:#15803d;font-size:10px;">✓ Serbest</span>'}</div>
             </div>
 
             <!-- Yönetici İşlem Butonları -->
@@ -1134,8 +1423,16 @@
                 </button>
               ` : ''}
 
+              <button class="btn btn-sm btn-outline" style="padding:4px 9px;font-size:11.5px;color:#0284c7;border-color:#bae6fd;" onclick="adminResetProfileLimit(${u.id}, '${escapeHtml(u.email)}')">
+                🔓 48s Kilidi Sıfırla
+              </button>
+
               <button class="btn btn-sm btn-outline" style="padding:4px 9px;font-size:11.5px;color:#7c3aed;border-color:#7c3aed;" onclick="adminToggleSubscription(${u.id}, ${isSubscribed})">
                 ${isSubscribed ? '❌ VIP İptal Et' : '👑 VIP Abone Yap'}
+              </button>
+
+              <button class="btn btn-sm btn-outline" style="padding:4px 9px;font-size:11.5px;color:#d97706;border-color:#fcd34d;" onclick="adminKickUser(${u.id}, '${escapeHtml(u.email)}')">
+                🚪 Oturumu Kapat
               </button>
 
               <button class="btn btn-sm btn-outline" style="padding:4px 9px;font-size:11.5px;color:#475569;border-color:#cbd5e1;" onclick="adminToggleAdmin(${u.id}, ${u.isAdmin})">
@@ -1197,6 +1494,28 @@
         await loadAdminDashboard();
       } catch (e) {
         alert(e.message || 'Hesap silinemedi.');
+      }
+    }
+
+    async function adminKickUser(id, email) {
+      if (!confirm(`${email} kullanıcısının tüm açık oturumlarını sonlandırıp sistemden atmak istediğinize emin misiniz?`)) return;
+      try {
+        const r = await api(`/admin/users/${id}/kick`, { method: 'POST' });
+        alert(r.message || 'Oturum sonlandırıldı.');
+        await loadAdminDashboard();
+      } catch (e) {
+        alert(e.message || 'İşlem başarısız oldu.');
+      }
+    }
+
+    async function adminResetProfileLimit(id, email) {
+      if (!confirm(`${email} kullanıcısının profil güncelleme sayacını sıfırlamak ve 3 anlık güncelleme hakkını yeniden tanımlamak istediğinize emin misiniz?`)) return;
+      try {
+        const r = await api(`/admin/users/${id}/reset-profile-limit`, { method: 'POST' });
+        alert(r.message || 'Limit sıfırlandı.');
+        await loadAdminDashboard();
+      } catch (e) {
+        alert(e.message || 'İşlem başarısız oldu.');
       }
     }
 
@@ -1641,6 +1960,7 @@
         }
 
         const isAdmin = Boolean(me.isAdmin);
+        currentAppIsAdmin = isAdmin;
         document.getElementById('adminHeaderBadge').classList.toggle('hidden', !isAdmin);
         const adminTabBtn = document.getElementById('adminTabBtn');
         if (adminTabBtn) adminTabBtn.classList.toggle('hidden', !isAdmin);
@@ -1650,7 +1970,7 @@
           loadAdminDashboard();
         }
 
-        fillProfileForm(me.profile);
+        fillProfileForm(me.profile, me.editLimit, isAdmin);
         document.getElementById('authScreen').classList.add('hidden');
         document.getElementById('headerActions').classList.remove('hidden');
         document.getElementById('bottomTabs').classList.remove('hidden');
@@ -1664,6 +1984,67 @@
       }
     }
 
+    let currentAppIsAdmin = false;
+    let currentProfileLimit = null;
+
+    function renderProfileLimitUi(limit, isAdmin) {
+      const card = document.getElementById('profLimitCard');
+      const btn = document.getElementById('saveProfBtn');
+      if (!card || !btn) return;
+      currentProfileLimit = limit;
+
+      if (isAdmin) {
+        card.innerHTML = `<div style="background:#fef3c7;border:1px solid #fde68a;color:#92400e;padding:8px 11px;border-radius:8px;font-size:12px;">🛡️ <b>Yönetici Modu:</b> Sınırsız profil güncelleme yetkisi aktif.</div>`;
+        btn.disabled = false;
+        btn.innerText = 'Profili Kaydet';
+        btn.style.opacity = '1';
+        return;
+      }
+
+      limit = limit || { initialRemaining: 3, canEditNow: true, waitHours: 0, waitMinutes: 0 };
+
+      if (limit.initialRemaining > 0) {
+        card.innerHTML = `
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:9px 12px;border-radius:8px;font-size:12px;line-height:1.45;">
+            💡 <b>İlk Kurulum Hakkı:</b> Kalan anlık güncelleme hakkınız: <b>${limit.initialRemaining} / 3</b>
+            <div style="font-size:11.5px;color:#3b82f6;margin-top:4px;">
+              İlk 3 güncellemeden sonra hesap güvenliği ve ortak kullanımı önlemek amacıyla profil değişiklikleri <b>48 saatte bir</b> yapılabilir.
+            </div>
+          </div>
+        `;
+        btn.disabled = false;
+        btn.innerText = 'Profili Kaydet';
+        btn.style.opacity = '1';
+      } else if (!limit.canEditNow) {
+        const timeStr = limit.waitHours > 0
+          ? `${limit.waitHours} saat ${limit.waitMinutes} dakika`
+          : `${limit.waitMinutes} dakika`;
+        card.innerHTML = `
+          <div style="background:#fef2f2;border:1.5px solid #fecaca;color:#991b1b;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.45;">
+            🔒 <b>Profil Güncelleme Bekleme Süresi (48 Saat):</b>
+            <div style="margin-top:3px;">
+              İlk 3 serbest güncelleme hakkınızı kullandınız. Ortak hesap kullanımını önlemek amacıyla profil değişiklikleri 48 saatte bir yapılabilmektedir.
+            </div>
+            <div style="margin-top:6px;font-weight:800;color:#dc2626;font-size:13px;">
+              ⏳ Kalan Bekleme Süresi: ${timeStr}
+            </div>
+          </div>
+        `;
+        btn.disabled = true;
+        btn.innerText = `🔒 48 Saat Bekleme Süresinde (${timeStr})`;
+        btn.style.opacity = '0.6';
+      } else {
+        card.innerHTML = `
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:9px 12px;border-radius:8px;font-size:12px;line-height:1.45;">
+            ✅ <b>Profil Güncelleme Hakkınız Açıldı:</b> Şimdi profilinizi güncelleyebilirsiniz. Bu işlemden sonraki sonraki güncelleme için tekrar 48 saat gerekecektir.
+          </div>
+        `;
+        btn.disabled = false;
+        btn.innerText = 'Profili Kaydet';
+        btn.style.opacity = '1';
+      }
+    }
+
     function syncSelectedDept() {
       const sel = document.getElementById('profDeptSelect');
       if (sel && sel.value) {
@@ -1671,9 +2052,12 @@
       }
     }
 
-    function fillProfileForm(p) {
+    function fillProfileForm(p, limit, isAdmin) {
       p = p || {};
       currentUserProfile = p;
+      if (limit !== undefined) {
+        renderProfileLimitUi(limit, isAdmin ?? currentAppIsAdmin);
+      }
       document.getElementById('profName').value = p.fullName || '';
       document.getElementById('profBirth').value = p.birthYear || '';
       document.getElementById('profEdu').value = p.educationLevel || '';
@@ -1831,13 +2215,15 @@
         notificationsEnabled: true
       };
       try {
-        await api('/profile', { method: 'PUT', body });
+        const res = await api('/profile', { method: 'PUT', body });
         matchesJobsLoaded = false;
         document.getElementById('profMsg').innerText = '✅ Profil kaydedildi! Eşleşen ilanlar güncellendi.';
-        const saved = await api('/profile');
-        fillProfileForm(saved.profile);
-        setTimeout(() => document.getElementById('profMsg').innerText = '', 3000);
+        fillProfileForm(res.profile, res.editLimit, currentAppIsAdmin);
+        setTimeout(() => document.getElementById('profMsg').innerText = '', 3500);
       } catch (e) {
+        if (e && e.data && e.data.editLimit) {
+          renderProfileLimitUi(e.data.editLimit, currentAppIsAdmin);
+        }
         alert(e.message);
       }
     }
@@ -1873,6 +2259,11 @@
         renderCertChips();
         renderJobTypeChips();
         updateDeptVisibility();
+        api('/profile').then(res => {
+          if (res && res.profile) {
+            fillProfileForm(res.profile, res.editLimit, currentAppIsAdmin);
+          }
+        }).catch(() => {});
       }
       if (name === 'cv') loadSavedCv();
       if (name === 'applications') loadApplications();
@@ -2335,7 +2726,7 @@
         </div>
         <div class="card">
           <h3 style="margin-top:0">İlan Açıklaması</h3>
-          <div style="line-height:1.68;white-space:pre-line;word-break:break-word;font-size:14.5px;color:#1f2937;">${escapeHtml(j.description)}</div>
+          <div style="line-height:1.68;white-space:pre-line;word-break:break-word;font-size:14.5px;color:var(--text);">${escapeHtml(j.description)}</div>
         </div>
       `;
       showScreen('detail');

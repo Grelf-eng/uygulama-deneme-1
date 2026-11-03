@@ -74,18 +74,21 @@
     header {
       background: var(--card);
       border-bottom: 1px solid var(--border);
-      padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+      padding: calc(10px + env(safe-area-inset-top, 0px)) calc(14px + env(safe-area-inset-right, 0px)) 10px calc(14px + env(safe-area-inset-left, 0px));
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 8px;
       position: sticky;
       top: 0;
       z-index: 20;
       transition: background 0.25s ease, border-color 0.25s ease;
     }
-    .brand { display: flex; align-items: center; gap: 9px; }
-    .brand img { width: 30px; height: 30px; border-radius: 7px; }
-    header h1 { margin: 0; font-size: 17px; color: var(--primary); font-weight: 800; }
+    .brand { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+    .brand img { width: 30px; height: 30px; border-radius: 7px; flex-shrink: 0; }
+    header h1 { margin: 0; font-size: 16.5px; color: var(--primary); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; flex-wrap: nowrap; }
+    .header-actions { display: flex; align-items: center; gap: 5px; flex-wrap: nowrap; }
     .container { max-width: 720px; margin: 0 auto; padding: 14px; padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
     .card { background: var(--card); border-radius: 15px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); transition: background 0.25s ease, border-color 0.25s ease; }
     .btn { background: var(--primary); color: #fff; border: 1.5px solid var(--primary); border-radius: 10px; padding: 10px 14px; font-weight: 700; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
@@ -372,6 +375,50 @@
       color: var(--text) !important;
     }
 
+    @media (max-width: 640px) {
+      header {
+        padding: calc(8px + env(safe-area-inset-top, 0px)) calc(10px + env(safe-area-inset-right, 0px)) 8px calc(10px + env(safe-area-inset-left, 0px));
+      }
+      header h1 {
+        font-size: 14.5px;
+      }
+      #desktopQrBtn {
+        display: none !important;
+      }
+      .theme-switch {
+        width: 46px;
+        height: 24px;
+        padding: 0 5px;
+      }
+      .theme-thumb {
+        width: 17px;
+        height: 17px;
+        top: 2px;
+        left: 2px;
+      }
+      [data-theme="dark"] .theme-thumb {
+        transform: translateX(21px);
+      }
+      .theme-switch .theme-icon {
+        font-size: 11px;
+      }
+      .header-right {
+        gap: 4px;
+      }
+      .header-actions {
+        gap: 4px;
+      }
+      .header-actions .btn-sm {
+        padding: 5px 8px;
+        font-size: 11.5px;
+        border-radius: 8px;
+      }
+      #adminHeaderBadge {
+        padding: 4px 7px;
+        font-size: 11px;
+      }
+    }
+
     .hidden { display: none !important; }
   </style>
   <!-- Google Identity Services (Resmi Google ile Oturum Açma SDK) -->
@@ -383,7 +430,7 @@
       <img src="/icons/icon-192.png" alt="Logo" />
       <h1>Kamu İlan Asistanı</h1>
     </div>
-    <div class="row" style="gap:7px;">
+    <div class="header-right">
       <!-- GECE / GÜNDÜZ MODU KAYAR TUŞU -->
       <div class="theme-switch-wrap" onclick="toggleTheme()" title="Gece / Gündüz Modu (Karanlık Mod)">
         <div class="theme-switch" id="themeSwitch" aria-label="Gece Modu">
@@ -393,7 +440,7 @@
         </div>
       </div>
       <a href="/indir" id="desktopQrBtn" class="btn btn-outline btn-sm">📱 Telefona Yükle</a>
-      <div id="headerActions" class="row hidden">
+      <div id="headerActions" class="header-actions hidden">
         <button id="adminHeaderBadge" class="btn btn-sm hidden" style="background:#fef3c7;color:#b45309;font-weight:700;border:1px solid #fde68a;" onclick="switchTab('admin')">🛡️ Panel</button>
         <button class="btn btn-outline btn-sm" onclick="showScreen('notifications')" id="notifBtn">🔔</button>
         <button class="btn btn-danger btn-sm" onclick="logout()">Çıkış</button>
