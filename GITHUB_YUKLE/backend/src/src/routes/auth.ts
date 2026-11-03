@@ -387,3 +387,11 @@ authRouter.post('/social', async (req, res) => {
     message: `${provider === 'google' ? 'Google' : 'Apple'} hesabınızı doğrulamak için 6 haneli güvenlik kodu e-postanıza gönderildi.`,
   });
 });
+
+/**
+ * POST /api/auth/apple/callback
+ * Apple Sign-In popup yetkilendirme geri dönüş (OAuth callback) adresi
+ */
+authRouter.post('/apple/callback', (_req, res) => {
+  res.send(`<!DOCTYPE html><html><head><title>Apple Giriş</title></head><body><script>window.close();</script></body></html>`);
+});

@@ -423,6 +423,8 @@
   </style>
   <!-- Google Identity Services (Resmi Google ile Oturum Açma SDK) -->
   <script src="https://accounts.google.com/gsi/client" async defer onload="if(window.initGoogleAuth)window.initGoogleAuth()"></script>
+  <!-- Apple ID Sign In (Resmi Apple ile Oturum Açma SDK) -->
+  <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/auth/js" async defer onload="if(window.initAppleAuth)window.initAppleAuth()"></script>
 </head>
 <body>
   <header>
@@ -1792,6 +1794,87 @@
       }
     }
 
+    // -------------------------------------------------------------
+    // RESMİ APPLE SIGN-IN ALTYAPISI (AppleID.auth)
+    // -------------------------------------------------------------
+    let isAppleConfigured = false;
+    const APPLE_CLIENT_ID = window.APPLE_CLIENT_ID || 'com.kamuilan.asistan.service';
+
+    window.initAppleAuth = function() {
+      if (typeof AppleID === 'undefined' || !AppleID.auth) return;
+      try {
+        AppleID.auth.init({
+          clientId: APPLE_CLIENT_ID,
+          scope: 'name email',
+          redirectURI: window.location.origin + '/api/auth/apple/callback',
+          state: 'kamu_' + Math.random().toString(36).substring(2),
+          usePopup: true
+        });
+        isAppleConfigured = true;
+      } catch (err) {
+        console.warn('Apple auth init:', err);
+      }
+    };
+
+    async function handleAppleCredentialResponse(response) {
+      if (!response || !response.authorization) return;
+      let email = '';
+      let fullName = 'Apple Kullanıcısı';
+
+      if (response.user) {
+        if (typeof response.user === 'string') {
+          try {
+            const parsedUser = JSON.parse(response.user);
+            email = parsedUser.email || '';
+            if (parsedUser.name) {
+              fullName = `${parsedUser.name.firstName || ''} ${parsedUser.name.lastName || ''}`.trim() || fullName;
+            }
+          } catch {}
+        } else if (response.user.email) {
+          email = response.user.email;
+          if (response.user.name) {
+            fullName = `${response.user.name.firstName || ''} ${response.user.name.lastName || ''}`.trim() || fullName;
+          }
+        }
+      }
+
+      if (!email && response.authorization.id_token) {
+        const decoded = parseJwt(response.authorization.id_token);
+        if (decoded && decoded.email) {
+          email = decoded.email;
+        }
+      }
+
+      if (email) {
+        await handleAppleUserLoggedIn(email, fullName);
+      }
+    }
+
+    async function handleAppleUserLoggedIn(email, fullName) {
+      localStorage.setItem('kamu_social_last_email', email);
+      document.getElementById('authError').innerText = '⏳ Güvenlik kodu gönderiliyor...';
+      try {
+        const res = await api('/auth/social', {
+          method: 'POST',
+          body: {
+            provider: 'apple',
+            email: email,
+            fullName: fullName || 'Apple Kullanıcısı'
+          }
+        });
+        document.getElementById('authError').innerText = '';
+        if (res && res.requiresVerification) {
+          showVerificationCard(res.email || email, res.message);
+          return;
+        }
+        token = res.token;
+        localStorage.setItem('kamu_token', token);
+        await initApp();
+      } catch (err) {
+        document.getElementById('authError').innerText = err.message || 'Giriş yapılamadı.';
+      }
+    }
+
     function promptSocialAuth(provider) {
       activeSocialProvider = provider;
       if (provider === 'google') {
@@ -1813,6 +1896,29 @@
           return;
         }
       }
+
+      if (provider === 'apple') {
+        // 1. Resmi Apple ID SDK hazırsa resmi Apple kimlik penceresini aç
+        if (typeof AppleID !== 'undefined' && AppleID.auth) {
+          try {
+            if (!isAppleConfigured) window.initAppleAuth();
+            AppleID.auth.signIn()
+              .then(handleAppleCredentialResponse)
+              .catch((err) => {
+                console.warn('Apple auth signIn:', err);
+                if (err && err.error !== 'popup_closed_by_user') {
+                  openSocialModal('apple');
+                }
+              });
+            return;
+          } catch (e) {
+            console.warn('Apple auth catch:', e);
+          }
+        }
+        openSocialModal(provider);
+        return;
+      }
+
       openSocialModal(provider);
     }
 
@@ -3063,7 +3169,10 @@
     }
 
     setupDefaultMetaUi();
-    setTimeout(() => { if (window.initGoogleAuth) window.initGoogleAuth(); }, 500);
+    setTimeout(() => {
+      if (window.initGoogleAuth) window.initGoogleAuth();
+      if (window.initAppleAuth) window.initAppleAuth();
+    }, 500);
     if (token) initApp();
   </script>
 </body>
