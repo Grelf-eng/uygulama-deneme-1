@@ -732,7 +732,7 @@
               <div style="font-size:12px;color:#b45309;">Kayıtlı adaylar, aboneler ve sistem durumu</div>
             </div>
           </div>
-          <button class="btn btn-sm btn-outline" style="border-color:#f59e0b;color:#b45309;" onclick="loadAdminDashboard()">🔄 Yenile</button>
+          <button class="btn btn-sm btn-outline" id="adminRefreshDashboardBtn" style="border-color:#f59e0b;color:#b45309;" onclick="refreshAdminDashboardWithFeedback()">🔄 Yenile</button>
         </div>
 
         <!-- Metrik İstatistik Kutuları -->
@@ -1234,7 +1234,32 @@
     let currentAdminSubTab = 'users';
     let adminSearchQuery = '';
 
-    async function loadAdminDashboard() {
+    async function refreshAdminDashboardWithFeedback() {
+      const btn = document.getElementById('adminRefreshDashboardBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = '⏳ Yenileniyor...';
+      }
+      try {
+        await loadAdminDashboard(true);
+        if (btn) {
+          btn.innerText = '✅ Yenilendi!';
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.innerText = '🔄 Yenile';
+          }, 1800);
+        }
+      } catch (e) {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = '❌ Hata';
+          setTimeout(() => { btn.innerText = '🔄 Yenile'; }, 2500);
+        }
+        alert('Yönetici paneli yenilenirken hata: ' + (e.message || 'Lütfen oturumunuzu kontrol edin.'));
+      }
+    }
+
+    async function loadAdminDashboard(throwOnError = false) {
       try {
         const [stats, usersRes] = await Promise.all([
           api('/admin/stats'),
@@ -1285,6 +1310,7 @@
         renderAdminUsers();
       } catch (e) {
         console.error('Admin paneli yükleme hatası:', e);
+        if (throwOnError) throw e;
       }
     }
 
@@ -1590,30 +1616,39 @@
       const btn = document.getElementById('adminScrapeBtn');
       const sysBtn = document.getElementById('adminSystemScrapeBtn');
       const statusEl = document.getElementById('adminScrapeStatus');
-      if (btn) { btn.disabled = true; btn.innerText = '⏳ İlanlar çekiliyor...'; }
+      if (btn) { btn.disabled = true; btn.innerText = '⏳ İlanlar taranıyor...'; }
       if (sysBtn) { sysBtn.disabled = true; sysBtn.innerText = '⏳ Resmi kaynaklar taranıyor...'; }
       if (statusEl) statusEl.innerText = '⏳ Resmi Gazete, Kariyer Kapısı ve İŞKUR taranıyor, lütfen bekleyin...';
 
       try {
         const r = await api('/admin/scrape', { method: 'POST' });
         await loadAdminDashboard();
-        if (btn) btn.innerText = '✅ Güncellendi!';
-        if (sysBtn) sysBtn.innerText = '✅ Tarama Tamamlandı!';
-        if (statusEl) statusEl.innerText = '✅ Tarama başarıyla tamamlandı. Yeni ilanlar eklendi.';
+        if (btn) btn.innerText = '✅ Tarama Başlatıldı!';
+        if (sysBtn) sysBtn.innerText = '✅ Tarama Başlatıldı!';
+        if (statusEl) statusEl.innerText = '✅ ' + (r.message || 'Tarama arka planda başarıyla başlatıldı.');
+
+        // 4 saniye sonra yeni gelen ilanları ekrana yansıt
+        setTimeout(async () => {
+          await loadAdminDashboard();
+          if (typeof loadAllJobs === 'function') await loadAllJobs();
+          if (statusEl) statusEl.innerText = '✅ Güncel ilanlar sisteme işlendi.';
+        }, 4000);
       } catch (e) {
-        alert(e.message || 'Scraping sırasında hata oluştu.');
+        alert(e.message || 'Tarama sırasında hata oluştu.');
         if (btn) btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek';
         if (sysBtn) sysBtn.innerText = '🔄 Resmi Kaynaklardan İlanları Şimdi Tara (Scrape)';
         if (statusEl) statusEl.innerText = '❌ Tarama başarısız: ' + e.message;
       } finally {
-        if (btn) {
-          btn.disabled = false;
-          setTimeout(() => { btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek'; }, 2500);
-        }
-        if (sysBtn) {
-          sysBtn.disabled = false;
-          setTimeout(() => { sysBtn.innerText = '🔄 Resmi Kaynaklardan İlanları Şimdi Tara (Scrape)'; }, 2500);
-        }
+        setTimeout(() => {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek';
+          }
+          if (sysBtn) {
+            sysBtn.disabled = false;
+            sysBtn.innerText = '🔄 Resmi Kaynaklardan İlanları Şimdi Tara (Scrape)';
+          }
+        }, 3000);
       }
     }
 

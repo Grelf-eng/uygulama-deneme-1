@@ -3,8 +3,8 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config } from '../config';
 import { db } from '../db';
-import { runAllScrapers } from '../scrapers';
-import { deleteCloudUser, syncCloudSession, syncCloudSubscription, syncCloudUser } from '../services/cloudDb';
+import { isScrapingRunning, runAllScrapers } from '../scrapers';
+import { deleteCloudUser, syncCloudSession, syncCloudSubscription, syncCloudUser, syncLocalJobsToCloud } from '../services/cloudDb';
 import { resetProfileLimit } from '../services/profileRepo';
 
 export const adminRouter = Router();
@@ -379,16 +379,45 @@ adminRouter.delete('/users/:id', (req: Request, res: Response) => {
 
 /**
  * POST /api/admin/scrape
- * İlan tarayıcılarını manuel tetikleme
+ * İlan tarayıcılarını tetikler (Render 30 saniye zaman aşımına uğramaması için arka planda çalıştırır)
  */
 adminRouter.post('/scrape', async (req: Request, res: Response) => {
   try {
     const sources = Array.isArray(req.body?.sources) ? req.body.sources : undefined;
-    const result = await runAllScrapers(sources);
-    res.json(result);
+
+    if (isScrapingRunning()) {
+      res.json({
+        success: true,
+        alreadyRunning: true,
+        message: 'Resmi kaynaklar şu anda zaten taranıyor. Birkaç saniye içinde tamamlanacaktır.',
+      });
+      return;
+    }
+
+    // Arka planda güvenli başlat (Render HTTP timeout 502 hatası vermez)
+    runAllScrapers(sources)
+      .then(async () => {
+        try {
+          await syncLocalJobsToCloud();
+        } catch {}
+      })
+      .catch((err: any) => console.error('[admin:scrape] Arka plan tarama hatası:', err.message));
+
+    res.json({
+      success: true,
+      message: 'Kamu ilanları taraması başarıyla başlatıldı. Yeni ilanlar geldikçe panele ve listeye yansıyacaktır.',
+    });
   } catch (e: any) {
-    res.status(409).json({ error: e.message || 'Scraping başlatılamadı.' });
+    res.status(500).json({ error: e.message || 'Scraping başlatılamadı.' });
   }
+});
+
+/**
+ * GET /api/admin/scrape/status
+ * İlan tarayıcısının o an çalışıp çalışmadığını kontrol eder
+ */
+adminRouter.get('/scrape/status', (_req: Request, res: Response) => {
+  res.json({ running: isScrapingRunning() });
 });
 
 /**

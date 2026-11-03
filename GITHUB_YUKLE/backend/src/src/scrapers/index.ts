@@ -13,6 +13,16 @@ export interface ScrapeReport {
 }
 
 let running = false;
+let runningStartedAt = 0;
+
+export function isScrapingRunning(): boolean {
+  if (running && Date.now() - runningStartedAt > 4 * 60 * 1000) {
+    // 4 dakikadan uzun sürmüşse kilitlenmiş demektir, kilidi kaldır
+    console.warn('[scraper] 4 dakikalık zaman aşımı: kilitlenen tarama sıfırlandı.');
+    running = false;
+  }
+  return running;
+}
 
 function instKey(inst: string | null): string {
   const words = norm(inst ?? '')
@@ -113,8 +123,9 @@ export async function runAllScrapers(only?: string[]): Promise<{
   reports: ScrapeReport[];
   notifications: { matched: number; pushed: number };
 }> {
-  if (running) throw new Error('Scraping zaten çalışıyor');
+  if (isScrapingRunning()) throw new Error('İlan taraması zaten devam ediyor. Lütfen biraz bekleyin.');
   running = true;
+  runningStartedAt = Date.now();
   const reports: ScrapeReport[] = [];
   const newIds: number[] = [];
   try {
