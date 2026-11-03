@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
   is_verified       INTEGER NOT NULL DEFAULT 0,
   is_subscribed     INTEGER NOT NULL DEFAULT 0,
   subscription_tier TEXT NOT NULL DEFAULT 'standart',
+  session_token     TEXT NOT NULL DEFAULT '',
   created_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -123,6 +124,7 @@ addColumnIfMissing('users', 'is_admin', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'is_verified', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'is_subscribed', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'subscription_tier', "TEXT NOT NULL DEFAULT 'standart'");
+addColumnIfMissing('users', 'session_token', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('profiles', 'certificates', "TEXT NOT NULL DEFAULT '[]'");
 addColumnIfMissing('jobs', 'required_certificates', "TEXT NOT NULL DEFAULT '[]'");
 addColumnIfMissing('jobs', 'certificate_mode', "TEXT NOT NULL DEFAULT 'all'");

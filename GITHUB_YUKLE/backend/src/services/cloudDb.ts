@@ -46,11 +46,13 @@ export async function initCloudSync(): Promise<void> {
         is_verified INTEGER NOT NULL DEFAULT 0,
         is_subscribed INTEGER NOT NULL DEFAULT 0,
         subscription_tier TEXT NOT NULL DEFAULT 'standart',
+        session_token TEXT NOT NULL DEFAULT '',
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
       ALTER TABLE cloud_users ADD COLUMN IF NOT EXISTS is_subscribed INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE cloud_users ADD COLUMN IF NOT EXISTS subscription_tier TEXT NOT NULL DEFAULT 'standart';
+      ALTER TABLE cloud_users ADD COLUMN IF NOT EXISTS session_token TEXT NOT NULL DEFAULT '';
 
       CREATE TABLE IF NOT EXISTS cloud_verifications (
         email TEXT PRIMARY KEY,
@@ -156,14 +158,15 @@ export async function initCloudSync(): Promise<void> {
     const usersRes = await p.query('SELECT * FROM cloud_users');
     let importedUsers = 0;
     const insertUser = db.prepare(`
-      INSERT INTO users (id, email, password_hash, is_admin, is_verified, is_subscribed, subscription_tier, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (id, email, password_hash, is_admin, is_verified, is_subscribed, subscription_tier, session_token, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(email) DO UPDATE SET
         password_hash = excluded.password_hash,
         is_admin = excluded.is_admin,
         is_verified = excluded.is_verified,
         is_subscribed = excluded.is_subscribed,
-        subscription_tier = excluded.subscription_tier
+        subscription_tier = excluded.subscription_tier,
+        session_token = excluded.session_token
     `);
 
     for (const u of usersRes.rows) {
@@ -175,6 +178,7 @@ export async function initCloudSync(): Promise<void> {
         u.is_verified,
         u.is_subscribed ?? 0,
         u.subscription_tier || 'standart',
+        u.session_token || '',
         String(u.created_at)
       );
       ensureProfile(u.id);
@@ -234,18 +238,19 @@ export async function initCloudSync(): Promise<void> {
     }
 
     // 5. Yereldeki admin hesabını da Neon'a garanti yedekle
-    const localUsers = db.prepare('SELECT id, email, password_hash, is_admin, is_verified, is_subscribed, subscription_tier FROM users').all() as any[];
+    const localUsers = db.prepare('SELECT id, email, password_hash, is_admin, is_verified, is_subscribed, subscription_tier, session_token FROM users').all() as any[];
     for (const lu of localUsers) {
       await p.query(`
-        INSERT INTO cloud_users (email, password_hash, is_admin, is_verified, is_subscribed, subscription_tier)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO cloud_users (email, password_hash, is_admin, is_verified, is_subscribed, subscription_tier, session_token)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         ON CONFLICT(email) DO UPDATE SET
           password_hash = EXCLUDED.password_hash,
           is_admin = EXCLUDED.is_admin,
           is_verified = EXCLUDED.is_verified,
           is_subscribed = EXCLUDED.is_subscribed,
-          subscription_tier = EXCLUDED.subscription_tier
-      `, [lu.email, lu.password_hash, lu.is_admin, lu.is_verified, lu.is_subscribed ?? 0, lu.subscription_tier || 'standart']);
+          subscription_tier = EXCLUDED.subscription_tier,
+          session_token = EXCLUDED.session_token
+      `, [lu.email, lu.password_hash, lu.is_admin, lu.is_verified, lu.is_subscribed ?? 0, lu.subscription_tier || 'standart', lu.session_token || '']);
     }
 
     console.log(`[cloud-db] 🚀 Neon PostgreSQL kalıcı bağlantısı kuruldu! ${importedUsers} kullanıcı hesabı buluttan yüklendi.`);
@@ -293,6 +298,21 @@ export function syncCloudSubscription(email: string, isSubscribed: number, subsc
     WHERE LOWER(email) = LOWER($3)
   `, [isSubscribed, subscriptionTier, email.toLowerCase()]).catch((err: any) => {
     console.error(`[cloud-db] Abonelik Neon'a kaydedilemedi:`, err.message);
+  });
+}
+
+/**
+ * Kullanıcı giriş yaptığında tekil aktif oturum anahtarını (Single Active Session) Neon'a eşitler.
+ */
+export function syncCloudSession(email: string, sessionToken: string): void {
+  const p = getPool();
+  if (!p) return;
+  p.query(`
+    UPDATE cloud_users
+    SET session_token = $1
+    WHERE LOWER(email) = LOWER($2)
+  `, [sessionToken, email.toLowerCase()]).catch((err: any) => {
+    console.error(`[cloud-db] Oturum Neon'a kaydedilemedi:`, err.message);
   });
 }
 

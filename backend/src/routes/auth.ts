@@ -6,7 +6,7 @@ import { db } from '../db';
 import { signToken } from '../middleware/auth';
 import { generateRandomCode, sendVerificationEmail } from '../services/mailer';
 import { ensureProfile } from '../services/profileRepo';
-import { removeCloudVerification, syncCloudUser, syncCloudVerification } from '../services/cloudDb';
+import { removeCloudVerification, syncCloudSession, syncCloudUser, syncCloudVerification } from '../services/cloudDb';
 
 export const authRouter = Router();
 
@@ -190,8 +190,13 @@ authRouter.post('/login', (req, res) => {
     return;
   }
 
+  // Yeni tekil oturum anahtarı oluştur (Single Active Session)
+  const sessionToken = crypto.randomUUID();
+  db.prepare('UPDATE users SET session_token = ? WHERE id = ?').run(sessionToken, user.id);
+  syncCloudSession(user.email, sessionToken);
+
   res.json({
-    token: signToken(user.id),
+    token: signToken(user.id, sessionToken),
     user: { id: user.id, email: user.email, username: user.email, isAdmin: user.is_admin === 1 },
   });
 });
@@ -255,17 +260,19 @@ authRouter.post('/verify-email', (req, res) => {
     return;
   }
 
-  // Kod kesin olarak doğru: Hesabı onayla
-  db.prepare('UPDATE users SET is_verified = 1 WHERE id = ?').run(user.id);
+  // Kod kesin olarak doğru: Hesabı onayla ve tekil aktif oturum oluştur (Single Active Session)
+  const sessionToken = crypto.randomUUID();
+  db.prepare('UPDATE users SET is_verified = 1, session_token = ? WHERE id = ?').run(sessionToken, user.id);
   db.prepare('DELETE FROM email_verifications WHERE LOWER(email) = LOWER(?)').run(email);
 
   const updatedUser = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(user.id) as any;
   syncCloudUser(user.email, updatedUser?.password_hash || '', user.is_admin, 1);
+  syncCloudSession(user.email, sessionToken);
   removeCloudVerification(email);
 
   res.json({
     message: 'E-posta adresiniz başarıyla doğrulandı! Sisteme güvenle giriş yapıldı.',
-    token: signToken(user.id),
+    token: signToken(user.id, sessionToken),
     user: { id: user.id, email: user.email, username: user.email, isAdmin: user.is_admin === 1 },
   });
 });

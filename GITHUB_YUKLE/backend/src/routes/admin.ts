@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { config } from '../config';
 import { db } from '../db';
 import { runAllScrapers } from '../scrapers';
-import { syncCloudSubscription, syncCloudUser } from '../services/cloudDb';
+import { syncCloudSession, syncCloudSubscription, syncCloudUser } from '../services/cloudDb';
 
 export const adminRouter = Router();
 
@@ -305,6 +305,25 @@ adminRouter.post('/users/:id/toggle-admin', (req: Request, res: Response) => {
     success: true,
     isAdmin: nextAdmin === 1,
     message: `${u.email} hesabı ${nextAdmin === 1 ? 'Yönetici yapıldı.' : 'Yöneticilik yetkisi kaldırıldı.'}`,
+  });
+});
+
+/**
+ * POST /api/admin/users/:id/kick
+ * Kullanıcının aktif oturumunu sonlandır (Tüm cihazlardan çıkış yaptır)
+ */
+adminRouter.post('/users/:id/kick', (req: Request, res: Response) => {
+  const userId = Number(req.params.id);
+  const u = db.prepare('SELECT email FROM users WHERE id = ?').get(userId) as { email: string } | undefined;
+  if (!u) {
+    res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+    return;
+  }
+  db.prepare("UPDATE users SET session_token = '' WHERE id = ?").run(userId);
+  syncCloudSession(u.email, '');
+  res.json({
+    success: true,
+    message: `${u.email} kullanıcısının tüm açık oturumları sonlandırıldı. Tekrar giriş yapana kadar erişemez.`,
   });
 });
 
