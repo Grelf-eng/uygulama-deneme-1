@@ -48,13 +48,27 @@ const profileSchema = z.object({
 profileRouter.get('/', (req, res) => {
   ensureProfile(req.userId!);
   const profile = getProfile(req.userId!);
-  const user = db.prepare('SELECT email, is_admin FROM users WHERE id = ?').get(req.userId!) as {
+  const user = db
+    .prepare('SELECT email, is_admin, COALESCE(is_subscribed, 0) AS is_subscribed, COALESCE(subscription_tier, \'standart\') AS subscription_tier FROM users WHERE id = ?')
+    .get(req.userId!) as {
     email: string;
     is_admin: number;
+    is_subscribed: number;
+    subscription_tier: string;
   } | undefined;
   const isAdmin = user?.is_admin === 1;
+  const isSubscribed = user?.is_subscribed === 1;
+  const subscriptionTier = user?.subscription_tier || 'standart';
   const editLimit = getProfileLimit(req.userId!, isAdmin);
-  res.json({ email: user?.email || '', username: user?.email || '', isAdmin, profile: profile || {}, editLimit });
+  res.json({
+    email: user?.email || '',
+    username: user?.email || '',
+    isAdmin,
+    isSubscribed,
+    subscriptionTier,
+    profile: profile || {},
+    editLimit,
+  });
 });
 
 profileRouter.put('/', (req, res) => {

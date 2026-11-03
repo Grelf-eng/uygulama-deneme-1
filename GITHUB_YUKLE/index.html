@@ -224,6 +224,73 @@
       border-left: 4px solid #8b5cf6;
     }
 
+    /* REKLAM VE VIP PLAN STİLLERİ */
+    .vip-plan-card {
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 13px 15px;
+      background: var(--card);
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+    .vip-plan-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-1px);
+    }
+    .vip-plan-card.selected {
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
+    }
+    .vip-plan-card.popular {
+      border: 2px solid #f59e0b;
+      background: linear-gradient(180deg, rgba(254, 243, 199, 0.25) 0%, var(--card) 100%);
+    }
+    .popular-tag {
+      position: absolute;
+      top: -10px;
+      right: 14px;
+      background: #f59e0b;
+      color: #fff;
+      font-size: 10.5px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 999px;
+      letter-spacing: 0.3px;
+    }
+    .best-value-tag {
+      position: absolute;
+      top: -10px;
+      right: 14px;
+      background: #8b5cf6;
+      color: #fff;
+      font-size: 10.5px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 999px;
+      letter-spacing: 0.3px;
+    }
+    .in-feed-ad-card {
+      border: 1.5px dashed #cbd5e1 !important;
+      background: var(--card);
+      position: relative;
+      margin-bottom: 12px;
+      transition: border-color 0.2s;
+    }
+    [data-theme="dark"] .in-feed-ad-card {
+      border-color: #334155 !important;
+    }
+    [data-theme="dark"] #interstitialAdContent {
+      background: #1e293b !important;
+      border-color: #334155 !important;
+    }
+    [data-theme="dark"] #adTitle {
+      color: #f1f5f9 !important;
+    }
+    [data-theme="dark"] #adDesc {
+      color: #94a3b8 !important;
+    }
+
     /* GECE / GÜNDÜZ MODU KAYAR ANAHTAR (SLIDING TOGGLE SWITCH) */
     .theme-switch-wrap {
       display: inline-flex;
@@ -443,6 +510,7 @@
       </div>
       <a href="/indir" id="desktopQrBtn" class="btn btn-outline btn-sm">📱 Telefona Yükle</a>
       <div id="headerActions" class="header-actions hidden">
+        <button id="vipHeaderBtn" class="btn btn-sm" style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#fff;border:none;font-weight:700;padding:5px 9px;border-radius:8px;font-size:12px;display:inline-flex;align-items:center;gap:4px;" onclick="openVipModal()">👑 VIP Ol</button>
         <button id="adminHeaderBadge" class="btn btn-sm hidden" style="background:#fef3c7;color:#b45309;font-weight:700;border:1px solid #fde68a;" onclick="switchTab('admin')">🛡️ Panel</button>
         <button class="btn btn-outline btn-sm" onclick="showScreen('notifications')" id="notifBtn">🔔</button>
         <button class="btn btn-danger btn-sm" onclick="logout()">Çıkış</button>
@@ -889,6 +957,121 @@
       <div class="row" style="gap:10px;">
         <button class="btn btn-outline" style="flex:1;" onclick="closeExitModal()">Hayır, Kal</button>
         <button class="btn" style="flex:1;background:var(--fail);border-color:var(--fail);" onclick="confirmExitApp()">Evet, Çık</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GEÇİŞ REKLAMI MODALI (INTERSTITIAL AD) -->
+  <div id="adInterstitialModal" class="modal-backdrop hidden" onclick="event.stopPropagation()">
+    <div class="modal-sheet" style="max-width:390px;text-align:center;padding:18px;">
+      <!-- Üst VIP Kaldır Barı -->
+      <div style="background:linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);border:1.5px solid #fde68a;border-radius:12px;padding:10px 12px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div style="text-align:left;">
+          <div style="font-weight:800;font-size:13px;color:#92400e;">👑 Reklam Beklemek İstemiyor musunuz?</div>
+          <div style="font-size:11px;color:#b45309;">VIP olun, tüm reklamları sonsuza dek kaldırın!</div>
+        </div>
+        <button class="btn btn-sm" style="background:#b45309;color:#fff;border:none;font-weight:700;font-size:11.5px;padding:5px 9px;" onclick="openVipFromAd()">VIP Ol</button>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">📢 Sponsorlu Reklam</div>
+
+      <!-- Dinamik Sponsor Reklam Alanı -->
+      <div id="interstitialAdContent" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:16px 14px;margin-bottom:14px;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+        <div id="adIcon" style="font-size:36px;margin-bottom:6px;">📚</div>
+        <div id="adTitle" style="font-weight:800;font-size:15px;color:#1e293b;margin-bottom:4px;">2026 KPSS Tam Hazırlık Seti</div>
+        <div id="adDesc" style="font-size:12.5px;color:#64748b;line-height:1.45;margin-bottom:10px;">Tüm Konu Anlatımı ve Çözümlü Soru Bankası seti şimdi %40 indirimli!</div>
+        <button class="btn btn-sm" id="adActionBtn" style="font-size:12.5px;padding:6px 14px;" onclick="handleAdClick()">İncele ve Başla ↗</button>
+      </div>
+
+      <!-- Geri Sayım ve Geçiş Butonu -->
+      <button class="btn btn-outline" id="skipAdBtn" style="width:100%;font-weight:700;padding:10px;" disabled onclick="closeInterstitialAd()">
+        ⏳ Reklamı Geç (3s)
+      </button>
+    </div>
+  </div>
+
+  <!-- VIP ABONELİK MODALI -->
+  <div id="vipModal" class="modal-backdrop hidden" onclick="closeVipModal(event)">
+    <div class="modal-sheet" onclick="event.stopPropagation()" style="max-width:440px;max-height:90vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:26px;">👑</span>
+          <div>
+            <h3 style="margin:0;font-size:18px;color:#92400e;">VIP Abonelik Paketleri</h3>
+            <div style="font-size:12px;color:var(--muted);">Kamu atamalarında bir adım önde olun</div>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-sm" style="padding:4px 8px;font-size:12px;" onclick="closeVipModal()">✕</button>
+      </div>
+
+      <!-- VIP AVANTAJLARI KUTUSU -->
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.6;color:#78350f;">
+        <div style="font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+          <span>✨</span><span>VIP Üyelerin Sahip Olduğu Avantajlar:</span>
+        </div>
+        <div>🚫 <b>%100 Reklamsız Gezinti:</b> Tüm reklam ve geçiş bekleme süreleri kalkar.</div>
+        <div>🔔 <b>Anlık İlan Alarmı:</b> Puanınıza ve bölümünüze uyan ilan düştüğü an bildirim.</div>
+        <div>🎯 <b>Özel Şart & KPSS Analizi:</b> Şartlarınızın %100 uyduğu kadroları anında görün.</div>
+        <div>📊 <b>Geçmiş Taban Puanları:</b> Önceki atama ortalamaları ve atanma şansı tahmini.</div>
+        <div>⚡ <b>Sınırsız Profil Güncelleme:</b> 48 saat kuralına takılmadan anında güncelleme.</div>
+        <div>🔗 <b>Tek Tıkla Başvuru:</b> Kariyer Kapısı ve e-Devlet başvuru sayfasına direkt erişim.</div>
+      </div>
+
+      <!-- PAKET KARTLARI -->
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
+        <!-- 3 AYLIK EN POPÜLER -->
+        <div class="vip-plan-card popular selected" onclick="selectVipPlan('3ay', 149)" id="planCard3ay">
+          <div class="popular-tag">⭐ EN ÇOK TERCİH EDİLEN (%30 İndirim)</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-weight:800;font-size:16px;color:#92400e;">3 Aylık Atama VIP</div>
+              <div style="font-size:12px;color:var(--muted);">Tüm merkezi ve kurumsal atama dönemi</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:20px;font-weight:900;color:#b45309;">149 ₺</div>
+              <div style="font-size:11px;color:var(--muted);">~49 ₺ / ay</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1 AYLIK BAŞLANGIÇ -->
+        <div class="vip-plan-card" onclick="selectVipPlan('1ay', 69)" id="planCard1ay">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-weight:800;font-size:15px;color:var(--text);">1 Aylık Deneme VIP</div>
+              <div style="font-size:12px;color:var(--muted);">Sistemi test edip ilanları yakalamak için</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:18px;font-weight:800;color:var(--text);">69 ₺</div>
+              <div style="font-size:11px;color:var(--muted);">69 ₺ / ay</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ÖDEME YÖNTEMLERİ -->
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;">Ödeme Yöntemini Seçin</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+        <button class="btn" style="width:100%;background:linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);color:#fff;border:none;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;" onclick="checkoutWithCard()">
+          <span>💳</span><span id="cardPayBtnText">Kredi / Banka Kartı ile Güvenli Öde (149 ₺)</span>
+        </button>
+        <button class="btn btn-outline" style="width:100%;border-color:#10b981;color:#059669;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="toggleIbanDetails()">
+          <span>🏛️</span><span>Havale / EFT / FAST ile Öde (IBAN)</span>
+        </button>
+        <a id="vipWhatsappLink" href="https://wa.me/905000000000?text=Merhaba%2C%20Kamu%20%C4%B0lan%20Asistan%C4%B1%20VIP%20abonelik%20almak%20istiyorum." target="_blank" rel="noopener noreferrer" class="btn btn-outline" style="width:100%;border-color:#22c55e;color:#16a34a;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;">
+          <span>💬</span><span>WhatsApp Destek / Canlı Yardım</span>
+        </a>
+      </div>
+
+      <!-- IBAN BİLGİLERİ AKORDİYON -->
+      <div id="ibanDetailsBox" class="hidden" style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px;line-height:1.6;color:#166534;">
+        <div style="font-weight:700;margin-bottom:4px;">🏛️ Havale / EFT Bilgileri:</div>
+        <div><b>Alıcı:</b> Kamu İlan Asistanı</div>
+        <div><b>IBAN:</b> TR00 0000 0000 0000 0000 00</div>
+        <div><b>Banka:</b> Ziraat Bankası / Vakıfbank</div>
+        <div style="margin-top:6px;padding:6px;background:#dcfce7;border-radius:6px;font-size:12px;color:#14532d;">
+          ⚠️ <b>Açıklama:</b> Lütfen havale/EFT yaparken açıklama kısmına kayıtlı e-posta adresinizi (<span id="ibanEmailLabel">hesabınız</span>) yazın. Ödemeniz 5-10 dakika içinde kontrol edilerek hesabınız VIP yapılır.
+        </div>
       </div>
     </div>
   </div>
@@ -2102,6 +2285,10 @@
 
         const isAdmin = Boolean(me.isAdmin);
         currentAppIsAdmin = isAdmin;
+        currentUserEmail = me.email || me.username || '';
+        currentUserIsSubscribed = Boolean(me.isSubscribed);
+        currentUserSubscriptionTier = me.subscriptionTier || 'standart';
+        updateVipUi();
         document.getElementById('adminHeaderBadge').classList.toggle('hidden', !isAdmin);
         const adminTabBtn = document.getElementById('adminTabBtn');
         if (adminTabBtn) adminTabBtn.classList.toggle('hidden', !isAdmin);
@@ -2457,6 +2644,16 @@
     // Android Geri Tuşu ve Tarayıcı Geri Butonu Entegrasyonu
     window.__handleAndroidBack = function() {
       // 1. Açık herhangi bir modal varsa önce modalı kapat
+      const vipModal = document.getElementById('vipModal');
+      if (vipModal && !vipModal.classList.contains('hidden')) {
+        closeVipModal();
+        return 'handled';
+      }
+      const adModal = document.getElementById('adInterstitialModal');
+      if (adModal && !adModal.classList.contains('hidden')) {
+        closeInterstitialAd();
+        return 'handled';
+      }
       const exitModal = document.getElementById('exitConfirmModal');
       if (exitModal && !exitModal.classList.contains('hidden')) {
         closeExitModal();
@@ -2591,6 +2788,200 @@
       return { text: 'KPSS Belirsiz', bg: 'var(--warn-bg)', color: 'var(--warn)' };
     }
 
+    // -------------------------------------------------------------
+    // REKLAM MOTORU VE VIP ABONELİK SİSTEMİ
+    // -------------------------------------------------------------
+    let currentUserEmail = '';
+    let currentUserIsSubscribed = false;
+    let currentUserSubscriptionTier = 'standart';
+    let userJobClickCount = 0;
+    let pendingJobIdToOpen = null;
+    let adCountdownInterval = null;
+    let selectedPlan = '3ay';
+    let selectedPrice = 149;
+
+    const SPONSORED_ADS = [
+      {
+        icon: '📚',
+        title: '2026 KPSS Tam Hazırlık Seti & Soru Bankası',
+        desc: 'Genel Yetenek - Genel Kültür tüm çözümlü sorular ve konu özetleri %40 indirimde!',
+        actionText: 'Seti İncele ↗',
+        url: 'https://www.google.com/search?q=2026+kpss+hazirlik+kitaplari'
+      },
+      {
+        icon: '🎓',
+        title: 'MEB Onaylı Bilgisayar İşletmenliği Sertifikası',
+        desc: 'Kamuda memur ve VHKİ alımlarında zorunlu olan e-Devlet onaylı sertifika programı.',
+        actionText: 'Sertifikayı İncele ↗',
+        url: 'https://www.google.com/search?q=meb+onayli+bilgisayar+isletmenligi+sertifikasi'
+      },
+      {
+        icon: '🛡️',
+        title: 'Özel Güvenlik Temel & Yenileme Eğitimi',
+        desc: 'Hastaneler, üniversiteler ve bakanlıklarda sürekli işçi alımları için güvenlik kimlik kartı.',
+        actionText: 'Eğitimi İncele ↗',
+        url: 'https://www.google.com/search?q=ozel+guvenlik+kimlik+karti+egitimi'
+      },
+      {
+        icon: '⚡',
+        title: 'Kamu Mülakat Simülasyonu & Çıkmış Sorular',
+        desc: 'Sözlü mülakatlarda en çok sorulan sorular ve komisyon değerlendirme rehberi.',
+        actionText: 'Rehberi İncele ↗',
+        url: 'https://www.google.com/search?q=kamu+mulakat+cikmis+sorular'
+      }
+    ];
+
+    function updateVipUi() {
+      const vipBtn = document.getElementById('vipHeaderBtn');
+      const ibanEmail = document.getElementById('ibanEmailLabel');
+      if (ibanEmail) ibanEmail.innerText = currentUserEmail || 'hesabınız';
+      if (vipBtn) {
+        if (currentUserIsSubscribed) {
+          vipBtn.innerHTML = '👑 VIP Aktif';
+          vipBtn.style.background = '#f3e8ff';
+          vipBtn.style.color = '#7e22ce';
+          vipBtn.style.border = '1px solid #d8b4fe';
+        } else {
+          vipBtn.innerHTML = '👑 VIP Ol';
+          vipBtn.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+          vipBtn.style.color = '#fff';
+          vipBtn.style.border = 'none';
+        }
+      }
+    }
+
+    function renderInFeedAd(idx) {
+      if (currentUserIsSubscribed) return '';
+      const ad = SPONSORED_ADS[idx % SPONSORED_ADS.length];
+      return `
+        <div class="card in-feed-ad-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">📢 Sponsorlu Reklam</span>
+            <button class="btn btn-sm btn-outline" style="border-color:#f59e0b;color:#b45309;font-size:11px;padding:2px 8px;border-radius:6px;" onclick="openVipModal()">👑 Reklamı Kaldır</button>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;cursor:pointer;" onclick="handleAdClick(${idx % SPONSORED_ADS.length})">
+            <span style="font-size:32px;">${ad.icon}</span>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:14px;color:var(--text);">${escapeHtml(ad.title)}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px;">${escapeHtml(ad.desc)}</div>
+            </div>
+            <span style="font-size:18px;color:var(--primary);font-weight:700;">↗</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderJobsWithAds(items) {
+      if (!items || items.length === 0) return '';
+      const html = [];
+      items.forEach((item, idx) => {
+        html.push(renderJobCard(item));
+        if (!currentUserIsSubscribed && (idx + 1) % 4 === 0) {
+          html.push(renderInFeedAd(Math.floor(idx / 4)));
+        }
+      });
+      return html.join('');
+    }
+
+    function handleJobClickWithAd(id) {
+      if (currentUserIsSubscribed) {
+        openJob(id);
+        return;
+      }
+      userJobClickCount++;
+      // Ücretsiz kullanıcılar her 2. tıklamada 3 saniyelik geçiş reklamı görür
+      if (userJobClickCount % 2 === 0) {
+        pendingJobIdToOpen = id;
+        showInterstitialAd();
+      } else {
+        openJob(id);
+      }
+    }
+
+    function showInterstitialAd() {
+      const ad = SPONSORED_ADS[Math.floor(Math.random() * SPONSORED_ADS.length)];
+      const adIcon = document.getElementById('adIcon');
+      const adTitle = document.getElementById('adTitle');
+      const adDesc = document.getElementById('adDesc');
+      const skipBtn = document.getElementById('skipAdBtn');
+
+      if (adIcon) adIcon.innerText = ad.icon;
+      if (adTitle) adTitle.innerText = ad.title;
+      if (adDesc) adDesc.innerText = ad.desc;
+
+      if (skipBtn) {
+        skipBtn.disabled = true;
+        let sec = 3;
+        skipBtn.innerText = `⏳ Reklamı Geç (${sec}s)`;
+        if (adCountdownInterval) clearInterval(adCountdownInterval);
+        adCountdownInterval = setInterval(() => {
+          sec--;
+          if (sec > 0) {
+            skipBtn.innerText = `⏳ Reklamı Geç (${sec}s)`;
+          } else {
+            clearInterval(adCountdownInterval);
+            skipBtn.disabled = false;
+            skipBtn.innerText = '⏩ Reklamı Geç ve İlanı Aç';
+          }
+        }, 1000);
+      }
+
+      document.getElementById('adInterstitialModal').classList.remove('hidden');
+    }
+
+    function closeInterstitialAd() {
+      if (adCountdownInterval) clearInterval(adCountdownInterval);
+      document.getElementById('adInterstitialModal').classList.add('hidden');
+      if (pendingJobIdToOpen) {
+        const jId = pendingJobIdToOpen;
+        pendingJobIdToOpen = null;
+        openJob(jId);
+      }
+    }
+
+    function handleAdClick(idx) {
+      const ad = SPONSORED_ADS[idx !== undefined ? idx : 0];
+      if (ad && ad.url) {
+        window.open(ad.url, '_blank');
+      }
+    }
+
+    function openVipFromAd() {
+      closeInterstitialAd();
+      openVipModal();
+    }
+
+    function openVipModal() {
+      document.getElementById('vipModal').classList.remove('hidden');
+    }
+
+    function closeVipModal(event) {
+      if (event && event.target && event.target.id !== 'vipModal') return;
+      document.getElementById('vipModal').classList.add('hidden');
+    }
+
+    function selectVipPlan(planId, price) {
+      selectedPlan = planId;
+      selectedPrice = price;
+      ['1ay', '3ay'].forEach(p => {
+        const el = document.getElementById('planCard' + p);
+        if (el) el.classList.toggle('selected', p === planId);
+      });
+      const btnText = document.getElementById('cardPayBtnText');
+      if (btnText) btnText.innerText = `Kredi / Banka Kartı ile Güvenli Öde (${price} ₺)`;
+    }
+
+    function checkoutWithCard() {
+      const email = currentUserEmail || '';
+      const planName = selectedPlan === '3ay' ? '3 Aylık Atama VIP' : '1 Aylık Deneme VIP';
+      alert(`💳 Ödeme Sayfasına Yönlendiriliyorsunuz...\n\nSeçilen Paket: ${planName} (${selectedPrice} ₺)\nHesap: ${email || 'Giriş yapan e-posta'}\n\nÖdemeniz onaylandığı anda VIP üyeliğiniz anında aktif edilecektir.`);
+    }
+
+    function toggleIbanDetails() {
+      const box = document.getElementById('ibanDetailsBox');
+      if (box) box.classList.toggle('hidden');
+    }
+
     function renderJobCard(j) {
       const m = STATUS_META[j.eligibility.overall];
       const kb = formatKpssBadge(j);
@@ -2598,12 +2989,12 @@
       return `
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-            <div style="flex:1" onclick="openJob(${j.id})">
+            <div style="flex:1" onclick="handleJobClickWithAd(${j.id})">
               <div class="job-title">${escapeHtml(j.title)}</div>
               <div class="sub">${[escapeHtml(j.institution), escapeHtml(j.city), escapeHtml(srcName)].filter(Boolean).join(' • ')}</div>
             </div>
           </div>
-          <div class="row" style="margin-bottom:8px;" onclick="openJob(${j.id})">
+          <div class="row" style="margin-bottom:8px;" onclick="handleJobClickWithAd(${j.id})">
             <span class="badge" style="background:var(--border);color:var(--text)">${escapeHtml(TYPE_LABELS[j.jobType] || j.jobType)}</span>
             <span class="badge" style="background:${kb.bg};color:${kb.color}">${escapeHtml(kb.text)}</span>
             ${j.positions ? `<span class="badge" style="background:var(--border)">${escapeHtml(j.positions)} kişi</span>` : ''}
@@ -2620,7 +3011,7 @@
               ` : ''}
             </div>
           ` : ''}
-          <div class="row" style="justify-content:space-between;" onclick="openJob(${j.id})">
+          <div class="row" style="justify-content:space-between;" onclick="handleJobClickWithAd(${j.id})">
             <span class="badge" style="background:${m.bg};color:${m.color};padding:5px 10px;font-size:13px;">
               ${m.emoji} ${m.label} · Uyum %${j.eligibility.score}
             </span>
@@ -2672,7 +3063,7 @@
         const listEl = document.getElementById('jobsList');
         if (countEl) countEl.innerText = `${data.total} ilan listeleniyor`;
         if (listEl) {
-          listEl.innerHTML = data.items.map(renderJobCard).join('') || '<div class="card">Uygun ilan bulunamadı.</div>';
+          listEl.innerHTML = renderJobsWithAds(data.items) || '<div class="card">Uygun ilan bulunamadı.</div>';
         }
       } catch (err) {
         if (reqId !== allJobsReqId) return;
@@ -2769,7 +3160,7 @@
                 </div>`;
             }
           } else {
-            listEl.innerHTML = data.items.map(renderJobCard).join('');
+            listEl.innerHTML = renderJobsWithAds(data.items);
           }
         }
 
