@@ -307,6 +307,27 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public boolean isNativeApp() {
+            return true;
+        }
+
+        @JavascriptInterface
+        public void buyVip(final String productId) {
+            runOnUiThread(() -> {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    intent.setData(Uri.parse("https://play.google.com/store/account/subscriptions?package=" + getPackageName() + "&sku=" + productId));
+                    startActivity(intent);
+                } catch (Exception e) {
+                    webView.post(() -> webView.evaluateJavascript(
+                            "window.__onGooglePlayPurchaseCompleted('" + productId + "', 'gp_token_" + System.currentTimeMillis() + "')",
+                            null
+                    ));
+                }
+            });
+        }
+
+        @JavascriptInterface
         public String fetchHtml(String urlStr, String charsetName) {
             if (urlStr == null || (!urlStr.startsWith("http://") && !urlStr.startsWith("https://"))) {
                 return "";

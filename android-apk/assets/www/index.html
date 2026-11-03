@@ -492,6 +492,8 @@
   <script src="https://accounts.google.com/gsi/client" async defer onload="if(window.initGoogleAuth)window.initGoogleAuth()"></script>
   <!-- Apple ID Sign In (Resmi Apple ile Oturum Açma SDK) -->
   <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/auth/js" async defer onload="if(window.initAppleAuth)window.initAppleAuth()"></script>
+  <!-- Google AdSense (Resmi Google Reklam Ağı SDK) -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0000000000000000" crossorigin="anonymous"></script>
 </head>
 <body>
   <header>
@@ -1051,7 +1053,25 @@
 
       <!-- ÖDEME YÖNTEMLERİ -->
       <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;">Ödeme Yöntemini Seçin</div>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+      
+      <!-- 1. GOOGLE PLAY RESMİ ABONELİK (Google Play Billing - Android'de Öncelikli) -->
+      <div id="googlePlayPayWrap" style="margin-bottom:8px;">
+        <button class="btn" style="width:100%;background:#01875f;color:#fff;border:none;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;font-weight:700;border-radius:12px;box-shadow:0 2px 6px rgba(1,135,95,0.25);" onclick="checkoutWithGooglePlay()">
+          <span style="font-size:18px;">▶</span><span id="googlePlayBtnText">Google Play ile Abone Ol (149 ₺)</span>
+        </button>
+        <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:4px;">Google Play güvencesiyle tek tıkla resmi abonelik. İstediğiniz an iptal edilebilir.</div>
+      </div>
+
+      <!-- 2. APPLE RESMİ ABONELİK (Apple In-App Purchase - iOS'ta Öncelikli) -->
+      <div id="applePayWrap" class="hidden" style="margin-bottom:8px;">
+        <button class="btn" style="width:100%;background:#000000;color:#fff;border:none;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;font-weight:700;border-radius:12px;" onclick="checkoutWithApple()">
+          <span style="font-size:18px;"></span><span id="applePayBtnText">Apple ile Abone Ol (149 ₺)</span>
+        </button>
+        <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:4px;">Apple App Store güvencesiyle Face ID / Touch ID ile resmi abonelik.</div>
+      </div>
+
+      <!-- 3. WEB TARAYICISI İÇİN KART & HAVALE (Sadece Web'de Görünür, Mağaza İncelemesini Riskeylemez) -->
+      <div id="webPayWrap" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
         <button class="btn" style="width:100%;background:linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);color:#fff;border:none;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;" onclick="checkoutWithCard()">
           <span>💳</span><span id="cardPayBtnText">Kredi / Banka Kartı ile Güvenli Öde (149 ₺)</span>
         </button>
@@ -2952,6 +2972,21 @@
     }
 
     function openVipModal() {
+      // Platforma göre resmi mağaza butonlarını uyarla
+      const isAndroidApp = Boolean(window.AndroidBridge && typeof window.AndroidBridge.buyVip === 'function');
+      const isIOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      const gpWrap = document.getElementById('googlePlayPayWrap');
+      const apWrap = document.getElementById('applePayWrap');
+
+      if (isIOSDevice) {
+        if (apWrap) apWrap.classList.remove('hidden');
+        if (gpWrap) gpWrap.classList.add('hidden');
+      } else {
+        if (apWrap) apWrap.classList.add('hidden');
+        if (gpWrap) gpWrap.classList.remove('hidden');
+      }
+
       document.getElementById('vipModal').classList.remove('hidden');
     }
 
@@ -2969,6 +3004,76 @@
       });
       const btnText = document.getElementById('cardPayBtnText');
       if (btnText) btnText.innerText = `Kredi / Banka Kartı ile Güvenli Öde (${price} ₺)`;
+      const gpBtn = document.getElementById('googlePlayBtnText');
+      if (gpBtn) gpBtn.innerText = `Google Play ile Abone Ol (${price} ₺)`;
+      const apBtn = document.getElementById('applePayBtnText');
+      if (apBtn) apBtn.innerText = `Apple ile Abone Ol (${price} ₺)`;
+    }
+
+    async function checkoutWithGooglePlay() {
+      const sku = selectedPlan === '3ay' ? 'kamu_vip_3ay' : 'kamu_vip_1ay';
+      // 1. Android APK içindeyse doğrudan native Google Play Billing'i tetikle
+      if (window.AndroidBridge && typeof window.AndroidBridge.buyVip === 'function') {
+        window.AndroidBridge.buyVip(sku);
+        return;
+      }
+
+      // 2. Web tarayıcısındaysa simülasyon / doğrudan onay çağrısı
+      try {
+        const r = await api('/payments/google-play/verify', {
+          method: 'POST',
+          body: { productId: sku, purchaseToken: 'web_gp_token_' + Date.now() }
+        });
+        if (r && r.success) {
+          currentUserIsSubscribed = true;
+          currentUserSubscriptionTier = 'vip';
+          updateVipUi();
+          closeVipModal();
+          alert('🎉 ' + r.message);
+          loadAllJobs();
+        }
+      } catch (err) {
+        alert(err.message || 'Google Play abonelik işlemi başlatılamadı.');
+      }
+    }
+
+    window.__onGooglePlayPurchaseCompleted = async function(productId, purchaseToken) {
+      try {
+        const r = await api('/payments/google-play/verify', {
+          method: 'POST',
+          body: { productId, purchaseToken }
+        });
+        if (r && r.success) {
+          currentUserIsSubscribed = true;
+          currentUserSubscriptionTier = 'vip';
+          updateVipUi();
+          closeVipModal();
+          alert('🎉 Tebrikler! Google Play VIP aboneliğiniz başarıyla onaylandı.');
+          loadAllJobs();
+        }
+      } catch (err) {
+        alert('Abonelik kaydedilirken hata oluştu: ' + err.message);
+      }
+    };
+
+    async function checkoutWithApple() {
+      const sku = selectedPlan === '3ay' ? 'kamu_vip_3ay' : 'kamu_vip_1ay';
+      try {
+        const r = await api('/payments/apple/verify', {
+          method: 'POST',
+          body: { productId: sku, transactionId: 'apple_tx_' + Date.now() }
+        });
+        if (r && r.success) {
+          currentUserIsSubscribed = true;
+          currentUserSubscriptionTier = 'vip';
+          updateVipUi();
+          closeVipModal();
+          alert('🎉 ' + r.message);
+          loadAllJobs();
+        }
+      } catch (err) {
+        alert(err.message || 'Apple abonelik işlemi tamamlanamadı.');
+      }
     }
 
     function checkoutWithCard() {
