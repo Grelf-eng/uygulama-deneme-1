@@ -32,6 +32,11 @@
         android:hardwareAccelerated="true"
         android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
 
+        <!-- Google AdMob Resmi Uygulama Kimliği -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-9701084123301402~7995020910"/>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
