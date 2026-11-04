@@ -2830,9 +2830,16 @@
     // REKLAM MOTORU VE VIP ABONELİK SİSTEMİ
     // -------------------------------------------------------------
     const ADMOB_CONFIG = {
-      appId: 'ca-app-pub-9701084123301402~7995020910',
-      bannerAdUnitId: 'ca-app-pub-9701084123301402/7507935754',
-      interstitialAdUnitId: 'ca-app-pub-9701084123301402/1122702831'
+      android: {
+        appId: 'ca-app-pub-9701084123301402~7995020910',
+        bannerAdUnitId: 'ca-app-pub-9701084123301402/7507935754',
+        interstitialAdUnitId: 'ca-app-pub-9701084123301402/1122702831'
+      },
+      ios: {
+        appId: 'ca-app-pub-9701084123301402~4327063633',
+        bannerAdUnitId: 'ca-app-pub-9701084123301402/4606440245',
+        interstitialAdUnitId: 'ca-app-pub-9701084123301402/8078781397'
+      }
     };
     let currentUserEmail = '';
     let currentUserIsSubscribed = false;
