@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { db } from './db';
 import { upsertJob } from './services/jobsRepo';
 import { ensureProfile } from './services/profileRepo';
+import { syncCloudUser } from './services/cloudDb';
 import { REAL_JOBS } from './data/realJobs';
 
 export function ensureAdminUser(): void {
@@ -30,6 +31,7 @@ export function ensureAdminUser(): void {
       .run(adminEmail, hash, 'vip');
     const adminId = Number(info.lastInsertRowid);
     ensureProfile(adminId, 'Osman Taner (Yönetici)');
+    syncCloudUser(adminEmail, hash, 1, 1, 1, 'vip');
   } else {
     db.prepare('UPDATE users SET email = ?, password_hash = ?, is_admin = 1, is_verified = 1, is_subscribed = 1, subscription_tier = ? WHERE id = ?').run(
       adminEmail,
@@ -38,6 +40,7 @@ export function ensureAdminUser(): void {
       existingAdmin.id,
     );
     ensureProfile(existingAdmin.id, 'Osman Taner (Yönetici)');
+    syncCloudUser(adminEmail, hash, 1, 1, 1, 'vip');
   }
 }
 

@@ -11,6 +11,7 @@ import { cvRouter } from './routes/cv';
 import { jobsRouter } from './routes/jobs';
 import { mobileInfoRouter } from './routes/mobileInfo';
 import { notificationsRouter } from './routes/notifications';
+import { paymentsRouter } from './routes/payments';
 import { profileRouter } from './routes/profile';
 import { applicationsRouter, favoritesRouter } from './routes/userLists';
 import { runAllScrapers } from './scrapers';
@@ -83,6 +84,7 @@ app.use('/api/cv', cvRouter);
 app.use('/api/favorites', favoritesRouter);
 app.use('/api/applications', applicationsRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/payments', paymentsRouter);
 app.use('/api/admin', adminRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Bulunamadı' }));

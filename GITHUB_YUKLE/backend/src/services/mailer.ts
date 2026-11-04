@@ -43,7 +43,7 @@ export async function sendVerificationEmail(email: string, code: string): Promis
   if (brevoKey) {
     try {
       // Brevo yalnızca hesapta onaylı olan e-posta adresinden gönderim kabul eder:
-      const senderEmail = process.env.BREVO_SENDER_EMAIL || 'otaner963@gmail.com';
+      const senderEmail = process.env.BREVO_SENDER_EMAIL || 'destek@kamuilanasistani.com';
       const senderName = process.env.BREVO_SENDER_NAME || 'Kamu İlan Asistanı';
 
       const res = await axios.post(
