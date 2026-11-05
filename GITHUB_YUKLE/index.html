@@ -3005,17 +3005,51 @@
       searchTimer = setTimeout(loadAllJobs, 300);
     }
 
-    function findOfficialApplyUrl(desc) {
-      if (!desc) return null;
+    function findOfficialApplyUrl(descOrJob, optionalJob) {
+      const j = (typeof descOrJob === 'object' && descOrJob !== null) ? descOrJob : (optionalJob || {});
+      const desc = (typeof descOrJob === 'string' ? descOrJob : (j.description || ''));
+      
+      // 1. İlan metni içindeki spesifik resmi başvuru linklerini tara
       const matches = desc.match(/https?:\/\/[^\s)"',;<>]+/gi) || [];
       for (const raw of matches) {
         const u = raw.replace(/[.,;:]+$/, '');
-        if (/kariyerkapisi\.(?:cbiko\.)?gov\.tr\/isealim|isealimkariyerkapisi\.cbiko\.gov\.tr|personeltemin\.msb\.gov\.tr|basvuru|pdb\.|ais\./i.test(u)) {
+        if (/kariyerkapisi\.(?:cbiko\.)?gov\.tr\/isealim|isealimkariyerkapisi\.cbiko\.gov\.tr|personeltemin\.msb\.gov\.tr|ais\.osym\.gov\.tr|esube\.iskur\.gov\.tr|basvuru|personelalimi|sinav\.gov\.tr|basvurular/i.test(u)) {
           return u;
         }
       }
-      if (/kariyerkapisi\.gov\.tr\/isealim/i.test(desc)) return 'https://isealimkariyerkapisi.cbiko.gov.tr';
-      return null;
+
+      // 2. Kurum ve unvan anahtar kelimelerine göre resmi başvuru sistemini seç
+      if (/kariyer\s*kap[ıi]s[ıi]|cbiko/i.test(desc) || /kariyerkapisi/i.test(j.url || '')) {
+        return 'https://isealimkariyerkapisi.cbiko.gov.tr';
+      }
+      if (/i[şs]kur|esube\.iskur/i.test(desc) || j.source === 'iskur' || j.jobType === 'isci') {
+        return 'https://esube.iskur.gov.tr/Istihdam/AcikIsIlanAra.aspx';
+      }
+      if (/[öo]sym|ais\.osym/i.test(desc) || /kpss\s*tercih/i.test(j.title || '')) {
+        return 'https://ais.osym.gov.tr';
+      }
+      if (/personeltemin\.msb|milli\s*savunma|subay|astsubay|uzman\s*erba[şs]/i.test(desc) || /msb\.gov\.tr/i.test(j.url || '')) {
+        return 'https://personeltemin.msb.gov.tr';
+      }
+      if (/polis|pomem|pmyo|pa\.edu\.tr/i.test(desc)) {
+        return 'https://ais.pa.edu.tr';
+      }
+      if (/jandarma|sahil\s*g[üu]venlik|jsga/i.test(desc)) {
+        return 'https://vatandas.jandarma.gov.tr/PTM/Giris';
+      }
+
+      // 3. İlan URL'i zaten doğrudan resmi bir başvuru/alım sayfası ise
+      if (j.url && /basvuru|isealim|kariyer|sinav|personel/i.test(j.url)) {
+        return j.url;
+      }
+
+      // 4. Tüm kamu ilanları için T.C. Cumhurbaşkanlığı Kariyer Kapısı Kamu İşe Alım Portalı
+      return 'https://isealimkariyerkapisi.cbiko.gov.tr';
+    }
+
+    function promptVipApply() {
+      showToast('🔒 Resmi başvuru ekranına (Kariyer Kapısı / e-Devlet) tek tıkla direkt geçiş VIP üyelere özeldir!');
+      openVipModal();
     }
 
     const KPSS_TYPE_MAP = {
@@ -3165,7 +3199,7 @@
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12.5px;margin-bottom:12px;">
             <div style="color:var(--ok);">✅ %100 Reklamsız Deneyim</div>
-            <div style="color:var(--ok);">✅ Sıfır Bekleme Süresi</div>
+            <div style="color:var(--ok);">✅ Direkt Başvuru Ekranı (Kariyer Kapısı)</div>
             <div style="color:var(--ok);">✅ Atama Taban Puanları Açık</div>
             <div style="color:var(--ok);">✅ VIP Mülakat Tüyoları Açık</div>
             <div style="color:var(--ok);">✅ Sınırsız Profil Güncelleme</div>
@@ -3192,7 +3226,7 @@
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12.5px;margin-bottom:12px;">
             <div style="color:var(--muted);">⚠️ İlanlar Arası Sponsor Reklamları</div>
-            <div style="color:var(--muted);">⚠️ Her 2 İlanda Geçiş Reklamı (3s)</div>
+            <div style="color:var(--muted);">🔒 Direkt Başvuru Ekranı Kilitli</div>
             <div style="color:var(--muted);">🔒 Atama Taban Puanları Kilitli</div>
             <div style="color:var(--muted);">🔒 VIP Mülakat Tüyoları Kilitli</div>
             <div style="color:var(--muted);">⚠️ Ayda 3 Profil Güncelleme Sınırı</div>
@@ -3583,7 +3617,14 @@
             <span class="badge" style="background:${m.bg};color:${m.color};padding:5px 10px;font-size:13px;">
               ${m.emoji} ${m.label} · Uyum %${j.eligibility.score}
             </span>
-            ${j.deadline ? `<span style="font-size:12px;color:var(--muted)">⏰ Son: ${escapeHtml(j.deadline)}</span>` : ''}
+            <div style="display:flex;align-items:center;gap:6px;">
+              ${isVipActive() ? `
+                <span class="badge" style="background:#f3e8ff;color:#7e22ce;font-weight:700;font-size:11px;">🚀 Direkt Başvuru</span>
+              ` : `
+                <span class="badge" style="background:#fef3c7;color:#92400e;font-weight:700;font-size:11px;">🔒 Başvuru (VIP)</span>
+              `}
+              ${j.deadline ? `<span style="font-size:12px;color:var(--muted)">⏰ Son: ${escapeHtml(j.deadline)}</span>` : ''}
+            </div>
           </div>
         </div>
       `;
@@ -3782,17 +3823,34 @@
       `).join('');
 
       const srcName = SOURCE_LABELS[j.source] || j.source;
-      const applyUrl = findOfficialApplyUrl(j.description);
+      const applyUrl = findOfficialApplyUrl(j);
       document.getElementById('detailScreen').innerHTML = `
         <button class="btn btn-outline" style="margin-bottom:12px" onclick="switchTab(currentTab)">← Listeye Dön</button>
         <div class="card">
           <h2 style="margin:0 0 6px 0;font-size:19px;">${escapeHtml(j.title)}</h2>
           <div class="sub">${[escapeHtml(j.institution), escapeHtml(j.city), 'Kaynak: ' + escapeHtml(srcName)].filter(Boolean).join(' • ')}</div>
-          <div class="row" style="margin-top:12px;">
-            ${j.url && safeUrl(j.url) ? `<a class="btn" style="flex:1" href="${safeUrl(j.url)}" target="_blank" rel="noopener noreferrer">İlan Sayfasına Git ↗</a>` : ''}
-            ${applyUrl && safeUrl(applyUrl) && safeUrl(applyUrl) !== safeUrl(j.url) ? `<a class="btn btn-outline" style="flex:1" href="${safeUrl(applyUrl)}" target="_blank" rel="noopener noreferrer">Başvuru Ekranı ↗</a>` : ''}
-            <button class="btn btn-outline" style="flex:1" onclick="openCvForJobType('${escapeHtml(j.jobType)}')">📄 CV Puanımı Gör</button>
+          <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap;">
+            ${j.url && safeUrl(j.url) ? `<a class="btn btn-outline" style="flex:1;min-width:130px;" href="${safeUrl(j.url)}" target="_blank" rel="noopener noreferrer">📄 İlan Metni / Kılavuz ↗</a>` : ''}
+            ${isVipActive() ? `
+              <a class="btn" style="flex:1.4;min-width:175px;background:linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);color:#fff;border:none;font-weight:800;box-shadow:0 3px 10px rgba(124,58,237,0.35);text-decoration:none;" href="${safeUrl(applyUrl)}" target="_blank" rel="noopener noreferrer">
+                🚀 Resmi Başvuru Ekranına Git ↗
+              </a>
+            ` : `
+              <button class="btn" style="flex:1.4;min-width:175px;background:linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);border:1.5px dashed #f59e0b;color:#b45309;font-weight:800;" onclick="promptVipApply()">
+                🔒 Başvuru Ekranı (VIP'ye Özel)
+              </button>
+            `}
+            <button class="btn btn-outline" style="flex:1;min-width:125px;" onclick="openCvForJobType('${escapeHtml(j.jobType)}')">📄 CV Puanım</button>
           </div>
+          ${!isVipActive() ? `
+            <div style="font-size:11.5px;color:#b45309;margin-top:8px;display:flex;align-items:center;gap:5px;cursor:pointer;" onclick="promptVipApply()">
+              <span>👑</span><span>Kariyer Kapısı & e-Devlet resmi başvuru ekranına tek tıkla direkt geçmek için <b>VIP'ye yükseltin ↗</b></span>
+            </div>
+          ` : `
+            <div style="font-size:11.5px;color:#7c3aed;margin-top:8px;display:flex;align-items:center;gap:5px;">
+              <span>⭐</span><span><b>VIP Üye Ayrıcalığı:</b> T.C. resmi başvuru portalına tek tıkla doğrudan yönlendiriliyorsunuz.</span>
+            </div>
+          `}
         </div>
         ${j.historicalPlacement ? (isVipActive() ? `
         <div class="card" style="border:1.5px solid #86efac;background:#f0fdf4;">
