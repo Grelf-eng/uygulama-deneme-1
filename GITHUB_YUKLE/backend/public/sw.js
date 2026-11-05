@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kamu-ilan-pwa-v6';
+const CACHE_NAME = 'kamu-ilan-pwa-v7';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -47,4 +47,56 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(() => caches.match(req).then((cached) => cached || caches.match('/index.html'))),
   );
+});
+
+// Bildirime tıklandığında uygulamayı aç ve doğrudan o ilana yönlendir
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const data = event.notification.data || {};
+  const jobId = data.jobId;
+  const targetUrl = jobId ? `/#job-${jobId}` : '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.focus();
+          if (jobId) {
+            client.postMessage({ type: 'OPEN_JOB', jobId: Number(jobId) });
+          }
+          return;
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    }),
+  );
+});
+
+// Web Push bildirimini sistem çekmecesine düşür
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = { title: 'Kamu İlan Asistanı', body: event.data ? event.data.text() : 'Yeni ilan bildirimi' };
+  }
+
+  const title = data.title || '🎯 Size uygun 1 yeni ilan çıktı!';
+  const options = {
+    body: data.body || 'Profilinize uygun yeni kamu ilanı yayınlandı.',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    vibrate: [200, 100, 200],
+    data: {
+      jobId: data.jobId || (data.data && data.data.jobId) || null,
+      url: data.url || '/',
+    },
+    actions: [
+      { action: 'open', title: 'İlanı İncele' },
+    ],
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
 });

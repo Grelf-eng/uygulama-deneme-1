@@ -37,6 +37,35 @@ public class MainActivity extends Activity {
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
     private int notifSeq = 100;
+    private int pendingOpenJobId = 0;
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleJobIntent(intent);
+    }
+
+    private void handleJobIntent(Intent intent) {
+        if (intent == null) return;
+        int jobId = intent.getIntExtra("open_job_id", 0);
+        if (jobId <= 0 && intent.getData() != null) {
+            try {
+                String param = intent.getData().getQueryParameter("openJob");
+                if (param != null) jobId = Integer.parseInt(param);
+            } catch (Exception ignored) {}
+        }
+        if (jobId > 0) {
+            pendingOpenJobId = jobId;
+            if (webView != null) {
+                final int finalJobId = jobId;
+                webView.post(() -> webView.evaluateJavascript(
+                        "if (window.__openJobFromNative) { window.__openJobFromNative(" + finalJobId + "); }",
+                        null
+                ));
+            }
+        }
+    }
 
     @Override
     @SuppressWarnings("deprecation")
@@ -99,9 +128,21 @@ public class MainActivity extends Activity {
                 }
                 return false;
             }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                if (pendingOpenJobId > 0) {
+                    final int jobId = pendingOpenJobId;
+                    view.postDelayed(() -> {
+                        view.evaluateJavascript("if (window.__openJobFromNative) { window.__openJobFromNative(" + jobId + "); }", null);
+                    }, 600);
+                }
+            }
         });
 
         setContentView(webView);
+        handleJobIntent(getIntent());
         webView.loadUrl("file:///android_asset/www/index.html");
     }
 
@@ -282,11 +323,28 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void notifyUser(String title, String body) {
+            notifyUserWithJob(title, body, 0);
+        }
+
+        @JavascriptInterface
+        public void notifyUserWithJob(String title, String body, int jobId) {
             try {
                 requestNotifPermissionIfNeeded();
                 Intent tapIntent = new Intent(MainActivity.this, MainActivity.class);
-                int piFlags = Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT : PendingIntent.FLAG_UPDATE_CURRENT;
-                PendingIntent pi = PendingIntent.getActivity(MainActivity.this, 0, tapIntent, piFlags);
+                tapIntent.setAction("OPEN_JOB_" + (jobId > 0 ? jobId : System.currentTimeMillis()));
+                tapIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                if (jobId > 0) {
+                    tapIntent.putExtra("open_job_id", jobId);
+                }
+                int piFlags = Build.VERSION.SDK_INT >= 23
+                        ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+                        : PendingIntent.FLAG_UPDATE_CURRENT;
+                PendingIntent pi = PendingIntent.getActivity(
+                        MainActivity.this,
+                        jobId > 0 ? jobId : (int) System.currentTimeMillis(),
+                        tapIntent,
+                        piFlags
+                );
 
                 Notification.Builder builder = Build.VERSION.SDK_INT >= 26
                         ? new Notification.Builder(MainActivity.this, CHANNEL_ID)
@@ -296,11 +354,17 @@ public class MainActivity extends Activity {
                         .setContentTitle(title)
                         .setContentText(body)
                         .setAutoCancel(true)
+                        .setDefaults(Notification.DEFAULT_ALL)
                         .setContentIntent(pi);
+
+                if (Build.VERSION.SDK_INT >= 21) {
+                    builder.setPriority(Notification.PRIORITY_HIGH);
+                    builder.setVibrate(new long[]{0, 250, 200, 250});
+                }
 
                 NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
                 if (nm != null) {
-                    nm.notify(++notifSeq, builder.build());
+                    nm.notify(jobId > 0 ? jobId : ++notifSeq, builder.build());
                 }
             } catch (Exception ignored) {
             }

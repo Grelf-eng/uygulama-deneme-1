@@ -2556,6 +2556,14 @@
         document.getElementById('bottomTabs').classList.remove('hidden');
         updateStickyBanner();
         switchTab(me.profile && me.profile.educationLevel ? 'matches' : 'jobs');
+        loadNotificationsCount();
+        startVipMatchPolling();
+        setTimeout(checkUrlForJobToOpen, 400);
+        if (window.__pendingJobToOpenAfterAuth) {
+          const pendingJId = window.__pendingJobToOpenAfterAuth;
+          window.__pendingJobToOpenAfterAuth = null;
+          setTimeout(() => openJob(pendingJId), 500);
+        }
       } catch (e) {
         if (e && e.isNetwork) {
           document.getElementById('authError').innerText = e.message;
@@ -2809,20 +2817,210 @@
       }
     }
 
-    async function sendTestNotif() {
-      try {
-        await api('/notifications/test', { method: 'POST' });
-        if ('Notification' in window) {
-          if (Notification.permission === 'default') await Notification.requestPermission();
-          if (Notification.permission === 'granted') {
-            new Notification('🇹🇷 Kamu İlan Asistanı', {
-              body: 'Bildirim sistemi aktif! Uygun kamu ilanları çıktığında bilgilendirileceksiniz.',
-              icon: '/icons/icon-192.png'
-            });
+    // -------------------------------------------------------------
+    // TELEFONA SİSTEM BİLDİRİMİ GÖNDERME VE İLANA YÖNLENDİRME MOTORU
+    // -------------------------------------------------------------
+    window.__pendingJobToOpenAfterAuth = null;
+
+    window.__openJobFromNative = function(jobId) {
+      if (!jobId) return;
+      const numId = Number(jobId);
+      if (numId <= 0) return;
+      if (!token) {
+        window.__pendingJobToOpenAfterAuth = numId;
+        return;
+      }
+      openJob(numId);
+    };
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'OPEN_JOB' && event.data.jobId) {
+          const numId = Number(event.data.jobId);
+          if (numId > 0) {
+            if (!token) {
+              window.__pendingJobToOpenAfterAuth = numId;
+            } else {
+              openJob(numId);
+            }
           }
         }
-        document.getElementById('profMsg').innerText = '🔔 Test bildirimi gönderildi!';
-        setTimeout(() => document.getElementById('profMsg').innerText = '', 3000);
+      });
+    }
+
+    function checkUrlForJobToOpen() {
+      try {
+        const hash = window.location.hash || '';
+        const m = hash.match(/#job-(\d+)/);
+        if (m && m[1]) {
+          const jId = Number(m[1]);
+          if (jId > 0) {
+            if (!token) window.__pendingJobToOpenAfterAuth = jId;
+            else openJob(jId);
+            return true;
+          }
+        }
+        const params = new URLSearchParams(window.location.search);
+        const qJob = params.get('openJob');
+        if (qJob) {
+          const jId = Number(qJob);
+          if (jId > 0) {
+            if (!token) window.__pendingJobToOpenAfterAuth = jId;
+            else openJob(jId);
+            return true;
+          }
+        }
+      } catch (e) {}
+      return false;
+    }
+    window.addEventListener('hashchange', checkUrlForJobToOpen);
+
+    function sendPhoneSystemNotification(title, body, jobId) {
+      const cleanTitle = title || '🎯 Size uygun 1 yeni ilan çıktı!';
+      const cleanBody = body || 'Profilinize uygun yeni kamu ilanı yayınlandı.';
+      const numericJobId = jobId ? Number(jobId) : 0;
+
+      // 1. Android APK (Native Bridge) -> Telefonun sistem kilit ekranı & bildirim çekmecesi
+      if (window.AndroidBridge && typeof window.AndroidBridge.notifyUserWithJob === 'function') {
+        try {
+          window.AndroidBridge.notifyUserWithJob(cleanTitle, cleanBody, numericJobId);
+          return;
+        } catch (e) {
+          console.warn('AndroidBridge.notifyUserWithJob hatası:', e);
+        }
+      }
+      if (window.AndroidBridge && typeof window.AndroidBridge.notifyUser === 'function') {
+        try {
+          window.AndroidBridge.notifyUser(cleanTitle, cleanBody);
+          return;
+        } catch (e) {
+          console.warn('AndroidBridge.notifyUser hatası:', e);
+        }
+      }
+
+      // 2. Service Worker (PWA / Mobil Tarayıcı Arka Plan Bildirimi)
+      if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+        navigator.serviceWorker.ready.then((reg) => {
+          reg.showNotification(cleanTitle, {
+            body: cleanBody,
+            icon: '/icons/icon-192.png',
+            badge: '/icons/icon-192.png',
+            tag: 'kamu-ilan-' + (numericJobId || Date.now()),
+            vibrate: [250, 150, 250],
+            data: { jobId: numericJobId }
+          });
+        }).catch(() => {
+          fallbackBrowserNotification(cleanTitle, cleanBody, numericJobId);
+        });
+        return;
+      }
+
+      // 3. Standart Web Bildirimi
+      fallbackBrowserNotification(cleanTitle, cleanBody, numericJobId);
+    }
+
+    function fallbackBrowserNotification(title, body, jobId) {
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'granted') {
+        try {
+          const n = new Notification(title, {
+            body: body,
+            icon: '/icons/icon-192.png',
+            data: { jobId: jobId }
+          });
+          n.onclick = function() {
+            window.focus();
+            if (jobId) openJob(jobId);
+          };
+        } catch (e) {
+          console.warn('Notification constructor hatası:', e);
+        }
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then((p) => {
+          if (p === 'granted') {
+            fallbackBrowserNotification(title, body, jobId);
+          }
+        });
+      }
+    }
+
+    async function loadNotificationsCount() {
+      if (!token) return;
+      try {
+        const res = await api('/notifications');
+        const notifBtn = document.getElementById('notifBtn');
+        if (notifBtn) {
+          const unread = res.unread || 0;
+          if (unread > 0) {
+            notifBtn.innerHTML = `🔔 <span style="background:#ef4444;color:#fff;font-size:10.5px;font-weight:800;padding:2px 6px;border-radius:10px;margin-left:2px;">${unread}</span>`;
+          } else {
+            notifBtn.innerHTML = '🔔';
+          }
+        }
+      } catch (e) {}
+    }
+
+    let vipMatchPollTimer = null;
+    let isCheckingMatchesInProgress = false;
+
+    async function checkVipNewMatches() {
+      if (!token || !isVipActive() || isCheckingMatchesInProgress) return;
+      isCheckingMatchesInProgress = true;
+      try {
+        const res = await api('/jobs/matches/check-new');
+        if (res && res.hasNew && res.latestJob) {
+          const job = res.latestJob;
+          const notifTitle = res.title || '🎯 Size uygun 1 yeni ilan çıktı!';
+          const notifBody = res.body || `${job.title} (${job.institution || 'Kamu Kurumu'})`;
+          sendPhoneSystemNotification(notifTitle, notifBody, job.id);
+          if (currentTab === 'matches') {
+            loadMatchesJobs(true);
+          }
+          loadNotificationsCount();
+        }
+      } catch (e) {
+        // Sessiz geç
+      } finally {
+        isCheckingMatchesInProgress = false;
+      }
+    }
+
+    function startVipMatchPolling() {
+      if (vipMatchPollTimer) clearInterval(vipMatchPollTimer);
+      // İlk kontrol 6 saniye sonra, sonrasında her 45 saniyede bir düzenli kontrol
+      setTimeout(checkVipNewMatches, 6000);
+      vipMatchPollTimer = setInterval(checkVipNewMatches, 45000);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        checkVipNewMatches();
+        loadNotificationsCount();
+      }
+    });
+    window.addEventListener('focus', () => {
+      checkVipNewMatches();
+      loadNotificationsCount();
+    });
+
+    async function sendTestNotif() {
+      try {
+        if ('Notification' in window && Notification.permission === 'default') {
+          await Notification.requestPermission();
+        }
+        const res = await api('/notifications/test', { method: 'POST' });
+        const title = res.title || '🎯 Size uygun 1 yeni ilan çıktı!';
+        const body = res.body || 'Bildirim sistemi aktif! Uygun kamu ilanları çıktığında bilgilendirileceksiniz.';
+        const jobId = res.jobId || null;
+
+        sendPhoneSystemNotification(title, body, jobId);
+        loadNotificationsCount();
+
+        const msgEl = document.getElementById('profMsg');
+        if (msgEl) {
+          msgEl.innerText = '🔔 Bildirim telefonunuza gönderildi! (Tıklayarak ilana gidebilirsiniz)';
+          setTimeout(() => msgEl.innerText = '', 4000);
+        }
       } catch (e) {
         alert(e.message);
       }
@@ -4195,15 +4393,23 @@
     }
 
     async function loadNotifications() {
-      const r = await api('/notifications');
-      await api('/notifications/read-all', { method: 'POST' });
-      document.getElementById('notifList').innerHTML = r.items.map(n => `
-        <div class="card" style="cursor:pointer" onclick="${n.jobId ? `openJob(${n.jobId})` : ''}">
-          <div style="font-weight:700">${n.title}</div>
-          <div style="margin:4px 0">${n.body}</div>
-          <div style="font-size:12px;color:var(--muted)">${n.createdAt}</div>
-        </div>
-      `).join('') || '<div class="card">Henüz bildirim yok.</div>';
+      try {
+        const r = await api('/notifications');
+        await api('/notifications/read-all', { method: 'POST' });
+        loadNotificationsCount();
+        document.getElementById('notifList').innerHTML = r.items.map(n => `
+          <div class="card" style="cursor:pointer;border-left:4px solid var(--primary);transition:all 0.15s ease;" onclick="${n.jobId ? `openJob(${n.jobId})` : ''}">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+              <div style="font-weight:700;color:var(--text);font-size:14px;">${escapeHtml(n.title)}</div>
+              ${n.jobId ? `<span class="badge" style="background:var(--primary-light);color:var(--primary);font-size:11px;font-weight:700;">İlanı Gör ↗</span>` : ''}
+            </div>
+            <div style="margin:6px 0;font-size:13px;color:var(--text);line-height:1.4;">${escapeHtml(n.body)}</div>
+            <div style="font-size:11.5px;color:var(--muted);">${escapeHtml(n.createdAt)}</div>
+          </div>
+        `).join('') || '<div class="card" style="text-align:center;color:var(--muted);padding:24px;">📭 Henüz yeni bildiriminiz bulunmuyor.</div>';
+      } catch (e) {
+        document.getElementById('notifList').innerHTML = `<div class="card" style="color:var(--fail);">Bildirimler yüklenemedi: ${escapeHtml(e.message)}</div>`;
+      }
     }
 
     setupDefaultMetaUi();

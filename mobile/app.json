@@ -17,6 +17,9 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1d4ed8"
+      },
+      "config": {
+        "googleMobileAdsAppId": "ca-app-pub-9701084123301402~7995020910"
       }
     },
     "ios": {
@@ -25,7 +28,8 @@
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
-        }
+        },
+        "GADApplicationIdentifier": "ca-app-pub-9701084123301402~4327063633"
       }
     },
     "extra": {

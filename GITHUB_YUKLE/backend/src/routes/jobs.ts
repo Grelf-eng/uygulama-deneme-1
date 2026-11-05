@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { db } from '../db';
 import { CITIES } from '../constants/cities';
 import { optionalAuth, requireAuth } from '../middleware/auth';
 import { getJob, JobFilters, allJobs, searchJobs, distinctSources } from '../services/jobsRepo';
@@ -128,6 +129,87 @@ jobsRouter.get('/matches', requireAuth, (req, res) => {
     limit,
     userCities,
     userJobTypes,
+  });
+});
+
+/** VIP kullanıcılar için yeni eşleşen uygun ilan kontrolü ve otomatik bildirim kaydı */
+jobsRouter.get('/matches/check-new', requireAuth, (req, res) => {
+  const profile = getProfile(req.userId!);
+  if (!profile || !profile.cities || profile.cities.length === 0) {
+    res.json({ hasNew: false, count: 0 });
+    return;
+  }
+  const normUserCities = profile.cities.map((c) => norm(c)).filter(Boolean);
+  const userJobTypes = profile.jobTypes || [];
+
+  const rawJobs = allJobs({}).filter((j) => {
+    if (userJobTypes.length > 0 && j.jobType && !userJobTypes.includes(j.jobType as any)) {
+      return false;
+    }
+    if (!j.city) return true;
+    const jc = norm(j.city);
+    if (jc.includes('turkiye') || jc === 'genel' || jc === 'merkez') return true;
+    return normUserCities.some((uc) => jc.includes(uc) || uc.includes(jc));
+  });
+
+  const state = userJobState(req.userId);
+  const matchingViews = rawJobs
+    .map((j) => toView(j, profile, state, false))
+    .filter((v) => v.eligibility.overall !== 'fail' && v.eligibility.score >= 50);
+
+  if (matchingViews.length === 0) {
+    res.json({ hasNew: false, count: 0 });
+    return;
+  }
+
+  // Kullanıcının daha önce bildirim aldığı ilan ID'lerini al
+  const notifiedRows = db
+    .prepare('SELECT job_id FROM notifications WHERE user_id = ? AND job_id IS NOT NULL')
+    .all(req.userId!) as { job_id: number }[];
+  const notifiedJobIds = new Set(notifiedRows.map((r) => r.job_id));
+
+  // Bildirimi henüz gönderilmemiş en güncel eşleşen ilanları bul
+  const unnotifiedJobs = matchingViews.filter((v) => !notifiedJobIds.has(v.id));
+
+  if (unnotifiedJobs.length === 0) {
+    res.json({ hasNew: false, count: 0 });
+    return;
+  }
+
+  // Yeni eşleşen ilanları notifications tablosuna kaydet
+  const insertNotif = db.prepare(
+    'INSERT INTO notifications (user_id, job_id, title, body, read) VALUES (?, ?, ?, ?, 0)',
+  );
+
+  const topJob = unnotifiedJobs[0];
+  const notifTitle = '🎯 Size uygun 1 yeni ilan çıktı!';
+  const notifBody = `${topJob.title} (${topJob.institution || 'Kamu Kurumu'}) - %${topJob.eligibility.score} Uyum`;
+
+  for (const job of unnotifiedJobs) {
+    try {
+      insertNotif.run(
+        req.userId!,
+        job.id,
+        '🎯 Size uygun 1 yeni ilan çıktı!',
+        `${job.title} (${job.institution || 'Kamu Kurumu'}) - %${job.eligibility.score} Uyum`,
+      );
+    } catch (e) {
+      // ignore unique constraint if any
+    }
+  }
+
+  res.json({
+    hasNew: true,
+    count: unnotifiedJobs.length,
+    latestJob: {
+      id: topJob.id,
+      title: topJob.title,
+      institution: topJob.institution,
+      city: topJob.city,
+      score: topJob.eligibility.score,
+    },
+    title: notifTitle,
+    body: notifBody,
   });
 });
 

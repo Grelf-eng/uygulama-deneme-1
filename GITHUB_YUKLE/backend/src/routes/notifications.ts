@@ -27,17 +27,37 @@ notificationsRouter.post('/read-all', (req, res) => {
 });
 
 notificationsRouter.post('/test', async (req, res) => {
+  const latestJob = db
+    .prepare('SELECT id, title, institution FROM jobs ORDER BY id DESC LIMIT 1')
+    .get() as { id: number; title: string; institution: string } | undefined;
+
+  const jobId = latestJob ? latestJob.id : null;
+  const title = '🎯 Size uygun 1 yeni ilan çıktı!';
+  const body = latestJob
+    ? `${latestJob.title} (${latestJob.institution || 'Kamu Kurumu'})`
+    : 'Profilinize uygun yeni kamu ilanları yayınlandı.';
+
+  // Bildirimi kullanıcının bildirim kutusuna kaydet
+  try {
+    db.prepare(
+      'INSERT INTO notifications (user_id, job_id, title, body, read) VALUES (?, ?, ?, ?, 0)',
+    ).run(req.userId!, jobId, title, body);
+  } catch (e) {
+    // ignore
+  }
+
   const row = db.prepare('SELECT push_token FROM profiles WHERE user_id = ?').get(req.userId!) as
     | { push_token: string | null }
     | undefined;
-  if (!row?.push_token) {
-    res.status(400).json({ error: 'Cihaz için push token kayıtlı değil' });
-    return;
+
+  let expoSent = false;
+  if (row?.push_token) {
+    try {
+      expoSent = await sendTestPush(row.push_token);
+    } catch (e) {
+      // ignore
+    }
   }
-  try {
-    const ok = await sendTestPush(row.push_token);
-    res.json({ ok });
-  } catch (e) {
-    res.status(502).json({ error: 'Bildirim gönderilemedi' });
-  }
+
+  res.json({ ok: true, jobId, title, body, expoSent });
 });
