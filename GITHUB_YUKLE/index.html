@@ -4332,7 +4332,11 @@
       } catch (e) {
         if (msgEl) {
           msgEl.style.color = 'var(--fail)';
-          msgEl.innerText = e.message || 'Yorum gönderilemedi.';
+          msgEl.innerHTML = `<b>${escapeHtml(e.message || 'Yorum gönderilemedi.')}</b>`;
+        }
+        if (e && e.data && e.data.banned) {
+          input.disabled = true;
+          input.placeholder = '🚫 Hesabınızın yorum yapma yetkisi geçici olarak kısıtlanmıştır.';
         }
       }
     }

@@ -65,6 +65,8 @@ export async function initCloudSync(retries = 3): Promise<void> {
       ALTER TABLE cloud_users ADD COLUMN IF NOT EXISTS is_subscribed INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE cloud_users ADD COLUMN IF NOT EXISTS subscription_tier TEXT NOT NULL DEFAULT 'standart';
       ALTER TABLE cloud_users ADD COLUMN IF NOT EXISTS session_token TEXT NOT NULL DEFAULT '';
+      ALTER TABLE cloud_users ADD COLUMN IF NOT EXISTS chat_banned_until BIGINT NOT NULL DEFAULT 0;
+      ALTER TABLE cloud_users ADD COLUMN IF NOT EXISTS chat_warnings INTEGER NOT NULL DEFAULT 0;
 
       CREATE TABLE IF NOT EXISTS cloud_verifications (
         email TEXT PRIMARY KEY,

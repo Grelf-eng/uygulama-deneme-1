@@ -11,6 +11,7 @@ import { describeCatalog } from '../constants/certificates';
 import { KPSS_TYPE_OPTIONS } from '../constants/kpss';
 import { UNDERGRAD_PLUS_DEPARTMENTS, ASSOCIATE_DEPARTMENTS, POOL_ONLY_EDUCATION_LEVELS } from '../constants/departments';
 import { norm } from '../utils/text';
+import { containsProfanity, getUserChatBanStatus, applyProfanityStrike } from '../utils/profanityFilter';
 
 export const jobsRouter = Router();
 
@@ -262,13 +263,28 @@ jobsRouter.get('/:id/comments', (req, res) => {
   res.json({ items, total: items.length });
 });
 
-/** İlana yeni aday yorumu / mülakat sorusu ekler */
+/** İlana yeni aday yorumu / mülakat sorusu ekler (Otomatik Küfür Filtresi & Kademeli Chat Ban Korumalı) */
 jobsRouter.post('/:id/comments', requireAuth, (req, res) => {
   const jobId = Number(req.params.id);
   if (!Number.isInteger(jobId) || jobId <= 0) {
     res.status(400).json({ error: 'Geçersiz ilan ID' });
     return;
   }
+
+  // 1. Chat Ban Kontrolü: Kullanıcının aktif bir yorum yasağı var mı?
+  const banStatus = getUserChatBanStatus(req.userId!);
+  if (banStatus.isBanned) {
+    const durationText = banStatus.remainingHours > 0
+      ? `${banStatus.remainingHours} saat`
+      : `${banStatus.remainingMinutes} dakika`;
+    res.status(403).json({
+      error: `🚫 Hesabınız topluluk kurallarını ihlal ettiği için ${durationText} boyunca yorum yapmaya kapatılmıştır.`,
+      banned: true,
+      remainingHours: banStatus.remainingHours,
+    });
+    return;
+  }
+
   const content = (req.body?.content || '').toString().trim();
   if (content.length < 2) {
     res.status(400).json({ error: 'Yorum içeriği en az 2 karakter olmalıdır' });
@@ -276,6 +292,18 @@ jobsRouter.post('/:id/comments', requireAuth, (req, res) => {
   }
   if (content.length > 600) {
     res.status(400).json({ error: 'Yorum içeriği en fazla 600 karakter olabilir' });
+    return;
+  }
+
+  // 2. Küfür / Hakaret Filtresi ve Kademeli Chat Ban Tetikleme
+  const profanityResult = containsProfanity(content);
+  if (profanityResult.hasProfanity) {
+    const strike = applyProfanityStrike(req.userId!);
+    res.status(403).json({
+      error: strike.message,
+      banned: strike.isBanned,
+      warnings: strike.newWarnings,
+    });
     return;
   }
 

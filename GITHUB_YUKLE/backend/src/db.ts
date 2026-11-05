@@ -148,3 +148,5 @@ addColumnIfMissing('jobs', 'required_certificates', "TEXT NOT NULL DEFAULT '[]'"
 addColumnIfMissing('jobs', 'certificate_mode', "TEXT NOT NULL DEFAULT 'all'");
 addColumnIfMissing('email_verifications', 'attempts', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('email_verifications', 'last_sent', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('users', 'chat_banned_until', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('users', 'chat_warnings', 'INTEGER NOT NULL DEFAULT 0');
