@@ -176,7 +176,7 @@ jobsRouter.get('/matches/check-new', requireAuth, (req, res) => {
     return;
   }
 
-  // Yeni eşleşen ilanları notifications tablosuna kaydet
+  // Yeni eşleşen ilanları notifications tablosuna atomik olarak kaydet (Mükerrer bildirimi kesinlikle engeller)
   const insertNotif = db.prepare(
     'INSERT INTO notifications (user_id, job_id, title, body, read) VALUES (?, ?, ?, ?, 0)',
   );
@@ -185,18 +185,21 @@ jobsRouter.get('/matches/check-new', requireAuth, (req, res) => {
   const notifTitle = '🎯 Size uygun 1 yeni ilan çıktı!';
   const notifBody = `${topJob.title} (${topJob.institution || 'Kamu Kurumu'}) - %${topJob.eligibility.score} Uyum`;
 
-  for (const job of unnotifiedJobs) {
-    try {
-      insertNotif.run(
-        req.userId!,
-        job.id,
-        '🎯 Size uygun 1 yeni ilan çıktı!',
-        `${job.title} (${job.institution || 'Kamu Kurumu'}) - %${job.eligibility.score} Uyum`,
-      );
-    } catch (e) {
-      // ignore unique constraint if any
+  const insertBatch = db.transaction((items: typeof unnotifiedJobs) => {
+    for (const job of items) {
+      try {
+        insertNotif.run(
+          req.userId!,
+          job.id,
+          '🎯 Size uygun 1 yeni ilan çıktı!',
+          `${job.title} (${job.institution || 'Kamu Kurumu'}) - %${job.eligibility.score} Uyum`,
+        );
+      } catch (e) {
+        // UNIQUE (user_id, job_id) kısıtlaması sayesinde mükerrer kayıt zaten engellenir
+      }
     }
-  }
+  });
+  insertBatch(unnotifiedJobs);
 
   res.json({
     hasNew: true,

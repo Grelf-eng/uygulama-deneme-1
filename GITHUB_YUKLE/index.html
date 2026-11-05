@@ -2822,6 +2822,43 @@
     // -------------------------------------------------------------
     window.__pendingJobToOpenAfterAuth = null;
 
+    // Mükerrer bildirim önleme sistemi (Aynı ilan cihaza asla 2. kez gönderilmez)
+    const firedNotifJobCache = new Set();
+
+    function wasNotificationAlreadyFired(jobId) {
+      if (!jobId) return false;
+      const numId = Number(jobId);
+      if (firedNotifJobCache.has(numId)) return true;
+      try {
+        const raw = localStorage.getItem('kamu_fired_notif_ids');
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list) && list.includes(numId)) {
+            firedNotifJobCache.add(numId);
+            return true;
+          }
+        }
+      } catch (e) {}
+      return false;
+    }
+
+    function recordNotificationFired(jobId) {
+      if (!jobId) return;
+      const numId = Number(jobId);
+      firedNotifJobCache.add(numId);
+      try {
+        let list = [];
+        const raw = localStorage.getItem('kamu_fired_notif_ids');
+        if (raw) list = JSON.parse(raw);
+        if (!Array.isArray(list)) list = [];
+        if (!list.includes(numId)) {
+          list.push(numId);
+          if (list.length > 300) list = list.slice(-300);
+          localStorage.setItem('kamu_fired_notif_ids', JSON.stringify(list));
+        }
+      } catch (e) {}
+    }
+
     window.__openJobFromNative = function(jobId) {
       if (!jobId) return;
       const numId = Number(jobId);
@@ -2875,10 +2912,18 @@
     }
     window.addEventListener('hashchange', checkUrlForJobToOpen);
 
-    function sendPhoneSystemNotification(title, body, jobId) {
+    function sendPhoneSystemNotification(title, body, jobId, force = false) {
       const cleanTitle = title || '🎯 Size uygun 1 yeni ilan çıktı!';
       const cleanBody = body || 'Profilinize uygun yeni kamu ilanı yayınlandı.';
       const numericJobId = jobId ? Number(jobId) : 0;
+
+      // Mükerrer bildirim kontrolü: Zorunlu test değilse ve zaten bildirildiyse durdur
+      if (!force && numericJobId > 0 && wasNotificationAlreadyFired(numericJobId)) {
+        return;
+      }
+      if (numericJobId > 0) {
+        recordNotificationFired(numericJobId);
+      }
 
       // 1. Android APK (Native Bridge) -> Telefonun sistem kilit ekranı & bildirim çekmecesi
       if (window.AndroidBridge && typeof window.AndroidBridge.notifyUserWithJob === 'function') {
@@ -3013,7 +3058,7 @@
         const body = res.body || 'Bildirim sistemi aktif! Uygun kamu ilanları çıktığında bilgilendirileceksiniz.';
         const jobId = res.jobId || null;
 
-        sendPhoneSystemNotification(title, body, jobId);
+        sendPhoneSystemNotification(title, body, jobId, true);
         loadNotificationsCount();
 
         const msgEl = document.getElementById('profMsg');
