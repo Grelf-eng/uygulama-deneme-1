@@ -145,6 +145,8 @@ adminRouter.get('/users', (req: Request, res: Response) => {
         u.is_verified,
         COALESCE(u.is_subscribed, 0) AS is_subscribed,
         COALESCE(u.subscription_tier, 'standart') AS subscription_tier,
+        COALESCE(u.chat_banned_until, 0) AS chat_banned_until,
+        COALESCE(u.chat_warnings, 0) AS chat_warnings,
         u.created_at,
         p.full_name,
         p.birth_year,
@@ -188,6 +190,8 @@ adminRouter.get('/users', (req: Request, res: Response) => {
         isVerified: r.is_verified === 1,
         isSubscribed: r.is_subscribed === 1,
         subscriptionTier: r.subscription_tier || 'standart',
+        chatBannedUntil: Number(r.chat_banned_until || 0),
+        chatWarnings: Number(r.chat_warnings || 0),
         createdAt: r.created_at,
         birthYear: r.birth_year,
         educationLevel: r.education_level,
@@ -311,6 +315,54 @@ adminRouter.post('/users/:id/toggle-admin', (req: Request, res: Response) => {
     isAdmin: nextAdmin === 1,
     message: `${u.email} hesabı ${nextAdmin === 1 ? 'Yönetici yapıldı.' : 'Yöneticilik yetkisi kaldırıldı.'}`,
   });
+});
+
+/**
+ * POST /api/admin/users/:id/unban-chat
+ * Yöneticinin kullanıcının chat yasağını kaldırmasını ve uyarılarını sıfırlamasını sağlar.
+ */
+adminRouter.post('/users/:id/unban-chat', (req: Request, res: Response) => {
+  const userId = Number(req.params.id);
+  const u = db.prepare('SELECT email FROM users WHERE id = ?').get(userId) as { email: string } | undefined;
+  if (!u) {
+    res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+    return;
+  }
+  db.prepare('UPDATE users SET chat_banned_until = 0, chat_warnings = 0 WHERE id = ?').run(userId);
+  res.json({
+    success: true,
+    message: `${u.email} kullanıcısının chat yasağı ve uyarıları başarıyla kaldırıldı.`,
+  });
+});
+
+/**
+ * POST /api/admin/users/:id/toggle-chat-ban
+ * Yöneticinin tek tıkla chat banını açıp kapatmasını sağlar.
+ */
+adminRouter.post('/users/:id/toggle-chat-ban', (req: Request, res: Response) => {
+  const userId = Number(req.params.id);
+  const u = db.prepare('SELECT email, chat_banned_until FROM users WHERE id = ?').get(userId) as { email: string; chat_banned_until?: number } | undefined;
+  if (!u) {
+    res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+    return;
+  }
+  const isCurrentlyBanned = (u.chat_banned_until || 0) > Date.now();
+  if (isCurrentlyBanned) {
+    db.prepare('UPDATE users SET chat_banned_until = 0, chat_warnings = 0 WHERE id = ?').run(userId);
+    res.json({
+      success: true,
+      isBanned: false,
+      message: `${u.email} kullanıcısının chat yasağı kaldırıldı.`,
+    });
+  } else {
+    const bannedUntil = Date.now() + 24 * 60 * 60 * 1000;
+    db.prepare('UPDATE users SET chat_banned_until = ?, chat_warnings = chat_warnings + 1 WHERE id = ?').run(bannedUntil, userId);
+    res.json({
+      success: true,
+      isBanned: true,
+      message: `${u.email} kullanıcısına 24 saat chat yasağı uygulandı.`,
+    });
+  }
 });
 
 /**

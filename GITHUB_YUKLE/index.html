@@ -1886,6 +1886,10 @@
                   ? '<span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:11px;">🔔 İlan Alarmı</span>'
                   : '<span class="badge" style="background:#f1f5f9;color:#64748b;font-size:11px;">🔕 Bildirim Kapalı</span>'
                 }
+                ${(u.chatBannedUntil && u.chatBannedUntil > Date.now())
+                  ? '<span class="badge" style="background:#fee2e2;color:#991b1b;font-size:11px;font-weight:700;">🚫 Chat Banlı</span>'
+                  : (u.chatWarnings > 0 ? `<span class="badge" style="background:#fef3c7;color:#b45309;font-size:11px;">⚠️ ${u.chatWarnings} Uyarı</span>` : '')
+                }
               </div>
             </div>
 
@@ -1917,6 +1921,16 @@
               <button class="btn btn-sm btn-outline" style="padding:4px 9px;font-size:11.5px;color:#d97706;border-color:#fcd34d;" onclick="adminKickUser(${u.id}, '${escapeHtml(u.email)}')">
                 🚪 Oturumu Kapat
               </button>
+
+              ${(u.chatBannedUntil && u.chatBannedUntil > Date.now()) ? `
+                <button class="btn btn-sm" style="background:#16a34a;color:#fff;border-color:#16a34a;padding:4px 9px;font-size:11.5px;font-weight:700;" onclick="adminUnbanChat(${u.id}, '${escapeHtml(u.email)}')">
+                  🔓 Banı Kaldır
+                </button>
+              ` : `
+                <button class="btn btn-sm btn-outline" style="padding:4px 9px;font-size:11.5px;color:#dc2626;border-color:#fca5a5;" onclick="adminToggleChatBan(${u.id}, '${escapeHtml(u.email)}')">
+                  🚫 Chat Banla
+                </button>
+              `}
 
               <button class="btn btn-sm btn-outline" style="padding:4px 9px;font-size:11.5px;color:#475569;border-color:#cbd5e1;" onclick="adminToggleAdmin(${u.id}, ${u.isAdmin})">
                 ${u.isAdmin ? '🛡️ Yetkiyi Kaldır' : '🛡️ Yönetici Yap'}
@@ -1985,6 +1999,28 @@
       try {
         const r = await api(`/admin/users/${id}/kick`, { method: 'POST' });
         alert(r.message || 'Oturum sonlandırıldı.');
+        await loadAdminDashboard();
+      } catch (e) {
+        alert(e.message || 'İşlem başarısız oldu.');
+      }
+    }
+
+    async function adminUnbanChat(id, email) {
+      if (!confirm(`${email} kullanıcısının chat yasağını kaldırmak ve uyarılarını sıfırlamak istiyor musunuz?`)) return;
+      try {
+        const r = await api(`/admin/users/${id}/unban-chat`, { method: 'POST' });
+        alert(r.message || 'Kullanıcının yorum yasağı kaldırıldı!');
+        await loadAdminDashboard();
+      } catch (e) {
+        alert(e.message || 'İşlem başarısız oldu.');
+      }
+    }
+
+    async function adminToggleChatBan(id, email) {
+      if (!confirm(`${email} kullanıcısına 24 saat chat yasağı vermek istiyor musunuz?`)) return;
+      try {
+        const r = await api(`/admin/users/${id}/toggle-chat-ban`, { method: 'POST' });
+        alert(r.message || 'İşlem başarılı!');
         await loadAdminDashboard();
       } catch (e) {
         alert(e.message || 'İşlem başarısız oldu.');
