@@ -115,6 +115,20 @@ CREATE TABLE IF NOT EXISTS email_verifications (
   last_sent   INTEGER NOT NULL DEFAULT 0,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS job_comments (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  job_id      INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  author_name TEXT NOT NULL,
+  author_kpss TEXT,
+  is_vip      INTEGER NOT NULL DEFAULT 0,
+  category    TEXT NOT NULL DEFAULT 'genel',
+  content     TEXT NOT NULL,
+  likes       INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_job_comments_job ON job_comments(job_id);
 `);
 
 // Mevcut veritabanlarını yeni sütunlarla günceller (CREATE TABLE IF NOT EXISTS eski tabloya sütun eklemez)

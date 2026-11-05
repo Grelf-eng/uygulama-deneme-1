@@ -80,6 +80,18 @@ export async function initCloudSync(retries = 3): Promise<void> {
         PRIMARY KEY (user_id, job_id)
       );
 
+      CREATE TABLE IF NOT EXISTS cloud_job_comments (
+        id SERIAL PRIMARY KEY,
+        job_id INTEGER NOT NULL,
+        author_name TEXT NOT NULL,
+        author_kpss TEXT,
+        is_vip INTEGER NOT NULL DEFAULT 0,
+        category TEXT NOT NULL DEFAULT 'genel',
+        content TEXT NOT NULL,
+        likes INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE TABLE IF NOT EXISTS cloud_profiles (
         user_email TEXT PRIMARY KEY,
         full_name TEXT,

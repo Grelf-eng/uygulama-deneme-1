@@ -239,3 +239,103 @@ jobsRouter.get('/:id', optionalAuth, (req, res) => {
   const profile = req.userId ? getProfile(req.userId) : null;
   res.json(toView(job, profile, userJobState(req.userId), true));
 });
+
+/** İlan altındaki aday yorumları ve mülakat tartışmalarını getirir */
+jobsRouter.get('/:id/comments', (req, res) => {
+  const jobId = Number(req.params.id);
+  if (!Number.isInteger(jobId) || jobId <= 0) {
+    res.status(400).json({ error: 'Geçersiz ilan ID' });
+    return;
+  }
+  const items = db
+    .prepare(
+      `SELECT id, job_id AS jobId, user_id AS userId, author_name AS authorName,
+              author_kpss AS authorKpss, is_vip AS isVip, category, content, likes,
+              created_at AS createdAt
+       FROM job_comments
+       WHERE job_id = ?
+       ORDER BY id DESC
+       LIMIT 100`,
+    )
+    .all(jobId);
+
+  res.json({ items, total: items.length });
+});
+
+/** İlana yeni aday yorumu / mülakat sorusu ekler */
+jobsRouter.post('/:id/comments', requireAuth, (req, res) => {
+  const jobId = Number(req.params.id);
+  if (!Number.isInteger(jobId) || jobId <= 0) {
+    res.status(400).json({ error: 'Geçersiz ilan ID' });
+    return;
+  }
+  const content = (req.body?.content || '').toString().trim();
+  if (content.length < 2) {
+    res.status(400).json({ error: 'Yorum içeriği en az 2 karakter olmalıdır' });
+    return;
+  }
+  if (content.length > 600) {
+    res.status(400).json({ error: 'Yorum içeriği en fazla 600 karakter olabilir' });
+    return;
+  }
+
+  const rawCat = (req.body?.category || 'genel').toString().toLowerCase();
+  const validCats = ['genel', 'mulakat', 'puan', 'soru'];
+  const category = validCats.includes(rawCat) ? rawCat : 'genel';
+
+  // Yazar bilgilerini profil ve kullanıcı tablosundan al
+  const profile = getProfile(req.userId!);
+  const userRow = db.prepare('SELECT email, username, is_subscribed FROM users WHERE id = ?').get(req.userId!) as
+    | { email: string; username?: string; is_subscribed?: number }
+    | undefined;
+
+  let displayName = 'Aday';
+  if (profile?.fullName && profile.fullName.trim().length > 0) {
+    const parts = profile.fullName.trim().split(/\s+/);
+    if (parts.length > 1) {
+      displayName = `${parts[0]} ${parts[parts.length - 1][0]}.`;
+    } else {
+      displayName = parts[0];
+    }
+  } else if (userRow?.email) {
+    const atIdx = userRow.email.indexOf('@');
+    displayName = atIdx > 2 ? userRow.email.substring(0, 3) + '***' : 'Kamu Adayı';
+  }
+
+  const authorKpss = profile?.kpssScore ? `${profile.kpssScore} Puan` : null;
+  const isVip = userRow?.is_subscribed ? 1 : 0;
+
+  const info = db
+    .prepare(
+      `INSERT INTO job_comments (job_id, user_id, author_name, author_kpss, is_vip, category, content, likes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
+    )
+    .run(jobId, req.userId!, displayName, authorKpss, isVip, category, content);
+
+  const newComment = {
+    id: Number(info.lastInsertRowid),
+    jobId,
+    userId: req.userId!,
+    authorName: displayName,
+    authorKpss,
+    isVip,
+    category,
+    content,
+    likes: 0,
+    createdAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
+  };
+
+  res.json({ success: true, comment: newComment });
+});
+
+/** Yorumu beğen / faydalı bul (+1 Like) */
+jobsRouter.post('/:id/comments/:commentId/like', (req, res) => {
+  const commentId = Number(req.params.commentId);
+  if (!Number.isInteger(commentId) || commentId <= 0) {
+    res.status(400).json({ error: 'Geçersiz yorum ID' });
+    return;
+  }
+  db.prepare('UPDATE job_comments SET likes = likes + 1 WHERE id = ?').run(commentId);
+  const updated = db.prepare('SELECT likes FROM job_comments WHERE id = ?').get(commentId) as { likes: number } | undefined;
+  res.json({ success: true, likes: updated?.likes || 1 });
+});
