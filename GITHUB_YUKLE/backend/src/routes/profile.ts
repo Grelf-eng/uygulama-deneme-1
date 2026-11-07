@@ -14,7 +14,15 @@ export const profileRouter = Router();
 profileRouter.use(requireAuth);
 
 const numOrNull = (min: number, max: number) =>
-  z.preprocess((v) => (v === '' || v === undefined ? null : v), z.coerce.number().min(min).max(max).nullable());
+  z.preprocess((v) => {
+    if (v === '' || v === undefined || v === null) return null;
+    if (typeof v === 'string') {
+      const cleaned = v.trim().replace(',', '.');
+      const n = Number(cleaned);
+      return isNaN(n) ? null : n;
+    }
+    return v;
+  }, z.coerce.number().min(min).max(max).nullable());
 
 const profileSchema = z.object({
   fullName: z.string().trim().max(100).default(''),
@@ -59,7 +67,7 @@ profileRouter.get('/', (req, res) => {
   const isAdmin = user?.is_admin === 1;
   const isSubscribed = user?.is_subscribed === 1;
   const subscriptionTier = user?.subscription_tier || 'standart';
-  const editLimit = getProfileLimit(req.userId!, isAdmin);
+  const editLimit = getProfileLimit(req.userId!, isAdmin, isSubscribed);
   res.json({
     email: user?.email || '',
     username: user?.email || '',
@@ -71,22 +79,26 @@ profileRouter.get('/', (req, res) => {
   });
 });
 
-profileRouter.put('/', (req, res) => {
-  const user = db.prepare('SELECT email, is_admin FROM users WHERE id = ?').get(req.userId!) as {
+profileRouter.put('/', async (req, res) => {
+  const user = db
+    .prepare('SELECT email, is_admin, COALESCE(is_subscribed, 0) AS is_subscribed FROM users WHERE id = ?')
+    .get(req.userId!) as {
     email: string;
     is_admin: number;
+    is_subscribed: number;
   } | undefined;
   const isAdmin = user?.is_admin === 1;
+  const isVip = user?.is_subscribed === 1;
 
   ensureProfile(req.userId!);
-  const limitInfo = getProfileLimit(req.userId!, isAdmin);
+  const limitInfo = getProfileLimit(req.userId!, isAdmin, isVip);
 
   if (!limitInfo.canEditNow) {
     const timeStr = limitInfo.waitHours > 0
       ? `${limitInfo.waitHours} saat ${limitInfo.waitMinutes} dakika`
       : `${limitInfo.waitMinutes} dakika`;
     res.status(403).json({
-      error: `İlk 3 serbest profil güncelleme hakkınızı kullandınız. Güvenlik nedeniyle profil değişiklikleri 48 saatte bir yapılabilir. Kalan bekleme süreniz: ${timeStr}.`,
+      error: `İlk 3 serbest profil güncelleme hakkınızı kullandınız. Güvenlik nedeniyle profil değişiklikleri 48 saatte bir yapılabilir. Kalan bekleme süreniz: ${timeStr}. VIP üyeler sınırsız profil güncelleyebilir!`,
       code: 'PROFILE_COOLDOWN',
       editLimit: limitInfo,
     });
@@ -116,14 +128,18 @@ profileRouter.put('/', (req, res) => {
   }
 
   saveProfile(req.userId!, data);
-  if (!isAdmin) {
+  if (!isAdmin && !isVip) {
     incrementProfileEditCount(req.userId!);
   }
 
   if (user?.email) {
-    syncCloudProfile(user.email, data).catch((e: any) => console.error('[cloud-db] Profil senkronizasyon hatası:', e.message));
+    try {
+      await syncCloudProfile(user.email, data);
+    } catch (e: any) {
+      console.error('[cloud-db] Profil senkronizasyon hatası:', e.message);
+    }
   }
-  const updatedLimit = getProfileLimit(req.userId!, isAdmin);
+  const updatedLimit = getProfileLimit(req.userId!, isAdmin, isVip);
   res.json({ profile: getProfile(req.userId!), editLimit: updatedLimit });
 });
 

@@ -326,16 +326,22 @@
       letter-spacing: 0.3px;
     }
     .in-feed-ad-card {
-      border: 1.5px dashed #cbd5e1 !important;
-      background: var(--card);
+      border: 2px solid #f59e0b !important;
+      background: linear-gradient(180deg, #fffbeb 0%, var(--card) 100%) !important;
       position: relative;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
       border-radius: 14px;
-      transition: border-color 0.2s, background-color 0.2s;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.15) !important;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .in-feed-ad-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.25) !important;
     }
     [data-theme="dark"] .in-feed-ad-card {
-      border-color: #475569 !important;
-      background: #1e293b !important;
+      border-color: #d97706 !important;
+      background: linear-gradient(180deg, rgba(245, 158, 11, 0.14) 0%, #1e293b 100%) !important;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
     }
     [data-theme="dark"] #interstitialAdContent {
       background: #0f172a !important;
@@ -406,16 +412,16 @@
       left: 0;
       right: 0;
       z-index: 19;
-      background: #0f172a;
+      background: linear-gradient(90deg, #1e1b4b 0%, #2e1065 50%, #1e1b4b 100%);
       color: #f8fafc;
-      border-top: 1px solid #334155;
-      padding: 8px 14px;
+      border-top: 2px solid #f59e0b;
+      padding: 9px 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      font-size: 12px;
-      box-shadow: 0 -3px 12px rgba(0,0,0,0.2);
+      font-size: 12.5px;
+      box-shadow: 0 -4px 16px rgba(0,0,0,0.35);
     }
     .vip-locked-box {
       border: 1.5px dashed #f59e0b !important;
@@ -1339,13 +1345,39 @@
 
   <!-- ALT SABİT REKLAM BANDI (Standart Kullanıcılara Özel) -->
   <div id="stickyAdBanner" class="sticky-ad-banner hidden">
-    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;" onclick="handleAdClick(0)">
-      <span style="font-size:18px;">📚</span>
-      <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-        <b>Kamu İlan Sponsoru:</b> 2026 KPSS Konu Anlatımlı Setlerde %40 İndirim! ↗
+    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;" onclick="handleAdClick()">
+      <span id="stickyAdIcon" style="font-size:20px;">📚</span>
+      <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;">
+        <span class="badge" style="background:#f59e0b;color:#000;font-weight:800;font-size:10px;padding:1px 5px;margin-right:4px;">SPONSOR</span>
+        <b id="stickyAdText">2026 KPSS Tam Hazırlık Seti %40 İndirimde! ↗</b>
       </div>
     </div>
-    <button class="btn btn-sm btn-outline" style="border-color:#f59e0b;color:#fde68a;font-size:11px;padding:3px 8px;border-radius:6px;white-space:nowrap;" onclick="openVipModal()">👑 Kaldır</button>
+    <button class="btn btn-sm" style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#fff;border:none;font-weight:800;font-size:11px;padding:4px 9px;border-radius:6px;white-space:nowrap;box-shadow:0 2px 6px rgba(245,158,11,0.4);" onclick="openVipModal()">👑 VIP ile Kapat</button>
+  </div>
+
+  <!-- GÜNLÜK ÜCRETSİZ İLAN KOTASI MODALI (Standart Kullanıcılara Özel) -->
+  <div id="dailyLimitModal" class="modal-backdrop hidden" onclick="closeDailyLimitModal(event)">
+    <div class="modal-sheet" onclick="event.stopPropagation()" style="max-width:390px;text-align:center;">
+      <div style="font-size:46px;margin-bottom:6px;">⏳</div>
+      <h3 style="margin:0 0 6px 0;font-size:18px;color:#92400e;">Günlük Ücretsiz İlan Kotanız Doldu!</h3>
+      <p style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px;">
+        Standart pakette günlük <b>5 ilan</b> inceleme hakkı bulunmaktadır (5/5 kullanıldı).<br>
+        Sınırsız ilan inceleme, resmi başvuru linkleri ve taban puanlar için VIP'ye geçin!
+      </p>
+      <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:12px;margin-bottom:14px;text-align:left;font-size:12px;color:#92400e;line-height:1.6;">
+        <div>✅ <b>Sınırsız İlan İnceleme:</b> Günlük kota yok</div>
+        <div>✅ <b>%100 Reklamsız:</b> Sıfır bekleme süresi</div>
+        <div>✅ <b>Direkt Başvuru Ekranı:</b> Kariyer Kapısı & ÖSYM direkt linki</div>
+        <div>✅ <b>Geçmiş Atama Taban Puanları & Mülakat Tüyoları</b></div>
+        <div>✅ <b>Sınırsız Profil Güncelleme:</b> 48 saat kuralı yok</div>
+      </div>
+      <button class="btn" style="width:100%;background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#fff;border:none;font-weight:800;padding:12px;margin-bottom:8px;font-size:14px;box-shadow:0 3px 10px rgba(245,158,11,0.35);" onclick="openVipFromDailyLimit()">
+        👑 Sınırsız VIP'ye Yükselt
+      </button>
+      <button class="btn btn-outline" style="width:100%;font-size:12.5px;padding:9px;font-weight:700;" onclick="watchAdForExtraJob()">
+        🎬 1 Ek İlan İçin Sponsorlu Reklam İzle (5s)
+      </button>
+    </div>
   </div>
 
   <nav id="bottomTabs" class="tabs hidden">
@@ -2608,6 +2640,11 @@
           loadAdminDashboard();
         }
 
+        if (me.profile) {
+          try {
+            localStorage.setItem('kamu_cached_profile', JSON.stringify(me.profile));
+          } catch (e) {}
+        }
         fillProfileForm(me.profile, me.editLimit, isAdmin);
         document.getElementById('authScreen').classList.add('hidden');
         document.getElementById('headerActions').classList.remove('hidden');
@@ -2641,7 +2678,15 @@
       currentProfileLimit = limit;
 
       if (isAdmin || isVipActive()) {
-        card.innerHTML = `<div style="background:rgba(168, 85, 247, 0.14);border:1px solid rgba(168, 85, 247, 0.35);color:#7e22ce;padding:9px 12px;border-radius:8px;font-size:12.5px;">💎 <b>VIP Üyelik Aktif:</b> Sınırsız profil güncelleme ve filtreleme hakkı aktif.</div>`;
+        card.innerHTML = `
+          <div style="background:linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(124, 58, 237, 0.15) 100%);border:1.5px solid #c084fc;color:#7e22ce;padding:10px 14px;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:22px;">👑</span>
+            <div>
+              <div style="font-weight:800;color:#6b21a8;">VIP Ayrıcalığı: Sınırsız & Beklemesiz Profil Güncelleme</div>
+              <div style="font-size:11.5px;color:#7e22ce;margin-top:2px;">48 saat kuralı sizin için geçerli değildir; KPSS puanınızı ve kriterlerinizi dilediğiniz an güncelleyebilirsiniz.</div>
+            </div>
+          </div>
+        `;
         btn.disabled = false;
         btn.innerText = 'Profili Kaydet';
         btn.style.opacity = '1';
@@ -2655,7 +2700,7 @@
           <div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:9px 12px;border-radius:8px;font-size:12px;line-height:1.45;">
             💡 <b>İlk Kurulum Hakkı:</b> Kalan anlık güncelleme hakkınız: <b>${limit.initialRemaining} / 3</b>
             <div style="font-size:11.5px;color:#3b82f6;margin-top:4px;">
-              İlk 3 güncellemeden sonra hesap güvenliği ve ortak kullanımı önlemek amacıyla profil değişiklikleri <b>48 saatte bir</b> yapılabilir.
+              İlk 3 güncellemeden sonra hesap güvenliği ve ortak kullanımı önlemek amacıyla profil değişiklikleri <b>48 saatte bir</b> yapılabilir. (VIP üyeler sınırsız güncelleyebilir).
             </div>
           </div>
         `;
@@ -2675,6 +2720,9 @@
             <div style="margin-top:6px;font-weight:800;color:#dc2626;font-size:13px;">
               ⏳ Kalan Bekleme Süresi: ${timeStr}
             </div>
+            <button class="btn btn-sm" style="margin-top:8px;width:100%;background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#fff;border:none;font-weight:800;font-size:12px;padding:6px;" onclick="openVipModal()">
+              👑 VIP'ye Geç (Bekleme Süresini Sıfırla)
+            </button>
           </div>
         `;
         btn.disabled = true;
@@ -2848,13 +2896,23 @@
         alert('Lütfen lisans/üstü bölümünüzü listeden seçin.');
         return;
       }
+      const rawKpss = document.getElementById('profKpss').value.trim();
+      let cleanKpss = null;
+      if (rawKpss) {
+        const parsed = Number(rawKpss.replace(',', '.'));
+        if (isNaN(parsed) || parsed < 0 || parsed > 100) {
+          alert('Lütfen geçerli bir KPSS puanı giriniz (0 - 100 arası, örn: 78.5 veya 78,5).');
+          return;
+        }
+        cleanKpss = parsed;
+      }
       const body = {
         fullName: document.getElementById('profName').value.trim(),
         birthYear: document.getElementById('profBirth').value || null,
         educationLevel: edu,
         department: dept,
         certificates: profileCerts,
-        kpssScore: document.getElementById('profKpss').value || null,
+        kpssScore: cleanKpss,
         kpssType: document.getElementById('profKpssType').value || null,
         experienceYears: Number(document.getElementById('profExp').value || 0),
         cities: profileCities,
@@ -2864,7 +2922,11 @@
       try {
         const res = await api('/profile', { method: 'PUT', body });
         matchesJobsLoaded = false;
-        document.getElementById('profMsg').innerText = '✅ Profil kaydedildi! Eşleşen ilanlar güncellendi.';
+        currentUserProfile = res.profile;
+        try {
+          localStorage.setItem('kamu_cached_profile', JSON.stringify(res.profile));
+        } catch (e) {}
+        document.getElementById('profMsg').innerText = '✅ Profil kalıcı olarak kaydedildi! Eşleşen ilanlar güncellendi.';
         fillProfileForm(res.profile, res.editLimit, currentAppIsAdmin);
         setTimeout(() => document.getElementById('profMsg').innerText = '', 3500);
       } catch (e) {
@@ -3137,12 +3199,22 @@
       document.getElementById(name + 'Screen').classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'instant' });
       if (name === 'profile') {
+        // Form alanlarının boş kalmasını veya sıfırlanmasını önlemek için anında yerel önbellekten yükle
+        try {
+          const cached = currentUserProfile || JSON.parse(localStorage.getItem('kamu_cached_profile') || 'null');
+          if (cached) {
+            fillProfileForm(cached, undefined, currentAppIsAdmin);
+          }
+        } catch (e) {}
         renderCityChips();
         renderCertChips();
         renderJobTypeChips();
-        updateDeptVisibility();
+        // NOT: updateDeptVisibility() burada çağrılmaz, çünkü veriler henüz gelmediyse bölümü sıfırlıyordu! fillProfileForm içinde güvenle çağrılır.
         api('/profile').then(res => {
           if (res && res.profile) {
+            try {
+              localStorage.setItem('kamu_cached_profile', JSON.stringify(res.profile));
+            } catch (e) {}
             fillProfileForm(res.profile, res.editLimit, currentAppIsAdmin);
           }
         }).catch(() => {});
@@ -3594,33 +3666,99 @@
     const SPONSORED_ADS = [
       {
         icon: '📚',
+        tag: '🔥 %40 İNDİRİM',
         title: '2026 KPSS Tam Hazırlık Seti & Soru Bankası',
-        desc: 'Genel Yetenek - Genel Kültür tüm çözümlü sorular ve konu özetleri %40 indirimde!',
-        actionText: 'Seti İncele ↗',
+        desc: 'Genel Yetenek - Genel Kültür tüm çözümlü sorular ve konu özetleri kargo bedava!',
+        actionText: 'Fırsatı İncele ↗',
         url: 'https://www.google.com/search?q=2026+kpss+hazirlik+kitaplari'
       },
       {
         icon: '🎓',
+        tag: '⚡ e-DEVLET ONAYLI',
         title: 'MEB Onaylı Bilgisayar İşletmenliği Sertifikası',
-        desc: 'Kamuda memur ve VHKİ alımlarında zorunlu olan e-Devlet onaylı sertifika programı.',
-        actionText: 'Sertifikayı İncele ↗',
+        desc: 'Kamuda memur ve VHKİ alımlarında zorunlu olan resmi sertifika programı.',
+        actionText: 'Kayıt Ol ↗',
         url: 'https://www.google.com/search?q=meb+onayli+bilgisayar+isletmenligi+sertifikasi'
       },
       {
         icon: '🛡️',
-        title: 'Özel Güvenlik Temel & Yenileme Eğitimi',
-        desc: 'Hastaneler, üniversiteler ve bakanlıklarda sürekli işçi alımları için güvenlik kimlik kartı.',
-        actionText: 'Eğitimi İncele ↗',
+        tag: '🚨 İŞ GARANTİLİ',
+        title: 'Silahlı / Silahsız Özel Güvenlik Eğitimi',
+        desc: 'Hastaneler ve bakanlıklarda sürekli işçi alımları için güvenlik kimlik kartı eğitimi.',
+        actionText: 'Hemen Başvur ↗',
         url: 'https://www.google.com/search?q=ozel+guvenlik+kimlik+karti+egitimi'
       },
       {
         icon: '⚡',
+        tag: '🎯 MÜLAKAT TÜYOLARI',
         title: 'Kamu Mülakat Simülasyonu & Çıkmış Sorular',
         desc: 'Sözlü mülakatlarda en çok sorulan sorular ve komisyon değerlendirme rehberi.',
-        actionText: 'Rehberi İncele ↗',
+        actionText: 'Rehberi Gör ↗',
         url: 'https://www.google.com/search?q=kamu+mulakat+cikmis+sorular'
       }
     ];
+
+    const STANDART_DAILY_JOB_LIMIT = 5;
+
+    function getTodayKey() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function getDailyJobViews() {
+      try {
+        const raw = localStorage.getItem('kamu_daily_views_' + getTodayKey());
+        return raw ? parseInt(raw, 10) : 0;
+      } catch (e) {
+        return 0;
+      }
+    }
+
+    function incrementDailyJobViews() {
+      try {
+        const current = getDailyJobViews();
+        localStorage.setItem('kamu_daily_views_' + getTodayKey(), String(current + 1));
+        return current + 1;
+      } catch (e) {
+        return 1;
+      }
+    }
+
+    function openDailyLimitModal(jobId) {
+      pendingJobIdToOpen = jobId;
+      const modal = document.getElementById('dailyLimitModal');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeDailyLimitModal(e) {
+      if (e && e.target && e.target !== e.currentTarget) return;
+      const modal = document.getElementById('dailyLimitModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function openVipFromDailyLimit() {
+      const modal = document.getElementById('dailyLimitModal');
+      if (modal) modal.classList.add('hidden');
+      openVipModal();
+    }
+
+    function watchAdForExtraJob() {
+      const modal = document.getElementById('dailyLimitModal');
+      if (modal) modal.classList.add('hidden');
+      showInterstitialAd(true);
+    }
+
+    let currentStickyAdIndex = 0;
+    setInterval(() => {
+      const banner = document.getElementById('stickyAdBanner');
+      if (!banner || banner.classList.contains('hidden') || isVipActive()) return;
+      currentStickyAdIndex = (currentStickyAdIndex + 1) % SPONSORED_ADS.length;
+      const ad = SPONSORED_ADS[currentStickyAdIndex];
+      const iconEl = document.getElementById('stickyAdIcon');
+      const textEl = document.getElementById('stickyAdText');
+      if (iconEl) iconEl.innerText = ad.icon;
+      if (textEl) textEl.innerText = `${ad.title} (${ad.tag || 'Fırsat'}) ↗`;
+    }, 7000);
 
     function updateVipUi() {
       const active = isVipActive();
@@ -3664,17 +3802,22 @@
       const ad = SPONSORED_ADS[idx % SPONSORED_ADS.length];
       return `
         <div class="card in-feed-ad-card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">📢 Sponsorlu Reklam</span>
-            <button class="btn btn-sm btn-outline" style="border-color:#f59e0b;color:#b45309;font-size:11px;padding:2px 8px;border-radius:6px;" onclick="openVipModal()">👑 Reklamı Kaldır (VIP)</button>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(245, 158, 11, 0.25);">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="badge" style="background:#fef3c7;color:#b45309;font-weight:800;font-size:10.5px;padding:2px 7px;border:1px solid #fde68a;">📢 SPONSORLU İLAN</span>
+              <span class="badge" style="background:#fee2e2;color:#b91c1c;font-weight:800;font-size:10px;padding:2px 6px;">${ad.tag || 'ÖZEL FIRSAT'}</span>
+            </div>
+            <button class="btn btn-sm btn-outline" style="border-color:#f59e0b;color:#b45309;font-size:11px;padding:2px 8px;border-radius:6px;font-weight:700;" onclick="openVipModal()">👑 Reklamı Kaldır (VIP)</button>
           </div>
           <div style="display:flex;gap:12px;align-items:center;cursor:pointer;" onclick="handleAdClick(${idx % SPONSORED_ADS.length})">
-            <span style="font-size:32px;">${ad.icon}</span>
-            <div style="flex:1;">
-              <div style="font-weight:700;font-size:14px;color:var(--text);">${escapeHtml(ad.title)}</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:2px;">${escapeHtml(ad.desc)}</div>
+            <span style="font-size:34px;background:#fef3c7;border-radius:12px;padding:6px 10px;">${ad.icon}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:800;font-size:14.5px;color:var(--text);line-height:1.35;">${escapeHtml(ad.title)}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:3px;line-height:1.4;">${escapeHtml(ad.desc)}</div>
             </div>
-            <button class="btn btn-sm" style="padding:6px 10px;font-size:12px;white-space:nowrap;">İncele ↗</button>
+            <button class="btn btn-sm" style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#fff;border:none;font-weight:800;padding:7px 12px;font-size:12px;white-space:nowrap;box-shadow:0 2px 6px rgba(245,158,11,0.35);">
+              ${escapeHtml(ad.actionText || 'İncele ↗')}
+            </button>
           </div>
         </div>
       `;
@@ -3686,8 +3829,8 @@
       const vip = isVipActive();
       items.forEach((item, idx) => {
         html.push(renderJobCard(item));
-        if (!vip && (idx + 1) % 3 === 0) {
-          html.push(renderInFeedAd(Math.floor(idx / 3)));
+        if (!vip && (idx + 1) % 2 === 0) {
+          html.push(renderInFeedAd(Math.floor(idx / 2)));
         }
       });
       return html.join('');
@@ -3698,17 +3841,25 @@
         openJob(id);
         return;
       }
+
+      const views = getDailyJobViews();
+      if (views >= STANDART_DAILY_JOB_LIMIT) {
+        openDailyLimitModal(id);
+        return;
+      }
+
       userJobClickCount++;
-      // Ücretsiz kullanıcılar her 2. tıklamada 3 saniyelik geçiş reklamı görür
+      pendingJobIdToOpen = id;
+      // Ücretsiz kullanıcılar her 2. tıklamada 5 saniyelik geçiş reklamı görür
       if (userJobClickCount % 2 === 0) {
-        pendingJobIdToOpen = id;
         showInterstitialAd();
       } else {
+        incrementDailyJobViews();
         openJob(id);
       }
     }
 
-    function showInterstitialAd() {
+    function showInterstitialAd(isBonus = false) {
       const ad = SPONSORED_ADS[Math.floor(Math.random() * SPONSORED_ADS.length)];
       const adIcon = document.getElementById('adIcon');
       const adTitle = document.getElementById('adTitle');
@@ -3721,7 +3872,7 @@
 
       if (skipBtn) {
         skipBtn.disabled = true;
-        let sec = 3;
+        let sec = 5;
         skipBtn.innerText = `⏳ Reklamı Geç (${sec}s)`;
         if (adCountdownInterval) clearInterval(adCountdownInterval);
         adCountdownInterval = setInterval(() => {
@@ -3731,7 +3882,7 @@
           } else {
             clearInterval(adCountdownInterval);
             skipBtn.disabled = false;
-            skipBtn.innerText = '⏩ Reklamı Geç ve İlanı Aç';
+            skipBtn.innerText = isBonus ? '⏩ Reklam Bitti (+1 İlanı Aç)' : '⏩ Reklamı Geç ve İlanı Aç';
           }
         }, 1000);
       }
@@ -3745,6 +3896,9 @@
       if (pendingJobIdToOpen) {
         const jId = pendingJobIdToOpen;
         pendingJobIdToOpen = null;
+        if (!isVipActive()) {
+          incrementDailyJobViews();
+        }
         openJob(jId);
       }
     }
@@ -4125,8 +4279,44 @@
 
       const srcName = SOURCE_LABELS[j.source] || j.source;
       const applyUrl = findOfficialApplyUrl(j);
+      const dailyViews = getDailyJobViews();
+      const quotaBannerHtml = !isVipActive() ? `
+        <div class="card" style="border:1.5px solid #f59e0b;background:#fffbeb;margin-bottom:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;box-shadow:0 2px 8px rgba(245,158,11,0.15);">
+          <div>
+            <div style="font-weight:800;font-size:13px;color:#92400e;">📦 Standart Paket: Günlük İlan Kotanız: ${Math.min(dailyViews, STANDART_DAILY_JOB_LIMIT)}/${STANDART_DAILY_JOB_LIMIT} Kullanıldı</div>
+            <div style="font-size:11.5px;color:#b45309;margin-top:2px;">Sınırsız ilan inceleme, resmi başvuru ekranı ve mülakat tüyoları için VIP'ye geçin.</div>
+          </div>
+          <button class="btn btn-sm" style="background:#b45309;color:#fff;border:none;font-weight:800;white-space:nowrap;padding:6px 12px;" onclick="openVipModal()">👑 VIP'ye Geç</button>
+        </div>
+      ` : `
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#7e22ce;font-weight:800;margin-bottom:10px;padding:6px 10px;background:#f3e8ff;border-radius:8px;border:1px solid #d8b4fe;">
+          <span>👑</span><span>VIP Üye Ayrıcalığı: Sınırsız İlan İnceleme • %100 Reklamsız Deneyim</span>
+        </div>
+      `;
+
+      const detailAdHtml = !isVipActive() ? `
+        <div class="card in-feed-ad-card" style="margin:12px 0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(245, 158, 11, 0.25);">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="badge" style="background:#fef3c7;color:#b45309;font-weight:800;font-size:10.5px;padding:2px 7px;border:1px solid #fde68a;">📢 SPONSORLU TAVSİYE</span>
+              <span class="badge" style="background:#fee2e2;color:#b91c1c;font-weight:800;font-size:10px;padding:2px 6px;">%40 İNDİRİM</span>
+            </div>
+            <button class="btn btn-sm btn-outline" style="border-color:#f59e0b;color:#b45309;font-size:11px;padding:2px 8px;border-radius:6px;font-weight:700;" onclick="openVipModal()">👑 Reklamsız VIP</button>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;cursor:pointer;" onclick="handleAdClick(0)">
+            <span style="font-size:32px;background:#fef3c7;border-radius:10px;padding:4px 8px;">📚</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:800;font-size:14px;color:var(--text);">2026 Kamu Mülakatı & Soru Bankası Seti</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px;">Sözlü mülakatlarda komisyon kriterleri ve çıkmış mevzuat soruları %40 indirimde.</div>
+            </div>
+            <button class="btn btn-sm" style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#fff;border:none;font-weight:800;padding:6px 12px;font-size:12px;white-space:nowrap;">İncele ↗</button>
+          </div>
+        </div>
+      ` : '';
+
       document.getElementById('detailScreen').innerHTML = `
         <button class="btn btn-outline" style="margin-bottom:12px" onclick="switchTab(currentTab)">← Listeye Dön</button>
+        ${quotaBannerHtml}
         <div class="card">
           <h2 style="margin:0 0 6px 0;font-size:19px;">${escapeHtml(j.title)}</h2>
           <div class="sub">${[escapeHtml(j.institution), escapeHtml(j.city), 'Kaynak: ' + escapeHtml(srcName)].filter(Boolean).join(' • ')}</div>
@@ -4204,6 +4394,7 @@
           <div class="row">${appButtons}</div>
           ${j.applicationStatus ? `<button class="btn btn-danger btn-sm" style="margin-top:10px" onclick="clearAppStatus(${j.id})">Takibi Bırak</button>` : ''}
         </div>
+        ${detailAdHtml}
         <div class="card">
           <h3 style="margin-top:0">İlan Açıklaması</h3>
           <div style="line-height:1.68;white-space:pre-line;word-break:break-word;font-size:14.5px;color:var(--text);">${escapeHtml(j.description)}</div>
@@ -4321,7 +4512,7 @@
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <span style="font-weight:700;font-size:13px;color:var(--text);">${escapeHtml(c.authorName)}</span>
-              ${c.isVip ? '<span class="badge" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:10px;font-weight:800;padding:1px 6px;">👑 VIP</span>' : ''}
+              ${c.isVip ? '<span class="badge" style="background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;font-size:10.5px;font-weight:800;padding:2px 7px;box-shadow:0 1px 4px rgba(124,58,237,0.35);border:1px solid #d8b4fe;">👑 VIP Aday</span>' : ''}
               ${c.authorKpss ? `<span class="badge" style="background:#dcfce7;color:#166534;font-size:10.5px;font-weight:700;">🎯 KPSS: ${escapeHtml(c.authorKpss)}</span>` : ''}
               ${catBadges[c.category] || catBadges.genel}
             </div>

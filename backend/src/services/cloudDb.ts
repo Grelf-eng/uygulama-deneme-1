@@ -216,10 +216,10 @@ export async function initCloudSync(retries = 3): Promise<void> {
       importedUsers++;
     }
 
-    // 3.5. Neon'daki kayıtlı profilleri yerel SQLite'a aktar
+    // 3.5. Neon'daki kayıtlı profilleri yerel SQLite'a aktar (büyük-küçük harf duyarsız eşleştirme)
     const profRes = await p.query('SELECT * FROM cloud_profiles');
     for (const cp of profRes.rows) {
-      const u = db.prepare('SELECT id FROM users WHERE email = ?').get(cp.user_email) as { id: number } | undefined;
+      const u = db.prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(?)').get(cp.user_email) as { id: number } | undefined;
       if (u) {
         db.prepare(`
           INSERT INTO profiles (
@@ -248,6 +248,34 @@ export async function initCloudSync(retries = 3): Promise<void> {
           cp.profile_edit_count || 0, cp.last_profile_update || 0
         );
       }
+    }
+
+    // 3.6. Yerelde var olup Neon'da henüz olmayan profilleri de buluta yedekle (çift yönlü kalıcılık)
+    try {
+      const localProfiles = db.prepare(`
+        SELECT p.*, u.email as user_email
+        FROM profiles p
+        JOIN users u ON u.id = p.user_id
+      `).all() as any[];
+      for (const lp of localProfiles) {
+        if (lp.user_email) {
+          await p.query(`
+            INSERT INTO cloud_profiles (
+              user_email, full_name, birth_year, education_level, department,
+              certificates, kpss_score, kpss_type, experience_years, cities, job_types, notifications_enabled,
+              profile_edit_count, last_profile_update, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP)
+            ON CONFLICT(user_email) DO NOTHING
+          `, [
+            lp.user_email.toLowerCase(), lp.full_name || '', lp.birth_year, lp.education_level, lp.department || '',
+            lp.certificates || '[]', lp.kpss_score, lp.kpss_type, lp.experience_years ?? 0,
+            lp.cities || '[]', lp.job_types || '["memur","sozlesmeli","isci","akademik"]', lp.notifications_enabled ?? 1,
+            lp.profile_edit_count || 0, lp.last_profile_update || 0
+          ]).catch(() => {});
+        }
+      }
+    } catch (e: any) {
+      console.warn('[cloud-db] Yerel profiller Neon\'a aktarılırken atlandı:', e.message);
     }
 
     // 3. Neon'daki aktif doğrulama kodlarını aktar

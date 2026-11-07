@@ -66,14 +66,15 @@ export interface ProfileLimitInfo {
 
 /**
  * 3 Kez Art Arda Değiştirme ve Sonrasında 48 Saat Soğuma Kuralı (Anti-Account Sharing)
+ * Admin ve VIP Üyeler için sınır yoktur (Sınırsız ve anında düzenleme hakkı).
  */
-export function getProfileLimit(userId: number, isAdmin: boolean = false): ProfileLimitInfo {
-  if (isAdmin) {
+export function getProfileLimit(userId: number, isAdmin: boolean = false, isVip: boolean = false): ProfileLimitInfo {
+  if (isAdmin || isVip) {
     return {
       editCount: 0,
-      initialRemaining: 3,
+      initialRemaining: 999,
       canEditNow: true,
-      cooldownHours: 48,
+      cooldownHours: 0,
       cooldownRemainingMs: 0,
       waitHours: 0,
       waitMinutes: 0,
