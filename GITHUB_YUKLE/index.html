@@ -326,16 +326,22 @@
       letter-spacing: 0.3px;
     }
     .in-feed-ad-card {
-      border: 1.5px dashed #cbd5e1 !important;
-      background: var(--card);
+      border: 2px solid #f59e0b !important;
+      background: linear-gradient(180deg, #fffbeb 0%, var(--card) 100%) !important;
       position: relative;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
       border-radius: 14px;
-      transition: border-color 0.2s, background-color 0.2s;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.15) !important;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .in-feed-ad-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.25) !important;
     }
     [data-theme="dark"] .in-feed-ad-card {
-      border-color: #475569 !important;
-      background: #1e293b !important;
+      border-color: #d97706 !important;
+      background: linear-gradient(180deg, rgba(245, 158, 11, 0.14) 0%, #1e293b 100%) !important;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
     }
     [data-theme="dark"] #interstitialAdContent {
       background: #0f172a !important;
@@ -406,16 +412,16 @@
       left: 0;
       right: 0;
       z-index: 19;
-      background: #0f172a;
+      background: linear-gradient(90deg, #1e1b4b 0%, #2e1065 50%, #1e1b4b 100%);
       color: #f8fafc;
-      border-top: 1px solid #334155;
-      padding: 8px 14px;
+      border-top: 2px solid #f59e0b;
+      padding: 9px 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      font-size: 12px;
-      box-shadow: 0 -3px 12px rgba(0,0,0,0.2);
+      font-size: 12.5px;
+      box-shadow: 0 -4px 16px rgba(0,0,0,0.35);
     }
     .vip-locked-box {
       border: 1.5px dashed #f59e0b !important;
@@ -462,6 +468,50 @@
     .toast-pill.show {
       transform: translateX(-50%) translateY(0);
       opacity: 1;
+    }
+
+    /* İLAN DETAY SEKME VE YÜZEN FORUM BUTONU */
+    .detail-tab-btn {
+      flex: 1;
+      padding: 9px 12px;
+      font-size: 13.5px;
+      font-weight: 800;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: transparent;
+      color: var(--muted);
+      user-select: none;
+    }
+    .detail-tab-btn.active {
+      background: var(--primary) !important;
+      color: #fff !important;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.28);
+    }
+    .floating-forum-pill {
+      position: fixed;
+      bottom: 74px;
+      right: 14px;
+      z-index: 25;
+      background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+      color: #fff;
+      border: 1.5px solid #c084fc;
+      border-radius: 999px;
+      padding: 9px 15px;
+      font-size: 13px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      box-shadow: 0 4px 16px rgba(109, 40, 217, 0.45);
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .floating-forum-pill:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(109, 40, 217, 0.6);
     }
 
     /* GECE / GÜNDÜZ MODU KAYAR ANAHTAR (SLIDING TOGGLE SWITCH) */
@@ -1339,14 +1389,89 @@
 
   <!-- ALT SABİT REKLAM BANDI (Standart Kullanıcılara Özel) -->
   <div id="stickyAdBanner" class="sticky-ad-banner hidden">
-    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;" onclick="handleAdClick(0)">
-      <span style="font-size:18px;">📚</span>
-      <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-        <b>Kamu İlan Sponsoru:</b> 2026 KPSS Konu Anlatımlı Setlerde %40 İndirim! ↗
+    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;" onclick="handleAdClick()">
+      <span id="stickyAdIcon" style="font-size:20px;">📚</span>
+      <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;">
+        <span class="badge" style="background:#f59e0b;color:#000;font-weight:800;font-size:10px;padding:1px 5px;margin-right:4px;">SPONSOR</span>
+        <b id="stickyAdText">2026 KPSS Tam Hazırlık Seti %40 İndirimde! ↗</b>
       </div>
     </div>
-    <button class="btn btn-sm btn-outline" style="border-color:#f59e0b;color:#fde68a;font-size:11px;padding:3px 8px;border-radius:6px;white-space:nowrap;" onclick="openVipModal()">👑 Kaldır</button>
+    <button class="btn btn-sm" style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#fff;border:none;font-weight:800;font-size:11px;padding:4px 9px;border-radius:6px;white-space:nowrap;box-shadow:0 2px 6px rgba(245,158,11,0.4);" onclick="openVipModal()">👑 VIP ile Kapat</button>
   </div>
+
+  <!-- GÜNLÜK ÜCRETSİZ İLAN KOTASI MODALI (Standart Kullanıcılara Özel) -->
+  <div id="dailyLimitModal" class="modal-backdrop hidden" onclick="closeDailyLimitModal(event)">
+    <div class="modal-sheet" onclick="event.stopPropagation()" style="max-width:390px;text-align:center;">
+      <div style="font-size:46px;margin-bottom:6px;">⏳</div>
+      <h3 style="margin:0 0 6px 0;font-size:18px;color:#92400e;">Günlük Ücretsiz İlan Kotanız Doldu!</h3>
+      <p style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px;">
+        Standart pakette günlük <b>5 ilan</b> inceleme hakkı bulunmaktadır (5/5 kullanıldı).<br>
+        Sınırsız ilan inceleme, resmi başvuru linkleri ve taban puanlar için VIP'ye geçin!
+      </p>
+      <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:12px;margin-bottom:14px;text-align:left;font-size:12px;color:#92400e;line-height:1.6;">
+        <div>✅ <b>Sınırsız İlan İnceleme:</b> Günlük kota yok</div>
+        <div>✅ <b>%100 Reklamsız:</b> Sıfır bekleme süresi</div>
+        <div>✅ <b>Direkt Başvuru Ekranı:</b> Kariyer Kapısı & ÖSYM direkt linki</div>
+        <div>✅ <b>Geçmiş Atama Taban Puanları & Mülakat Tüyoları</b></div>
+        <div>✅ <b>Sınırsız Profil Güncelleme:</b> 48 saat kuralı yok</div>
+      </div>
+      <button class="btn" style="width:100%;background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#fff;border:none;font-weight:800;padding:12px;margin-bottom:8px;font-size:14px;box-shadow:0 3px 10px rgba(245,158,11,0.35);" onclick="openVipFromDailyLimit()">
+        👑 Sınırsız VIP'ye Yükselt
+      </button>
+      <button class="btn btn-outline" style="width:100%;font-size:12.5px;padding:9px;font-weight:700;" onclick="watchAdForExtraJob()">
+        🎬 1 Ek İlan İçin Sponsorlu Reklam İzle (5s)
+      </button>
+    </div>
+  </div>
+
+  <!-- RESMİ BAŞVURU EKRANI GATEWAY MODALI -->
+  <div id="applyGatewayModal" class="modal-backdrop hidden" onclick="closeApplyGatewayModal(event)">
+    <div class="modal-sheet" onclick="event.stopPropagation()" style="max-width:440px;max-height:90vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:28px;">🚀</span>
+          <div>
+            <h3 style="margin:0;font-size:17px;color:#7e22ce;">Resmi Başvuru Ekranı</h3>
+            <div id="applyGwInst" style="font-size:12px;color:var(--muted);font-weight:700;">Kurum Bilgisi</div>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-sm" style="padding:4px 8px;font-size:12px;" onclick="closeApplyGatewayModal()">✕</button>
+      </div>
+
+      <div style="background:var(--card-hover);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:14px;">
+        <div style="font-size:12px;color:var(--muted);">Başvurulacak Kadro:</div>
+        <div id="applyGwTitle" style="font-weight:800;font-size:14px;color:var(--text);margin-top:2px;">Kadro Unvanı</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
+        <!-- 1. Seçenek: Resmi Portal (Kariyer Kapısı vb.) -->
+        <button id="applyGwPrimaryBtn" class="btn" style="width:100%;background:linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);color:#fff;border:none;font-weight:800;padding:12px;font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 3px 10px rgba(124,58,237,0.35);">
+          <span>🚀</span> <span>Kariyer Kapısı Portalı ↗</span>
+        </button>
+
+        <!-- 2. Seçenek: e-Devlet Kapısı Üzerinden Giriş -->
+        <button id="applyGwEdevletBtn" class="btn btn-outline" style="width:100%;border:1.5px solid #2563eb;color:#1d4ed8;font-weight:800;padding:11px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(37, 99, 235, 0.04);">
+          <span>🏛️</span> <span>e-Devlet Kamu İşe Alım Portalı ↗</span>
+        </button>
+
+        <!-- 3. Seçenek: Kurum Kılavuzu / İlan Metni -->
+        <button id="applyGwGuideBtn" class="btn btn-outline" style="width:100%;border:1px solid var(--border);color:var(--text);font-weight:700;padding:10px;font-size:12.5px;display:flex;align-items:center;justify-content:center;gap:8px;">
+          <span>📄</span> <span>Resmi İlan Metni & Kılavuz ↗</span>
+        </button>
+      </div>
+
+      <!-- Açıklayıcı Başvuru Rehberi -->
+      <div id="applyGwTip" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;font-size:12px;color:#166534;line-height:1.55;">
+        💡 <b>e-Devlet Rehberi:</b> Resmi alım portalına giriş yaptıktan sonra T.C. kimlik numaranızla giriş yapıp ilgili kurumu aratarak başvurunuzu güvenle tamamlayabilirsiniz.
+      </div>
+    </div>
+  </div>
+
+  <!-- DETAY EKRANI İÇİN YÜZEN FORUM BUTONU (Hızlı Erişim) -->
+  <button id="floatingForumBtn" class="floating-forum-pill hidden" onclick="switchJobDetailView('forum')">
+    <span style="font-size:16px;">💬</span>
+    <span>Aday Forumu (<b id="floatingCommCount">0</b>)</span>
+  </button>
 
   <nav id="bottomTabs" class="tabs hidden">
     <button class="tab-btn active" data-tab="jobs" onclick="switchTab('jobs')"><span class="ico">📋</span><span>İlanlar</span></button>
@@ -2608,6 +2733,11 @@
           loadAdminDashboard();
         }
 
+        if (me.profile) {
+          try {
+            localStorage.setItem('kamu_cached_profile', JSON.stringify(me.profile));
+          } catch (e) {}
+        }
         fillProfileForm(me.profile, me.editLimit, isAdmin);
         document.getElementById('authScreen').classList.add('hidden');
         document.getElementById('headerActions').classList.remove('hidden');
@@ -2641,7 +2771,15 @@
       currentProfileLimit = limit;
 
       if (isAdmin || isVipActive()) {
-        card.innerHTML = `<div style="background:rgba(168, 85, 247, 0.14);border:1px solid rgba(168, 85, 247, 0.35);color:#7e22ce;padding:9px 12px;border-radius:8px;font-size:12.5px;">💎 <b>VIP Üyelik Aktif:</b> Sınırsız profil güncelleme ve filtreleme hakkı aktif.</div>`;
+        card.innerHTML = `
+          <div style="background:linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(124, 58, 237, 0.15) 100%);border:1.5px solid #c084fc;color:#7e22ce;padding:10px 14px;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:22px;">👑</span>
+            <div>
+              <div style="font-weight:800;color:#6b21a8;">VIP Ayrıcalığı: Sınırsız & Beklemesiz Profil Güncelleme</div>
+              <div style="font-size:11.5px;color:#7e22ce;margin-top:2px;">48 saat kuralı sizin için geçerli değildir; KPSS puanınızı ve kriterlerinizi dilediğiniz an güncelleyebilirsiniz.</div>
+            </div>
+          </div>
+        `;
         btn.disabled = false;
         btn.innerText = 'Profili Kaydet';
         btn.style.opacity = '1';
@@ -2655,7 +2793,7 @@
           <div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:9px 12px;border-radius:8px;font-size:12px;line-height:1.45;">
             💡 <b>İlk Kurulum Hakkı:</b> Kalan anlık güncelleme hakkınız: <b>${limit.initialRemaining} / 3</b>
             <div style="font-size:11.5px;color:#3b82f6;margin-top:4px;">
-              İlk 3 güncellemeden sonra hesap güvenliği ve ortak kullanımı önlemek amacıyla profil değişiklikleri <b>48 saatte bir</b> yapılabilir.
+              İlk 3 güncellemeden sonra hesap güvenliği ve ortak kullanımı önlemek amacıyla profil değişiklikleri <b>48 saatte bir</b> yapılabilir. (VIP üyeler sınırsız güncelleyebilir).
             </div>
           </div>
         `;
@@ -2675,6 +2813,9 @@
             <div style="margin-top:6px;font-weight:800;color:#dc2626;font-size:13px;">
               ⏳ Kalan Bekleme Süresi: ${timeStr}
             </div>
+            <button class="btn btn-sm" style="margin-top:8px;width:100%;background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#fff;border:none;font-weight:800;font-size:12px;padding:6px;" onclick="openVipModal()">
+              👑 VIP'ye Geç (Bekleme Süresini Sıfırla)
+            </button>
           </div>
         `;
         btn.disabled = true;
@@ -2848,13 +2989,23 @@
         alert('Lütfen lisans/üstü bölümünüzü listeden seçin.');
         return;
       }
+      const rawKpss = document.getElementById('profKpss').value.trim();
+      let cleanKpss = null;
+      if (rawKpss) {
+        const parsed = Number(rawKpss.replace(',', '.'));
+        if (isNaN(parsed) || parsed < 0 || parsed > 100) {
+          alert('Lütfen geçerli bir KPSS puanı giriniz (0 - 100 arası, örn: 78.5 veya 78,5).');
+          return;
+        }
+        cleanKpss = parsed;
+      }
       const body = {
         fullName: document.getElementById('profName').value.trim(),
         birthYear: document.getElementById('profBirth').value || null,
         educationLevel: edu,
         department: dept,
         certificates: profileCerts,
-        kpssScore: document.getElementById('profKpss').value || null,
+        kpssScore: cleanKpss,
         kpssType: document.getElementById('profKpssType').value || null,
         experienceYears: Number(document.getElementById('profExp').value || 0),
         cities: profileCities,
@@ -2864,7 +3015,11 @@
       try {
         const res = await api('/profile', { method: 'PUT', body });
         matchesJobsLoaded = false;
-        document.getElementById('profMsg').innerText = '✅ Profil kaydedildi! Eşleşen ilanlar güncellendi.';
+        currentUserProfile = res.profile;
+        try {
+          localStorage.setItem('kamu_cached_profile', JSON.stringify(res.profile));
+        } catch (e) {}
+        document.getElementById('profMsg').innerText = '✅ Profil kalıcı olarak kaydedildi! Eşleşen ilanlar güncellendi.';
         fillProfileForm(res.profile, res.editLimit, currentAppIsAdmin);
         setTimeout(() => document.getElementById('profMsg').innerText = '', 3500);
       } catch (e) {
@@ -3137,12 +3292,22 @@
       document.getElementById(name + 'Screen').classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'instant' });
       if (name === 'profile') {
+        // Form alanlarının boş kalmasını veya sıfırlanmasını önlemek için anında yerel önbellekten yükle
+        try {
+          const cached = currentUserProfile || JSON.parse(localStorage.getItem('kamu_cached_profile') || 'null');
+          if (cached) {
+            fillProfileForm(cached, undefined, currentAppIsAdmin);
+          }
+        } catch (e) {}
         renderCityChips();
         renderCertChips();
         renderJobTypeChips();
-        updateDeptVisibility();
+        // NOT: updateDeptVisibility() burada çağrılmaz, çünkü veriler henüz gelmediyse bölümü sıfırlıyordu! fillProfileForm içinde güvenle çağrılır.
         api('/profile').then(res => {
           if (res && res.profile) {
+            try {
+              localStorage.setItem('kamu_cached_profile', JSON.stringify(res.profile));
+            } catch (e) {}
             fillProfileForm(res.profile, res.editLimit, currentAppIsAdmin);
           }
         }).catch(() => {});
@@ -3154,8 +3319,12 @@
       if (name === 'detail') {
         const stickyBanner = document.getElementById('stickyAdBanner');
         if (stickyBanner) stickyBanner.classList.add('hidden');
+        const floatBtn = document.getElementById('floatingForumBtn');
+        if (floatBtn) floatBtn.classList.remove('hidden');
       } else {
         updateStickyBanner();
+        const floatBtn = document.getElementById('floatingForumBtn');
+        if (floatBtn) floatBtn.classList.add('hidden');
       }
     }
 
@@ -3306,46 +3475,194 @@
       searchTimer = setTimeout(loadAllJobs, 300);
     }
 
-    function findOfficialApplyUrl(descOrJob, optionalJob) {
-      const j = (typeof descOrJob === 'object' && descOrJob !== null) ? descOrJob : (optionalJob || {});
-      const desc = (typeof descOrJob === 'string' ? descOrJob : (j.description || ''));
-      
-      // 1. İlan metni içindeki spesifik resmi başvuru linklerini tara
-      const matches = desc.match(/https?:\/\/[^\s)"',;<>]+/gi) || [];
+    let currentOpenJob = null;
+
+    function openExternalUrl(url) {
+      if (!url) return;
+      let clean = url.trim();
+      // Kariyer kapısı DNS hatası düzeltmesi: kariyerkapisi.gov.tr -> isealimkariyerkapisi.cbiko.gov.tr
+      if (/kariyerkapisi/i.test(clean) && !clean.includes('cbiko.gov.tr')) {
+        clean = 'https://isealimkariyerkapisi.cbiko.gov.tr';
+      }
+      if (window.AndroidBridge && window.AndroidBridge.openExternal) {
+        window.AndroidBridge.openExternal(clean);
+      } else {
+        window.open(clean, '_blank');
+      }
+    }
+
+    function resolveOfficialApplyInfo(j) {
+      j = j || {};
+      const desc = (j.description || '').toLowerCase();
+      const title = (j.title || '').toLowerCase();
+      const inst = (j.institution || '').toLowerCase();
+      const combined = `${title} ${inst} ${desc}`;
+
+      // 1. İŞKUR Alımları
+      if (/i[şs]kur|esube\.iskur/i.test(combined) || j.source === 'iskur' || j.jobType === 'isci') {
+        return {
+          portalName: 'İŞKUR e-Şube Kamu İlanları Portalı',
+          primaryUrl: 'https://esube.iskur.gov.tr/Istihdam/AcikIsIlanAra.aspx',
+          edevletUrl: 'https://www.turkiye.gov.tr/iskur-acik-is-ilanlari',
+          tipText: `💡 <b>İŞKUR İlanı:</b> Başvurular İŞKUR e-Şube üzerinden alınmaktadır. e-Devlet şifrenizle giriş yaparak arama alanına <b>"${escapeHtml(j.institution || 'Kurum')}"</b> yazıp başvurabilirsiniz.`
+        };
+      }
+
+      // 2. ÖSYM Tercihleri
+      if (/[öo]sym|ais\.osym/i.test(combined) || /kpss\s*tercih/i.test(combined)) {
+        return {
+          portalName: 'ÖSYM Aday İşlemleri Sistemi (AİS)',
+          primaryUrl: 'https://ais.osym.gov.tr',
+          edevletUrl: 'https://ais.osym.gov.tr',
+          tipText: `💡 <b>ÖSYM Tercihi:</b> Tercih ve başvurular T.C. Kimlik No ve e-Devlet/ÖSYM şifrenizle ÖSYM AİS sistemi üzerinden yapılmaktadır.`
+        };
+      }
+
+      // 3. MSB Askeri Personel Temin
+      if (/personeltemin\.msb|milli\s*savunma|subay|astsubay|uzman\s*erba[şs]|msb\.gov/i.test(combined)) {
+        return {
+          portalName: 'MSB Personel Temin Dairesi Başkanlığı',
+          primaryUrl: 'https://personeltemin.msb.gov.tr',
+          edevletUrl: 'https://personeltemin.msb.gov.tr',
+          tipText: `💡 <b>MSB Alımı:</b> Başvurular e-Devlet şifresi ile Millî Savunma Bakanlığı Personel Temin Portalı üzerinden resmi olarak kabul edilmektedir.`
+        };
+      }
+
+      // 4. Polis Akademisi
+      if (/polis|pomem|pmyo|pa\.edu\.tr/i.test(combined)) {
+        return {
+          portalName: 'Polis Akademisi Aday İşlemleri (AİS)',
+          primaryUrl: 'https://ais.pa.edu.tr',
+          edevletUrl: 'https://ais.pa.edu.tr',
+          tipText: `💡 <b>Polis Alımı:</b> Başvurular Polis Akademisi Başkanlığı AİS portalından e-Devlet ile giriş yapılarak tamamlanmaktadır.`
+        };
+      }
+
+      // 5. Jandarma & Sahil Güvenlik
+      if (/jandarma|sahil\s*g[üu]venlik|jsga/i.test(combined)) {
+        return {
+          portalName: 'Jandarma & Sahil Güvenlik Personel Temin Portalı',
+          primaryUrl: 'https://vatandas.jandarma.gov.tr/PTM/Giris',
+          edevletUrl: 'https://vatandas.jandarma.gov.tr/PTM/Giris',
+          tipText: `💡 <b>Jandarma Alımı:</b> Başvurular Jandarma Genel Komutanlığı Personel Temin Sistemi (PTS) üzerinden e-Devlet ile yapılmaktadır.`
+        };
+      }
+
+      // 6. Üniversite veya Özel Kurum Spesifik Başvuru Sayfası
+      const matches = (j.description || '').match(/https?:\/\/[^\s)"',;<>]+/gi) || [];
       for (const raw of matches) {
-        const u = raw.replace(/[.,;:]+$/, '');
-        if (/kariyerkapisi\.(?:cbiko\.)?gov\.tr\/isealim|isealimkariyerkapisi\.cbiko\.gov\.tr|personeltemin\.msb\.gov\.tr|ais\.osym\.gov\.tr|esube\.iskur\.gov\.tr|basvuru|personelalimi|sinav\.gov\.tr|basvurular/i.test(u)) {
-          return u;
+        let u = raw.replace(/[.,;:]+$/, '').trim();
+        if (/basvuru|isealim|personelalimi|sinav\.gov\.tr/i.test(u) && !/kariyerkapisi/i.test(u)) {
+          if (!/[ığüşöç]/i.test(u) && u.length > 15 && u.includes('.')) {
+            return {
+              portalName: `${escapeHtml(j.institution || 'Kurum')} Başvuru Sayfası`,
+              primaryUrl: u,
+              edevletUrl: 'https://isealimkariyerkapisi.cbiko.gov.tr',
+              tipText: `💡 <b>Kurum Portalı:</b> Başvuru doğrudan kurumun online sınav/başvuru ekranı veya Kariyer Kapısı üzerinden alınmaktadır.`
+            };
+          }
         }
       }
 
-      // 2. Kurum ve unvan anahtar kelimelerine göre resmi başvuru sistemini seç
-      if (/kariyer\s*kap[ıi]s[ıi]|cbiko/i.test(desc) || /kariyerkapisi/i.test(j.url || '')) {
-        return 'https://isealimkariyerkapisi.cbiko.gov.tr';
-      }
-      if (/i[şs]kur|esube\.iskur/i.test(desc) || j.source === 'iskur' || j.jobType === 'isci') {
-        return 'https://esube.iskur.gov.tr/Istihdam/AcikIsIlanAra.aspx';
-      }
-      if (/[öo]sym|ais\.osym/i.test(desc) || /kpss\s*tercih/i.test(j.title || '')) {
-        return 'https://ais.osym.gov.tr';
-      }
-      if (/personeltemin\.msb|milli\s*savunma|subay|astsubay|uzman\s*erba[şs]/i.test(desc) || /msb\.gov\.tr/i.test(j.url || '')) {
-        return 'https://personeltemin.msb.gov.tr';
-      }
-      if (/polis|pomem|pmyo|pa\.edu\.tr/i.test(desc)) {
-        return 'https://ais.pa.edu.tr';
-      }
-      if (/jandarma|sahil\s*g[üu]venlik|jsga/i.test(desc)) {
-        return 'https://vatandas.jandarma.gov.tr/PTM/Giris';
-      }
+      // 7. Genel Tüm Kamu İlanları (Cumhurbaşkanlığı Kariyer Kapısı)
+      return {
+        portalName: 'Cumhurbaşkanlığı Kariyer Kapısı (Resmi Portal)',
+        primaryUrl: 'https://isealimkariyerkapisi.cbiko.gov.tr',
+        edevletUrl: 'https://www.turkiye.gov.tr/kamu-ise-alim-ve-kariyer-kapisi',
+        tipText: `💡 <b>Kariyer Kapısı:</b> T.C. Cumhurbaşkanlığı İnsan Kaynakları Ofisi resmi sistemidir. e-Devlet ile giriş yaptıktan sonra kurumlar listesinden <b>"${escapeHtml(j.institution || 'Kurum')}"</b> seçerek başvurunuzu 2 dakikada tamamlayabilirsiniz.`
+      };
+    }
 
-      // 3. İlan URL'i zaten doğrudan resmi bir başvuru/alım sayfası ise
-      if (j.url && /basvuru|isealim|kariyer|sinav|personel/i.test(j.url)) {
-        return j.url;
-      }
+    function findOfficialApplyUrl(descOrJob, optionalJob) {
+      const j = (typeof descOrJob === 'object' && descOrJob !== null) ? descOrJob : (optionalJob || {});
+      const info = resolveOfficialApplyInfo(j);
+      return info.primaryUrl;
+    }
 
-      // 4. Tüm kamu ilanları için T.C. Cumhurbaşkanlığı Kariyer Kapısı Kamu İşe Alım Portalı
-      return 'https://isealimkariyerkapisi.cbiko.gov.tr';
+    function openApplyGateway(jobId) {
+      if (!isVipActive()) {
+        promptVipApply();
+        return;
+      }
+      const j = (currentOpenJob && currentOpenJob.id === jobId) ? currentOpenJob : null;
+      if (!j) {
+        openExternalUrl('https://isealimkariyerkapisi.cbiko.gov.tr');
+        return;
+      }
+      const officialInfo = resolveOfficialApplyInfo(j);
+      
+      const modal = document.getElementById('applyGatewayModal');
+      const titleEl = document.getElementById('applyGwTitle');
+      const instEl = document.getElementById('applyGwInst');
+      const primaryBtn = document.getElementById('applyGwPrimaryBtn');
+      const edevletBtn = document.getElementById('applyGwEdevletBtn');
+      const guideBtn = document.getElementById('applyGwGuideBtn');
+      const tipEl = document.getElementById('applyGwTip');
+
+      if (titleEl) titleEl.innerText = j.title || 'Kamu Kadrosu';
+      if (instEl) instEl.innerText = j.institution || 'Resmi Kurum';
+      
+      if (primaryBtn) {
+        primaryBtn.innerHTML = `<span>🚀</span> <span>${officialInfo.portalName} ↗</span>`;
+        primaryBtn.onclick = () => openExternalUrl(officialInfo.primaryUrl);
+      }
+      if (edevletBtn) {
+        edevletBtn.innerHTML = `<span>🏛️</span> <span>e-Devlet Kapısı Üzerinden Giriş ↗</span>`;
+        edevletBtn.onclick = () => openExternalUrl(officialInfo.edevletUrl);
+      }
+      if (guideBtn) {
+        if (j.url && safeUrl(j.url)) {
+          guideBtn.classList.remove('hidden');
+          guideBtn.onclick = () => openExternalUrl(j.url);
+        } else {
+          guideBtn.classList.add('hidden');
+        }
+      }
+      if (tipEl) {
+        tipEl.innerHTML = officialInfo.tipText;
+      }
+      
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeApplyGatewayModal(e) {
+      if (e && e.target && e.target !== e.currentTarget) return;
+      const modal = document.getElementById('applyGatewayModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function switchJobDetailView(tab) {
+      const btnInfo = document.getElementById('btnDetailTabInfo');
+      const btnForum = document.getElementById('btnDetailTabForum');
+      const viewInfo = document.getElementById('detailView_info');
+      const viewForum = document.getElementById('detailView_forum');
+
+      if (tab === 'forum') {
+        if (btnInfo) btnInfo.classList.remove('active');
+        if (btnForum) btnForum.classList.add('active');
+        if (viewInfo) viewInfo.classList.add('hidden');
+        if (viewForum) viewForum.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        if (btnForum) btnForum.classList.remove('active');
+        if (btnInfo) btnInfo.classList.add('active');
+        if (viewForum) viewForum.classList.add('hidden');
+        if (viewInfo) viewInfo.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    function toggleDescCollapse(btn) {
+      const wrap = document.getElementById('jobDescWrap');
+      if (!wrap) return;
+      const isCollapsed = wrap.style.maxHeight !== 'none';
+      if (isCollapsed) {
+        wrap.style.maxHeight = 'none';
+        btn.innerText = '▴ İlan Açıklamasını Kapat';
+      } else {
+        wrap.style.maxHeight = '320px';
+        btn.innerText = '📖 İlan Açıklamasının Tamamını Oku ▾';
+      }
     }
 
     function promptVipApply() {
@@ -3594,33 +3911,99 @@
     const SPONSORED_ADS = [
       {
         icon: '📚',
+        tag: '🔥 %40 İNDİRİM',
         title: '2026 KPSS Tam Hazırlık Seti & Soru Bankası',
-        desc: 'Genel Yetenek - Genel Kültür tüm çözümlü sorular ve konu özetleri %40 indirimde!',
-        actionText: 'Seti İncele ↗',
+        desc: 'Genel Yetenek - Genel Kültür tüm çözümlü sorular ve konu özetleri kargo bedava!',
+        actionText: 'Fırsatı İncele ↗',
         url: 'https://www.google.com/search?q=2026+kpss+hazirlik+kitaplari'
       },
       {
         icon: '🎓',
+        tag: '⚡ e-DEVLET ONAYLI',
         title: 'MEB Onaylı Bilgisayar İşletmenliği Sertifikası',
-        desc: 'Kamuda memur ve VHKİ alımlarında zorunlu olan e-Devlet onaylı sertifika programı.',
-        actionText: 'Sertifikayı İncele ↗',
+        desc: 'Kamuda memur ve VHKİ alımlarında zorunlu olan resmi sertifika programı.',
+        actionText: 'Kayıt Ol ↗',
         url: 'https://www.google.com/search?q=meb+onayli+bilgisayar+isletmenligi+sertifikasi'
       },
       {
         icon: '🛡️',
-        title: 'Özel Güvenlik Temel & Yenileme Eğitimi',
-        desc: 'Hastaneler, üniversiteler ve bakanlıklarda sürekli işçi alımları için güvenlik kimlik kartı.',
-        actionText: 'Eğitimi İncele ↗',
+        tag: '🚨 İŞ GARANTİLİ',
+        title: 'Silahlı / Silahsız Özel Güvenlik Eğitimi',
+        desc: 'Hastaneler ve bakanlıklarda sürekli işçi alımları için güvenlik kimlik kartı eğitimi.',
+        actionText: 'Hemen Başvur ↗',
         url: 'https://www.google.com/search?q=ozel+guvenlik+kimlik+karti+egitimi'
       },
       {
         icon: '⚡',
+        tag: '🎯 MÜLAKAT TÜYOLARI',
         title: 'Kamu Mülakat Simülasyonu & Çıkmış Sorular',
         desc: 'Sözlü mülakatlarda en çok sorulan sorular ve komisyon değerlendirme rehberi.',
-        actionText: 'Rehberi İncele ↗',
+        actionText: 'Rehberi Gör ↗',
         url: 'https://www.google.com/search?q=kamu+mulakat+cikmis+sorular'
       }
     ];
+
+    const STANDART_DAILY_JOB_LIMIT = 5;
+
+    function getTodayKey() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function getDailyJobViews() {
+      try {
+        const raw = localStorage.getItem('kamu_daily_views_' + getTodayKey());
+        return raw ? parseInt(raw, 10) : 0;
+      } catch (e) {
+        return 0;
+      }
+    }
+
+    function incrementDailyJobViews() {
+      try {
+        const current = getDailyJobViews();
+        localStorage.setItem('kamu_daily_views_' + getTodayKey(), String(current + 1));
+        return current + 1;
+      } catch (e) {
+        return 1;
+      }
+    }
+
+    function openDailyLimitModal(jobId) {
+      pendingJobIdToOpen = jobId;
+      const modal = document.getElementById('dailyLimitModal');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeDailyLimitModal(e) {
+      if (e && e.target && e.target !== e.currentTarget) return;
+      const modal = document.getElementById('dailyLimitModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function openVipFromDailyLimit() {
+      const modal = document.getElementById('dailyLimitModal');
+      if (modal) modal.classList.add('hidden');
+      openVipModal();
+    }
+
+    function watchAdForExtraJob() {
+      const modal = document.getElementById('dailyLimitModal');
+      if (modal) modal.classList.add('hidden');
+      showInterstitialAd(true);
+    }
+
+    let currentStickyAdIndex = 0;
+    setInterval(() => {
+      const banner = document.getElementById('stickyAdBanner');
+      if (!banner || banner.classList.contains('hidden') || isVipActive()) return;
+      currentStickyAdIndex = (currentStickyAdIndex + 1) % SPONSORED_ADS.length;
+      const ad = SPONSORED_ADS[currentStickyAdIndex];
+      const iconEl = document.getElementById('stickyAdIcon');
+      const textEl = document.getElementById('stickyAdText');
+      if (iconEl) iconEl.innerText = ad.icon;
+      if (textEl) textEl.innerText = `${ad.title} (${ad.tag || 'Fırsat'}) ↗`;
+    }, 7000);
 
     function updateVipUi() {
       const active = isVipActive();
@@ -3664,17 +4047,22 @@
       const ad = SPONSORED_ADS[idx % SPONSORED_ADS.length];
       return `
         <div class="card in-feed-ad-card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">📢 Sponsorlu Reklam</span>
-            <button class="btn btn-sm btn-outline" style="border-color:#f59e0b;color:#b45309;font-size:11px;padding:2px 8px;border-radius:6px;" onclick="openVipModal()">👑 Reklamı Kaldır (VIP)</button>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(245, 158, 11, 0.25);">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="badge" style="background:#fef3c7;color:#b45309;font-weight:800;font-size:10.5px;padding:2px 7px;border:1px solid #fde68a;">📢 SPONSORLU İLAN</span>
+              <span class="badge" style="background:#fee2e2;color:#b91c1c;font-weight:800;font-size:10px;padding:2px 6px;">${ad.tag || 'ÖZEL FIRSAT'}</span>
+            </div>
+            <button class="btn btn-sm btn-outline" style="border-color:#f59e0b;color:#b45309;font-size:11px;padding:2px 8px;border-radius:6px;font-weight:700;" onclick="openVipModal()">👑 Reklamı Kaldır (VIP)</button>
           </div>
           <div style="display:flex;gap:12px;align-items:center;cursor:pointer;" onclick="handleAdClick(${idx % SPONSORED_ADS.length})">
-            <span style="font-size:32px;">${ad.icon}</span>
-            <div style="flex:1;">
-              <div style="font-weight:700;font-size:14px;color:var(--text);">${escapeHtml(ad.title)}</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:2px;">${escapeHtml(ad.desc)}</div>
+            <span style="font-size:34px;background:#fef3c7;border-radius:12px;padding:6px 10px;">${ad.icon}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:800;font-size:14.5px;color:var(--text);line-height:1.35;">${escapeHtml(ad.title)}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:3px;line-height:1.4;">${escapeHtml(ad.desc)}</div>
             </div>
-            <button class="btn btn-sm" style="padding:6px 10px;font-size:12px;white-space:nowrap;">İncele ↗</button>
+            <button class="btn btn-sm" style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#fff;border:none;font-weight:800;padding:7px 12px;font-size:12px;white-space:nowrap;box-shadow:0 2px 6px rgba(245,158,11,0.35);">
+              ${escapeHtml(ad.actionText || 'İncele ↗')}
+            </button>
           </div>
         </div>
       `;
@@ -3686,8 +4074,8 @@
       const vip = isVipActive();
       items.forEach((item, idx) => {
         html.push(renderJobCard(item));
-        if (!vip && (idx + 1) % 3 === 0) {
-          html.push(renderInFeedAd(Math.floor(idx / 3)));
+        if (!vip && (idx + 1) % 2 === 0) {
+          html.push(renderInFeedAd(Math.floor(idx / 2)));
         }
       });
       return html.join('');
@@ -3698,17 +4086,25 @@
         openJob(id);
         return;
       }
+
+      const views = getDailyJobViews();
+      if (views >= STANDART_DAILY_JOB_LIMIT) {
+        openDailyLimitModal(id);
+        return;
+      }
+
       userJobClickCount++;
-      // Ücretsiz kullanıcılar her 2. tıklamada 3 saniyelik geçiş reklamı görür
+      pendingJobIdToOpen = id;
+      // Ücretsiz kullanıcılar her 2. tıklamada 5 saniyelik geçiş reklamı görür
       if (userJobClickCount % 2 === 0) {
-        pendingJobIdToOpen = id;
         showInterstitialAd();
       } else {
+        incrementDailyJobViews();
         openJob(id);
       }
     }
 
-    function showInterstitialAd() {
+    function showInterstitialAd(isBonus = false) {
       const ad = SPONSORED_ADS[Math.floor(Math.random() * SPONSORED_ADS.length)];
       const adIcon = document.getElementById('adIcon');
       const adTitle = document.getElementById('adTitle');
@@ -3721,7 +4117,7 @@
 
       if (skipBtn) {
         skipBtn.disabled = true;
-        let sec = 3;
+        let sec = 5;
         skipBtn.innerText = `⏳ Reklamı Geç (${sec}s)`;
         if (adCountdownInterval) clearInterval(adCountdownInterval);
         adCountdownInterval = setInterval(() => {
@@ -3731,7 +4127,7 @@
           } else {
             clearInterval(adCountdownInterval);
             skipBtn.disabled = false;
-            skipBtn.innerText = '⏩ Reklamı Geç ve İlanı Aç';
+            skipBtn.innerText = isBonus ? '⏩ Reklam Bitti (+1 İlanı Aç)' : '⏩ Reklamı Geç ve İlanı Aç';
           }
         }, 1000);
       }
@@ -3745,6 +4141,9 @@
       if (pendingJobIdToOpen) {
         const jId = pendingJobIdToOpen;
         pendingJobIdToOpen = null;
+        if (!isVipActive()) {
+          incrementDailyJobViews();
+        }
         openJob(jId);
       }
     }
@@ -4108,6 +4507,7 @@
 
     async function openJob(id) {
       const j = await api('/jobs/' + id);
+      currentOpenJob = j;
       const m = STATUS_META[j.eligibility.overall];
       const checksHtml = (j.eligibility.checks || []).map(c => `
         <div class="check-row">
@@ -4124,18 +4524,55 @@
       `).join('');
 
       const srcName = SOURCE_LABELS[j.source] || j.source;
-      const applyUrl = findOfficialApplyUrl(j);
+      const dailyViews = getDailyJobViews();
+      const quotaBannerHtml = !isVipActive() ? `
+        <div class="card" style="border:1.5px solid #f59e0b;background:#fffbeb;margin-bottom:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;box-shadow:0 2px 8px rgba(245,158,11,0.15);">
+          <div>
+            <div style="font-weight:800;font-size:13px;color:#92400e;">📦 Standart Paket: Günlük İlan Kotanız: ${Math.min(dailyViews, STANDART_DAILY_JOB_LIMIT)}/${STANDART_DAILY_JOB_LIMIT} Kullanıldı</div>
+            <div style="font-size:11.5px;color:#b45309;margin-top:2px;">Sınırsız ilan inceleme, resmi başvuru ekranı ve mülakat tüyoları için VIP'ye geçin.</div>
+          </div>
+          <button class="btn btn-sm" style="background:#b45309;color:#fff;border:none;font-weight:800;white-space:nowrap;padding:6px 12px;" onclick="openVipModal()">👑 VIP'ye Geç</button>
+        </div>
+      ` : `
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#7e22ce;font-weight:800;margin-bottom:10px;padding:6px 10px;background:#f3e8ff;border-radius:8px;border:1px solid #d8b4fe;">
+          <span>👑</span><span>VIP Üye Ayrıcalığı: Sınırsız İlan İnceleme • %100 Reklamsız Deneyim</span>
+        </div>
+      `;
+
+      const detailAdHtml = !isVipActive() ? `
+        <div class="card in-feed-ad-card" style="margin:12px 0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(245, 158, 11, 0.25);">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="badge" style="background:#fef3c7;color:#b45309;font-weight:800;font-size:10.5px;padding:2px 7px;border:1px solid #fde68a;">📢 SPONSORLU TAVSİYE</span>
+              <span class="badge" style="background:#fee2e2;color:#b91c1c;font-weight:800;font-size:10px;padding:2px 6px;">%40 İNDİRİM</span>
+            </div>
+            <button class="btn btn-sm btn-outline" style="border-color:#f59e0b;color:#b45309;font-size:11px;padding:2px 8px;border-radius:6px;font-weight:700;" onclick="openVipModal()">👑 Reklamsız VIP</button>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;cursor:pointer;" onclick="handleAdClick(0)">
+            <span style="font-size:32px;background:#fef3c7;border-radius:10px;padding:4px 8px;">📚</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:800;font-size:14px;color:var(--text);">2026 Kamu Mülakatı & Soru Bankası Seti</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px;">Sözlü mülakatlarda komisyon kriterleri ve çıkmış mevzuat soruları %40 indirimde.</div>
+            </div>
+            <button class="btn btn-sm" style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#fff;border:none;font-weight:800;padding:6px 12px;font-size:12px;white-space:nowrap;">İncele ↗</button>
+          </div>
+        </div>
+      ` : '';
+
       document.getElementById('detailScreen').innerHTML = `
         <button class="btn btn-outline" style="margin-bottom:12px" onclick="switchTab(currentTab)">← Listeye Dön</button>
+        ${quotaBannerHtml}
+        
+        <!-- ÜST ANA KART (Başlık, Kurum, Başvuru Butonları ve Hızlı Forum Teaser'ı) -->
         <div class="card">
           <h2 style="margin:0 0 6px 0;font-size:19px;">${escapeHtml(j.title)}</h2>
           <div class="sub">${[escapeHtml(j.institution), escapeHtml(j.city), 'Kaynak: ' + escapeHtml(srcName)].filter(Boolean).join(' • ')}</div>
           <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap;">
             ${j.url && safeUrl(j.url) ? `<a class="btn btn-outline" style="flex:1;min-width:130px;" href="${safeUrl(j.url)}" target="_blank" rel="noopener noreferrer">📄 İlan Metni / Kılavuz ↗</a>` : ''}
             ${isVipActive() ? `
-              <a class="btn" style="flex:1.4;min-width:175px;background:linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);color:#fff;border:none;font-weight:800;box-shadow:0 3px 10px rgba(124,58,237,0.35);text-decoration:none;" href="${safeUrl(applyUrl)}" target="_blank" rel="noopener noreferrer">
+              <button class="btn" style="flex:1.4;min-width:175px;background:linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);color:#fff;border:none;font-weight:800;box-shadow:0 3px 10px rgba(124,58,237,0.35);" onclick="openApplyGateway(${j.id})">
                 🚀 Resmi Başvuru Ekranına Git ↗
-              </a>
+              </button>
             ` : `
               <button class="btn" style="flex:1.4;min-width:175px;background:linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);border:1.5px dashed #f59e0b;color:#b45309;font-weight:800;" onclick="promptVipApply()">
                 🔒 Başvuru Ekranı (VIP'ye Özel)
@@ -4148,114 +4585,180 @@
               <span>👑</span><span>Kariyer Kapısı & e-Devlet resmi başvuru ekranına tek tıkla direkt geçmek için <b>VIP'ye yükseltin ↗</b></span>
             </div>
           ` : `
-            <div style="font-size:11.5px;color:#7c3aed;margin-top:8px;display:flex;align-items:center;gap:5px;">
-              <span>⭐</span><span><b>VIP Üye Ayrıcalığı:</b> T.C. resmi başvuru portalına tek tıkla doğrudan yönlendiriliyorsunuz.</span>
+            <div style="font-size:11.5px;color:#7c3aed;margin-top:8px;display:flex;align-items:center;gap:5px;cursor:pointer;" onclick="openApplyGateway(${j.id})">
+              <span>⭐</span><span><b>VIP Üye Ayrıcalığı:</b> T.C. resmi başvuru ekranı açılmıyorsa <b>buraya tıklayarak alternatif e-Devlet kapısına geçin ↗</b></span>
             </div>
           `}
-        </div>
-        ${j.historicalPlacement ? (isVipActive() ? `
-        <div class="card" style="border:1.5px solid #86efac;background:#f0fdf4;">
-          <h3 style="margin:0 0 6px 0;color:#166534;font-size:16px;">📊 Geçmiş Yıllar Atama Puan İstatistikleri</h3>
-          <div style="font-size:14px;color:#14532d;line-height:1.55;margin-bottom:8px;">
-            ${escapeHtml(j.historicalPlacement.summary)}
-          </div>
-          ${currentUserProfile && currentUserProfile.kpssScore != null && currentUserProfile.kpssScore >= j.historicalPlacement.avgScore ? `
-            <div style="background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-weight:700;color:#166534;font-size:13px;display:flex;align-items:center;gap:6px;">
-              <span>🏆</span><span>KPSS Puanınız (${escapeHtml(currentUserProfile.kpssScore)}) geçmiş atama ortalamasının (~${escapeHtml(j.historicalPlacement.avgScore)}) üzerinde! Atanma şansınız çok yüksek.</span>
-            </div>
-          ` : ''}
-          <div class="row" style="gap:8px;">
-            <span class="badge" style="background:#dcfce7;color:#15803d;font-size:13px;padding:5px 9px;">Ortalama Atama: ~${escapeHtml(j.historicalPlacement.avgScore)} Puan</span>
-            <span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:13px;padding:5px 9px;">Yerleşme Aralığı: ${escapeHtml(j.historicalPlacement.minPlacedScore)} - ${escapeHtml(j.historicalPlacement.maxPlacedScore)}</span>
-            <span class="badge" style="background:#fef3c7;color:#92400e;font-size:13px;padding:5px 9px;">Referans Dönem: ${escapeHtml(j.historicalPlacement.period)}</span>
-          </div>
-        </div>
-        ` : `
-        <div class="card vip-locked-box">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:22px;">🔒</span>
-              <span style="font-weight:800;font-size:15px;color:#b45309;">Geçmiş Yıllar Atama Taban Puanı</span>
-            </div>
-            <span class="badge" style="background:#fef3c7;color:#92400e;font-weight:800;font-size:11px;">VIP'YE ÖZEL</span>
-          </div>
-          <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;line-height:1.5;">
-            Bu unvana ait geçmiş 3 yılın KPSS ortalama yerleşme taban puanları, tavan-taban puan barajları ve atanma şansı analizi sadece VIP Üyelere açıktır.
-          </p>
-          <div style="display:flex;gap:8px;filter:blur(3.5px);user-select:none;opacity:0.6;margin-bottom:12px;">
-            <span class="badge" style="background:#dcfce7;color:#15803d;font-size:13px;padding:5px 9px;">Ortalama Atama: ~${escapeHtml(j.historicalPlacement.avgScore)} Puan</span>
-            <span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:13px;padding:5px 9px;">Yerleşme: ${escapeHtml(j.historicalPlacement.minPlacedScore)} - ${escapeHtml(j.historicalPlacement.maxPlacedScore)}</span>
-          </div>
-          <button class="btn btn-sm" style="width:100%;background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#fff;border:none;font-weight:800;" onclick="openVipModal()">
-            👑 VIP Üye Ol ve Taban Puanları Gör
-          </button>
-        </div>
-        `) : ''}
-        ${renderVipJobBox(j)}
-        <div class="card">
-          <div class="badge" style="background:${m.bg};color:${m.color};padding:8px 12px;font-size:15px;margin-bottom:10px;">
-            ${m.emoji} ${m.label} · Uyum Puanı %${j.eligibility.score}
-          </div>
-          <h3 style="margin:8px 0">Şart Kontrolü (✅ ❌ ⚠️)</h3>
-          ${checksHtml || '<p style="color:var(--muted)">Kontrol edilebilir özel şart bulunamadı.</p>'}
-        </div>
-        <div class="card">
-          <h3 style="margin-top:0">Başvuru Takibi</h3>
-          <div class="row">${appButtons}</div>
-          ${j.applicationStatus ? `<button class="btn btn-danger btn-sm" style="margin-top:10px" onclick="clearAppStatus(${j.id})">Takibi Bırak</button>` : ''}
-        </div>
-        <div class="card">
-          <h3 style="margin-top:0">İlan Açıklaması</h3>
-          <div style="line-height:1.68;white-space:pre-line;word-break:break-word;font-size:14.5px;color:var(--text);">${escapeHtml(j.description)}</div>
-        </div>
 
-        <!-- ADAY TOPLULUĞU & MÜLAKAT TARTIŞMA ALANI -->
-        <div class="card" style="margin-top:16px;border-top:3.5px solid var(--primary);">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-            <div>
-              <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:6px;">
-                <span>💬</span><span>Aday Topluluğu & Mülakat Alanı</span>
-                <span id="commCountBadge_${j.id}" class="badge" style="background:var(--primary-light);color:var(--primary);font-size:11px;font-weight:700;">0 Yorum</span>
-              </h3>
-              <p style="margin:4px 0 0 0;font-size:12px;color:var(--muted);">Bu kadroya başvuran diğer adaylarla puanını, evrak teslimini ve mülakat sorularını tartış.</p>
-            </div>
-            <button class="btn btn-sm btn-outline" onclick="loadJobComments(${j.id})">🔄 Yenile</button>
-          </div>
-
-          <!-- YORUM GİRİŞ FORMU -->
-          <div style="background:var(--card-hover);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
-              <div style="font-size:12.5px;font-weight:700;color:var(--text);">✍️ Yorum veya Soru Yaz</div>
-              <div style="display:flex;gap:4px;flex-wrap:wrap;">
-                <label class="comment-cat-pill"><input type="radio" name="commCat_${j.id}" value="genel" checked> 💬 Genel</label>
-                <label class="comment-cat-pill"><input type="radio" name="commCat_${j.id}" value="mulakat"> 🎯 Mülakat</label>
-                <label class="comment-cat-pill"><input type="radio" name="commCat_${j.id}" value="puan"> 📊 Puanım</label>
-                <label class="comment-cat-pill"><input type="radio" name="commCat_${j.id}" value="soru"> ❓ Soru/Evrak</label>
+          <!-- ÜST HIZLI FORUM KARTI (Kullanıcı Şartlara Boğulmadan Doğrudan Foruma Gidebilsin) -->
+          <div style="background:linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(168, 85, 247, 0.14) 100%);border:1.5px solid #d8b4fe;border-radius:10px;padding:10px 12px;margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;" onclick="switchJobDetailView('forum')">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+              <span style="font-size:24px;">💬</span>
+              <div style="min-width:0;">
+                <div style="font-weight:800;font-size:13.5px;color:#6b21a8;">Aday Topluluğu & Mülakat Tartışması</div>
+                <div style="font-size:11.5px;color:#7e22ce;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="forumTeaserSub_${j.id}">Puanını ve mülakat sorularını diğer adaylarla tartış</div>
               </div>
             </div>
-            <textarea id="commentInput_${j.id}" class="input" style="height:70px;margin-bottom:8px;font-size:13px;resize:vertical;" placeholder="Mülakat aşaması, taban puan beklentin, evrak teslimi veya kadro hakkında yorum yaz..."></textarea>
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
-              <span style="font-size:11.5px;color:var(--muted);">
-                ${currentUserProfile && currentUserProfile.kpssScore ? `🎯 KPSS: <b>${escapeHtml(currentUserProfile.kpssScore)}</b>` : 'Profil puanın otomatik görünür'}
-                ${isVipActive() ? ' • <span style="color:#b45309;font-weight:700;">👑 VIP Aday</span>' : ''}
-              </span>
-              <button class="btn btn-sm" style="padding:6px 14px;font-weight:700;background:var(--primary);color:#fff;" onclick="submitJobComment(${j.id})">Yorumu Paylaş 🚀</button>
+            <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none;font-weight:800;font-size:12px;padding:6px 12px;white-space:nowrap;box-shadow:0 2px 6px rgba(124,58,237,0.3);">
+              Foruma Git 💬
+            </button>
+          </div>
+        </div>
+
+        <!-- 2'Lİ SEGMENTED SEKME GEÇİŞİ (İlan Bilgisi & Şartlar | Aday Topluluğu) -->
+        <div style="display:flex;background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:4px;margin:12px 0;gap:6px;box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+          <button id="btnDetailTabInfo" class="detail-tab-btn active" onclick="switchJobDetailView('info')">
+            📋 İlan Bilgisi & Şartlar
+          </button>
+          <button id="btnDetailTabForum" class="detail-tab-btn" onclick="switchJobDetailView('forum')">
+            <span>💬 Aday Topluluğu</span>
+            <span id="detailTabForumBadge" class="badge" style="background:#f3e8ff;color:#7e22ce;font-size:11px;font-weight:800;padding:2px 7px;">0</span>
+          </button>
+        </div>
+
+        <!-- GÖRÜNÜM 1: İLAN DETAYI VE ŞARTLAR -->
+        <div id="detailView_info">
+          ${j.historicalPlacement ? (isVipActive() ? `
+          <div class="card" style="border:1.5px solid #86efac;background:#f0fdf4;">
+            <h3 style="margin:0 0 6px 0;color:#166534;font-size:16px;">📊 Geçmiş Yıllar Atama Puan İstatistikleri</h3>
+            <div style="font-size:14px;color:#14532d;line-height:1.55;margin-bottom:8px;">
+              ${escapeHtml(j.historicalPlacement.summary)}
             </div>
-            <div id="commMsg_${j.id}" style="font-size:12px;margin-top:6px;"></div>
+            ${currentUserProfile && currentUserProfile.kpssScore != null && currentUserProfile.kpssScore >= j.historicalPlacement.avgScore ? `
+              <div style="background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-weight:700;color:#166534;font-size:13px;display:flex;align-items:center;gap:6px;">
+                <span>🏆</span><span>KPSS Puanınız (${escapeHtml(currentUserProfile.kpssScore)}) geçmiş atama ortalamasının (~${escapeHtml(j.historicalPlacement.avgScore)}) üzerinde! Atanma şansınız çok yüksek.</span>
+              </div>
+            ` : ''}
+            <div class="row" style="gap:8px;">
+              <span class="badge" style="background:#dcfce7;color:#15803d;font-size:13px;padding:5px 9px;">Ortalama Atama: ~${escapeHtml(j.historicalPlacement.avgScore)} Puan</span>
+              <span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:13px;padding:5px 9px;">Yerleşme Aralığı: ${escapeHtml(j.historicalPlacement.minPlacedScore)} - ${escapeHtml(j.historicalPlacement.maxPlacedScore)}</span>
+              <span class="badge" style="background:#fef3c7;color:#92400e;font-size:13px;padding:5px 9px;">Referans Dönem: ${escapeHtml(j.historicalPlacement.period)}</span>
+            </div>
+          </div>
+          ` : `
+          <div class="card vip-locked-box">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:22px;">🔒</span>
+                <span style="font-weight:800;font-size:15px;color:#b45309;">Geçmiş Yıllar Atama Taban Puanı</span>
+              </div>
+              <span class="badge" style="background:#fef3c7;color:#92400e;font-weight:800;font-size:11px;">VIP'YE ÖZEL</span>
+            </div>
+            <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;line-height:1.5;">
+              Bu unvana ait geçmiş 3 yılın KPSS ortalama yerleşme taban puanları, tavan-taban puan barajları ve atanma şansı analizi sadece VIP Üyelere açıktır.
+            </p>
+            <div style="display:flex;gap:8px;filter:blur(3.5px);user-select:none;opacity:0.6;margin-bottom:12px;">
+              <span class="badge" style="background:#dcfce7;color:#15803d;font-size:13px;padding:5px 9px;">Ortalama Atama: ~${escapeHtml(j.historicalPlacement.avgScore)} Puan</span>
+              <span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:13px;padding:5px 9px;">Yerleşme: ${escapeHtml(j.historicalPlacement.minPlacedScore)} - ${escapeHtml(j.historicalPlacement.maxPlacedScore)}</span>
+            </div>
+            <button class="btn btn-sm" style="width:100%;background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#fff;border:none;font-weight:800;" onclick="openVipModal()">
+              👑 VIP Üye Ol ve Taban Puanları Gör
+            </button>
+          </div>
+          `) : ''}
+          ${renderVipJobBox(j)}
+          
+          <!-- ŞART KONTROLÜ KARTI -->
+          <div class="card">
+            <div class="badge" style="background:${m.bg};color:${m.color};padding:8px 12px;font-size:15px;margin-bottom:10px;">
+              ${m.emoji} ${m.label} · Uyum Puanı %${j.eligibility.score}
+            </div>
+            <h3 style="margin:8px 0">Şart Kontrolü (✅ ❌ ⚠️)</h3>
+            ${checksHtml || '<p style="color:var(--muted)">Kontrol edilebilir özel şart bulunamadı.</p>'}
+            
+            <div style="margin-top:14px;padding-top:10px;border-top:1px dashed var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+              <span style="font-size:12px;color:var(--muted);">Bu şartlar veya puanınız hakkında aklınıza takılan bir şey mi var?</span>
+              <button class="btn btn-sm btn-outline" style="border-color:#7c3aed;color:#7c3aed;font-weight:700;font-size:12px;" onclick="switchJobDetailView('forum')">
+                💬 Aday Forumunda Tartış ↗
+              </button>
+            </div>
           </div>
 
-          <!-- KATEGORİ FİLTRELEME ÇİPLERİ -->
-          <div class="row" style="gap:6px;margin-bottom:12px;">
-            <button class="chip active comm-filter-chip" data-filter="all" onclick="filterCommentsList(${j.id}, 'all')">Tümü</button>
-            <button class="chip comm-filter-chip" data-filter="mulakat" onclick="filterCommentsList(${j.id}, 'mulakat')">🎯 Mülakatlar</button>
-            <button class="chip comm-filter-chip" data-filter="puan" onclick="filterCommentsList(${j.id}, 'puan')">📊 Puan Paylaşımı</button>
-            <button class="chip comm-filter-chip" data-filter="soru" onclick="filterCommentsList(${j.id}, 'soru')">❓ Soru & Evrak</button>
+          <div class="card">
+            <h3 style="margin-top:0">Başvuru Takibi</h3>
+            <div class="row">${appButtons}</div>
+            ${j.applicationStatus ? `<button class="btn btn-danger btn-sm" style="margin-top:10px" onclick="clearAppStatus(${j.id})">Takibi Bırak</button>` : ''}
           </div>
 
-          <!-- YORUM LİSTESİ -->
-          <div id="commentsListArea_${j.id}" style="display:flex;flex-direction:column;gap:10px;">
-            <div style="text-align:center;padding:16px;color:var(--muted);font-size:13px;">Yorumlar yükleniyor...</div>
+          ${detailAdHtml}
+
+          <!-- İLAN METNİ (KULLANICI BOĞULMASIN DİYE KATLANABİLİR) -->
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <h3 style="margin:0;">İlan Açıklaması & Resmi Kılavuz</h3>
+            </div>
+            <div id="jobDescWrap" style="max-height:300px;overflow:hidden;line-height:1.68;white-space:pre-line;word-break:break-word;font-size:14.5px;color:var(--text);position:relative;">
+              ${escapeHtml(j.description)}
+            </div>
+            <button class="btn btn-sm btn-outline" style="width:100%;margin-top:10px;font-weight:700;font-size:12.5px;" onclick="toggleDescCollapse(this)">
+              📖 İlan Açıklamasının Tamamını Oku ▾
+            </button>
           </div>
+
+          <!-- ALT FORUM YÖNLENDİRME KARTI -->
+          <div class="card" style="margin-top:14px;border:1.5px solid #d8b4fe;background:linear-gradient(135deg, rgba(124,58,237,0.05) 0%, rgba(168,85,247,0.08) 100%);text-align:center;padding:16px;">
+            <div style="font-size:28px;margin-bottom:4px;">💬</div>
+            <div style="font-weight:800;font-size:15px;color:#6b21a8;">Aday Topluluğu ve Mülakat Forumu</div>
+            <p style="font-size:12.5px;color:var(--muted);margin:4px 0 12px;">Bu kadroya başvuran diğer adayların puanlarını gör, evrak teslimi ve mülakat sorularını tartış.</p>
+            <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none;font-weight:800;padding:8px 18px;font-size:13px;" onclick="switchJobDetailView('forum')">
+              💬 Aday Yorumlarını ve Sorularını Gör ↗
+            </button>
+          </div>
+        </div>
+
+        <!-- GÖRÜNÜM 2: ADAY TOPLULUĞU & MÜLAKAT TARTIŞMA ALANI (FORUM) -->
+        <div id="detailView_forum" class="hidden">
+          <div class="card" style="border-top:3.5px solid #7c3aed;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+              <div>
+                <h3 style="margin:0;font-size:16.5px;display:flex;align-items:center;gap:6px;color:#6b21a8;">
+                  <span>💬</span><span>Aday Topluluğu & Mülakat Alanı</span>
+                  <span id="commCountBadge_${j.id}" class="badge" style="background:#f3e8ff;color:#7e22ce;font-size:11px;font-weight:800;">0 Yorum</span>
+                </h3>
+                <p style="margin:4px 0 0 0;font-size:12.5px;color:var(--muted);">${escapeHtml(j.institution)} - Bu kadroya başvuran diğer adaylarla mülakat sorularını ve puanlarını tartış.</p>
+              </div>
+              <button class="btn btn-sm btn-outline" onclick="loadJobComments(${j.id})">🔄 Yenile</button>
+            </div>
+
+            <!-- YORUM GİRİŞ FORMU -->
+            <div style="background:var(--card-hover);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+                <div style="font-size:12.5px;font-weight:700;color:var(--text);">✍️ Yorum veya Soru Yaz</div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                  <label class="comment-cat-pill"><input type="radio" name="commCat_${j.id}" value="genel" checked> 💬 Genel</label>
+                  <label class="comment-cat-pill"><input type="radio" name="commCat_${j.id}" value="mulakat"> 🎯 Mülakat</label>
+                  <label class="comment-cat-pill"><input type="radio" name="commCat_${j.id}" value="puan"> 📊 Puanım</label>
+                  <label class="comment-cat-pill"><input type="radio" name="commCat_${j.id}" value="soru"> ❓ Soru/Evrak</label>
+                </div>
+              </div>
+              <textarea id="commentInput_${j.id}" class="input" style="height:70px;margin-bottom:8px;font-size:13px;resize:vertical;" placeholder="Mülakat aşaması, taban puan beklentin, evrak teslimi veya kadro hakkında soru ve yorum yaz..."></textarea>
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                <span style="font-size:11.5px;color:var(--muted);">
+                  ${currentUserProfile && currentUserProfile.kpssScore ? `🎯 KPSS: <b>${escapeHtml(currentUserProfile.kpssScore)}</b>` : 'Profil puanın otomatik görünür'}
+                  ${isVipActive() ? ' • <span style="color:#7c3aed;font-weight:800;">👑 VIP Aday</span>' : ''}
+                </span>
+                <button class="btn btn-sm" style="padding:6px 14px;font-weight:700;background:var(--primary);color:#fff;" onclick="submitJobComment(${j.id})">Yorumu Paylaş 🚀</button>
+              </div>
+              <div id="commMsg_${j.id}" style="font-size:12px;margin-top:6px;"></div>
+            </div>
+
+            <!-- KATEGORİ FİLTRELEME ÇİPLERİ -->
+            <div class="row" style="gap:6px;margin-bottom:12px;">
+              <button class="chip active comm-filter-chip" data-filter="all" onclick="filterCommentsList(${j.id}, 'all')">Tümü</button>
+              <button class="chip comm-filter-chip" data-filter="mulakat" onclick="filterCommentsList(${j.id}, 'mulakat')">🎯 Mülakatlar</button>
+              <button class="chip comm-filter-chip" data-filter="puan" onclick="filterCommentsList(${j.id}, 'puan')">📊 Puan Paylaşımı</button>
+              <button class="chip comm-filter-chip" data-filter="soru" onclick="filterCommentsList(${j.id}, 'soru')">❓ Soru & Evrak</button>
+            </div>
+
+            <!-- YORUM LİSTESİ -->
+            <div id="commentsListArea_${j.id}" style="display:flex;flex-direction:column;gap:10px;">
+              <div style="text-align:center;padding:16px;color:var(--muted);font-size:13px;">Yorumlar yükleniyor...</div>
+            </div>
+          </div>
+
+          <button class="btn btn-outline" style="width:100%;margin-top:12px;" onclick="switchJobDetailView('info')">
+            ← İlan Bilgilerine ve Şartlarına Dön
+          </button>
         </div>
       `;
       currentLoadedJobId = j.id;
@@ -4276,8 +4779,25 @@
       try {
         const res = await api('/jobs/' + jobId + '/comments');
         currentJobComments = res.items || [];
+        const count = currentJobComments.length;
+        const countStr = `${count} Yorum`;
+
         const badge = document.getElementById('commCountBadge_' + jobId);
-        if (badge) badge.innerText = `${currentJobComments.length} Yorum`;
+        if (badge) badge.innerText = countStr;
+
+        const tabBadge = document.getElementById('detailTabForumBadge');
+        if (tabBadge) tabBadge.innerText = String(count);
+
+        const floatCount = document.getElementById('floatingCommCount');
+        if (floatCount) floatCount.innerText = String(count);
+
+        const teaserSub = document.getElementById('forumTeaserSub_' + jobId);
+        if (teaserSub) {
+          teaserSub.innerText = count > 0 
+            ? `${count} aday puanını ve sorularını paylaştı • Katılmak için tıkla!`
+            : 'İlk yorumu sen yaz, diğer adaylarla puanını ve mülakatı tartış!';
+        }
+
         renderCommentsList(jobId);
       } catch (e) {
         if (area) area.innerHTML = `<div style="color:var(--muted);font-size:12.5px;text-align:center;padding:12px;">Yorumlar henüz yüklenemedi.</div>`;
@@ -4321,7 +4841,7 @@
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <span style="font-weight:700;font-size:13px;color:var(--text);">${escapeHtml(c.authorName)}</span>
-              ${c.isVip ? '<span class="badge" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:10px;font-weight:800;padding:1px 6px;">👑 VIP</span>' : ''}
+              ${c.isVip ? '<span class="badge" style="background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;font-size:10.5px;font-weight:800;padding:2px 7px;box-shadow:0 1px 4px rgba(124,58,237,0.35);border:1px solid #d8b4fe;">👑 VIP Aday</span>' : ''}
               ${c.authorKpss ? `<span class="badge" style="background:#dcfce7;color:#166534;font-size:10.5px;font-weight:700;">🎯 KPSS: ${escapeHtml(c.authorKpss)}</span>` : ''}
               ${catBadges[c.category] || catBadges.genel}
             </div>

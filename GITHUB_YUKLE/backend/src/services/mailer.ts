@@ -38,11 +38,67 @@ export function isValidEmailFormat(email: string): boolean {
 export async function sendVerificationEmail(email: string, code: string): Promise<SendCodeResult> {
   const targetEmail = email.trim().toLowerCase();
 
-  // 1. Brevo (Sendinblue) API (HTTPS Port 443 - Özel Domain Gerektirmez, Dünyadaki Tüm Adreslere Gönderir)
+  const emailHtml = `<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;max-width:520px;margin:20px auto;padding:28px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;">
+    <div style="text-align:center;margin-bottom:20px;">
+      <h2 style="color:#1d4ed8;margin:0 0 6px;font-size:22px;">Kamu İlan Asistanı</h2>
+      <p style="color:#64748b;font-size:14px;margin:0;">Güvenlik Doğrulama Kodu</p>
+    </div>
+    <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 16px;">
+      Merhaba,<br/><br/>
+      Hesabınızı güvenle onaylamak için tek kullanımlık 6 haneli güvenlik kodunuz aşağıdadır:
+    </p>
+    <div style="text-align:center;margin:24px 0;">
+      <div style="display:inline-block;background:#eff6ff;border:2px dashed #3b82f6;color:#1e40af;font-size:32px;font-weight:800;letter-spacing:8px;padding:14px 28px;border-radius:12px;">
+        ${code}
+      </div>
+    </div>
+    <p style="color:#64748b;font-size:13px;line-height:1.5;margin:0 0 16px;">
+      ⏱️ Bu kod <b>15 dakika</b> boyunca geçerlidir. Güvenliğiniz için bu kodu kimseyle paylaşmayınız.
+    </p>
+    <hr style="border:none;border-top:1px solid #f1f5f9;margin:20px 0;"/>
+    <p style="color:#94a3b8;font-size:11px;text-align:center;margin:0;">
+      Bu e-posta Kamu İlan Asistanı güvenlik sistemi tarafından otomatik olarak oluşturulmuştur.
+    </p>
+  </div>`;
+  const emailText = `Kamu İlan Asistanı Doğrulama Kodunuz: ${code}\n\nBu kod 15 dakika geçerlidir. Güvenliğiniz için kimseyle paylaşmayınız.`;
+
+  // 1. Amazon SES veya Özel SMTP (SMTP_HOST tanımlıysa birinci önceliklidir)
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (host && user && pass) {
+    try {
+      const isAmazonSes = host.toLowerCase().includes('amazonaws.com');
+      const providerLabel = isAmazonSes ? 'Amazon SES (SMTP)' : (host.includes('gmail') ? 'Gmail (SMTP)' : 'SMTP');
+      const port = Number(process.env.SMTP_PORT || 465);
+      const from = process.env.SMTP_FROM || user;
+
+      await sendViaSmtpSocket({
+        host,
+        port,
+        user,
+        pass,
+        from,
+        to: targetEmail,
+        subject: `Kamu İlan Asistanı Doğrulama Kodunuz: ${code}`,
+        text: emailText,
+        html: emailHtml,
+      });
+
+      console.log(`[mail] ✅ 6 haneli doğrulama kodu ${targetEmail} adresine ${providerLabel} (${host}:${port}) ile başarıyla iletildi.`);
+      return {
+        sent: true,
+        message: 'Doğrulama kodu e-posta adresinize başarıyla gönderildi.',
+      };
+    } catch (err) {
+      console.error(`[mail] ❌ SMTP gönderim hatası (${(err as Error).message}). Diğer yöntemlere geçiliyor...`);
+    }
+  }
+
+  // 2. Brevo (Sendinblue) API (HTTPS Port 443 Fallback)
   const brevoKey = process.env.BREVO_API_KEY;
   if (brevoKey) {
     try {
-      // Brevo yalnızca hesapta onaylı olan e-posta adresinden gönderim kabul eder:
       const senderEmail = process.env.BREVO_SENDER_EMAIL || 'destek@kamuilanasistani.com';
       const senderName = process.env.BREVO_SENDER_NAME || 'Kamu İlan Asistanı';
 
@@ -52,29 +108,8 @@ export async function sendVerificationEmail(email: string, code: string): Promis
           sender: { name: senderName, email: senderEmail },
           to: [{ email: targetEmail }],
           subject: `Kamu İlan Asistanı Doğrulama Kodunuz: ${code}`,
-          htmlContent: `<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;max-width:520px;margin:20px auto;padding:28px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;">
-            <div style="text-align:center;margin-bottom:20px;">
-              <h2 style="color:#1d4ed8;margin:0 0 6px;font-size:22px;">Kamu İlan Asistanı</h2>
-              <p style="color:#64748b;font-size:14px;margin:0;">Güvenlik Doğrulama Kodu</p>
-            </div>
-            <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 16px;">
-              Merhaba,<br/><br/>
-              Hesabınızı güvenle onaylamak için tek kullanımlık 6 haneli güvenlik kodunuz aşağıdadır:
-            </p>
-            <div style="text-align:center;margin:24px 0;">
-              <div style="display:inline-block;background:#eff6ff;border:2px dashed #3b82f6;color:#1e40af;font-size:32px;font-weight:800;letter-spacing:8px;padding:14px 28px;border-radius:12px;">
-                ${code}
-              </div>
-            </div>
-            <p style="color:#64748b;font-size:13px;line-height:1.5;margin:0 0 16px;">
-              ⏱️ Bu kod <b>15 dakika</b> boyunca geçerlidir. Güvenliğiniz için bu kodu kimseyle paylaşmayınız.
-            </p>
-            <hr style="border:none;border-top:1px solid #f1f5f9;margin:20px 0;"/>
-            <p style="color:#94a3b8;font-size:11px;text-align:center;margin:0;">
-              Bu e-posta Kamu İlan Asistanı güvenlik sistemi tarafından otomatik olarak oluşturulmuştur.
-            </p>
-          </div>`,
-          textContent: `Kamu İlan Asistanı Doğrulama Kodunuz: ${code}\n\nBu kod 15 dakika geçerlidir. Güvenliğiniz için kimseyle paylaşmayınız.`,
+          htmlContent: emailHtml,
+          textContent: emailText,
         },
         {
           headers: {
@@ -97,7 +132,7 @@ export async function sendVerificationEmail(email: string, code: string): Promis
     }
   }
 
-  // 2. Resend API (HTTPS Port 443 - Bulut Güvenlik Duvarını %100 Aşar)
+  // 3. Resend API (HTTPS Port 443 Fallback)
   const resendKey = process.env.RESEND_API_KEY;
   const fromAddress = process.env.RESEND_FROM || 'Kamu İlan Asistanı <onboarding@resend.dev>';
   if (resendKey) {
@@ -108,29 +143,8 @@ export async function sendVerificationEmail(email: string, code: string): Promis
           from: fromAddress,
           to: [targetEmail],
           subject: `Kamu İlan Asistanı Doğrulama Kodunuz: ${code}`,
-          html: `<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;max-width:520px;margin:20px auto;padding:28px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;">
-            <div style="text-align:center;margin-bottom:20px;">
-              <h2 style="color:#1d4ed8;margin:0 0 6px;font-size:22px;">Kamu İlan Asistanı</h2>
-              <p style="color:#64748b;font-size:14px;margin:0;">Güvenlik Doğrulama Kodu</p>
-            </div>
-            <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 16px;">
-              Merhaba,<br/><br/>
-              Hesabınızı güvenle onaylamak için tek kullanımlık 6 haneli güvenlik kodunuz aşağıdadır:
-            </p>
-            <div style="text-align:center;margin:24px 0;">
-              <div style="display:inline-block;background:#eff6ff;border:2px dashed #3b82f6;color:#1e40af;font-size:32px;font-weight:800;letter-spacing:8px;padding:14px 28px;border-radius:12px;">
-                ${code}
-              </div>
-            </div>
-            <p style="color:#64748b;font-size:13px;line-height:1.5;margin:0 0 16px;">
-              ⏱️ Bu kod <b>15 dakika</b> boyunca geçerlidir. Güvenliğiniz için bu kodu kimseyle paylaşmayınız.
-            </p>
-            <hr style="border:none;border-top:1px solid #f1f5f9;margin:20px 0;"/>
-            <p style="color:#94a3b8;font-size:11px;text-align:center;margin:0;">
-              Bu e-posta Kamu İlan Asistanı güvenlik sistemi tarafından otomatik olarak oluşturulmuştur.
-            </p>
-          </div>`,
-          text: `Kamu İlan Asistanı Doğrulama Kodunuz: ${code}\n\nBu kod 15 dakika geçerlidir. Güvenliğiniz için kimseyle paylaşmayınız.`,
+          html: emailHtml,
+          text: emailText,
         },
         {
           headers: {
@@ -150,43 +164,13 @@ export async function sendVerificationEmail(email: string, code: string): Promis
       const errMsg = err.response?.data?.message || err.message;
       console.error(`[resend] ⚠️ Resend gönderim hatası: ${errMsg}`);
       if (err.response?.status === 403 && String(errMsg).toLowerCase().includes('testing emails')) {
-        console.warn(`[resend] ℹ️ Resend sandbox kısıtı: ${targetEmail} sisteme kayıtlı geliştirici hesabı olmadığından Resend reddetti. Domain doğrulandığında tüm adreslere gönderilecektir.`);
+        console.warn(`[resend] ℹ️ Resend sandbox kısıtı: ${targetEmail} sisteme kayıtlı geliştirici hesabı olmadığından Resend reddetti.`);
         return {
           sent: false,
           sandboxBlocked: true,
           message: 'Geliştirme test modunda doğrulama e-postası yalnızca sistem sahibine iletilebilmektedir.',
         };
       }
-    }
-  }
-
-  // 2. SMTP Fallback
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const port = Number(process.env.SMTP_PORT || (host === 'smtp.gmail.com' ? 465 : 587));
-  const from = process.env.SMTP_FROM || user || 'kamuilanasistani@gmail.com';
-
-  if (host && user && pass) {
-    try {
-      await sendViaSmtpSocket({
-        host,
-        port,
-        user,
-        pass,
-        from,
-        to: targetEmail,
-        subject: `Kamu İlan Asistanı Doğrulama Kodunuz: ${code}`,
-        text: `Merhaba,\n\nKamu İlan Asistanı hesabınızı doğrulamak için güvenlik kodunuz: ${code}\n\nBu kod 15 dakika geçerlidir.\n\nİyi günler dileriz.`,
-      });
-
-      console.log(`[mail] ✅ 6 haneli doğrulama kodu ${targetEmail} adresine SMTP ile başarıyla iletildi.`);
-      return {
-        sent: true,
-        message: 'Doğrulama kodu e-posta adresinize başarıyla gönderildi.',
-      };
-    } catch (err) {
-      console.error(`[mail] ❌ SMTP gönderim hatası (${(err as Error).message}).`);
     }
   }
 
@@ -205,6 +189,7 @@ interface SmtpOptions {
   to: string;
   subject: string;
   text: string;
+  html?: string;
 }
 
 function extractEnvelopeEmail(str: string): string {
@@ -222,31 +207,60 @@ function sendViaSmtpSocket(opts: SmtpOptions): Promise<void> {
     const envFrom = extractEnvelopeEmail(opts.from);
     const envTo = extractEnvelopeEmail(opts.to);
     const cleanUser = opts.user.trim();
-    // Google Uygulama Şifrelerindeki tüm boşlukları kaldır (pxio dkbx anhe jnyj -> pxiodkbxanhejnyj)
+    // Uygulama şifrelerindeki tüm boşlukları kaldır
     const cleanPass = opts.pass.replace(/\s+/g, '');
 
-    let socket: net.Socket;
-    if (isDirectTls) {
-      socket = tls.connect({
-        host: opts.host,
-        port: opts.port,
-        rejectUnauthorized: false,
-      });
-    } else {
-      socket = net.createConnection({
-        host: opts.host,
-        port: opts.port,
-      });
-    }
+    const createMessagePayload = () => {
+      const fromHeader = opts.from.includes('<') ? opts.from : `"Kamu İlan Asistanı" <${opts.from}>`;
+      const base64Subject = Buffer.from(opts.subject).toString('base64');
 
-    socket.setTimeout(15000);
+      if (opts.html) {
+        const boundary = `====_KamuIlan_${Date.now()}_${Math.random().toString(36).substring(2)}_====`;
+        return [
+          `From: ${fromHeader}`,
+          `To: <${envTo}>`,
+          `Subject: =?UTF-8?B?${base64Subject}?=`,
+          'MIME-Version: 1.0',
+          `Content-Type: multipart/alternative; boundary="${boundary}"`,
+          '',
+          `--${boundary}`,
+          'Content-Type: text/plain; charset=UTF-8',
+          'Content-Transfer-Encoding: 8bit',
+          '',
+          opts.text,
+          '',
+          `--${boundary}`,
+          'Content-Type: text/html; charset=UTF-8',
+          'Content-Transfer-Encoding: 8bit',
+          '',
+          opts.html,
+          '',
+          `--${boundary}--`,
+          '.',
+        ].join('\r\n');
+      }
 
+      return [
+        `From: ${fromHeader}`,
+        `To: <${envTo}>`,
+        `Subject: =?UTF-8?B?${base64Subject}?=`,
+        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: 8bit',
+        '',
+        opts.text,
+        '.',
+      ].join('\r\n');
+    };
+
+    let activeSocket: net.Socket;
     let step = 0;
     let buffer = '';
+    let isTlsActive = isDirectTls;
 
     const send = (cmd: string) => {
       try {
-        socket.write(cmd + '\r\n');
+        activeSocket.write(cmd + '\r\n');
       } catch (e) {
         reject(e);
       }
@@ -261,8 +275,8 @@ function sendViaSmtpSocket(opts: SmtpOptions): Promise<void> {
       const isLast = line.length < 4 || line[3] === ' ';
 
       if (code.startsWith('4') || code.startsWith('5')) {
-        socket.end();
-        return reject(new Error(`SMTP Sunucu Hatası: ${line.trim()}`));
+        activeSocket.end();
+        return reject(new Error(`SMTP Sunucu Hatası (${code}): ${line.trim()}`));
       }
 
       if (!isLast) {
@@ -270,66 +284,100 @@ function sendViaSmtpSocket(opts: SmtpOptions): Promise<void> {
         return;
       }
 
-      if (isDirectTls) {
-        // Direct TLS (Port 465) Akışı
+      // 1. STARTTLS El Sıkışması (Port 587 / 25)
+      if (!isTlsActive) {
         if (step === 0 && code === '220') {
           step = 1;
-          send(`EHLO kamuilan.asistan`);
+          send('EHLO kamuilan.asistan');
         } else if (step === 1 && code === '250') {
           step = 2;
-          send('AUTH LOGIN');
-        } else if (step === 2 && code === '334') {
+          send('STARTTLS');
+        } else if (step === 2 && code === '220') {
           step = 3;
-          send(Buffer.from(cleanUser).toString('base64'));
-        } else if (step === 3 && code === '334') {
-          step = 4;
-          send(Buffer.from(cleanPass).toString('base64'));
-        } else if (step === 4 && code === '235') {
-          step = 5;
-          send(`MAIL FROM:<${envFrom}>`);
-        } else if (step === 5 && code === '250') {
-          step = 6;
-          send(`RCPT TO:<${envTo}>`);
-        } else if (step === 6 && code === '250') {
-          step = 7;
-          send('DATA');
-        } else if (step === 7 && code === '354') {
-          step = 8;
-          const fromHeader = opts.from.includes('<') ? opts.from : `"Kamu İlan Asistanı" <${opts.from}>`;
-          const msg = [
-            `From: ${fromHeader}`,
-            `To: <${envTo}>`,
-            `Subject: =?UTF-8?B?${Buffer.from(opts.subject).toString('base64')}?=`,
-            'MIME-Version: 1.0',
-            'Content-Type: text/plain; charset=UTF-8',
-            'Content-Transfer-Encoding: 8bit',
-            '',
-            opts.text,
-            '.',
-          ].join('\r\n');
-          send(msg);
-        } else if (step === 8 && code === '250') {
-          step = 9;
-          send('QUIT');
-          socket.end();
-          resolve();
+          activeSocket.removeAllListeners('data');
+          activeSocket.removeAllListeners('error');
+          activeSocket.removeAllListeners('timeout');
+
+          const secureSocket = tls.connect({
+            socket: activeSocket,
+            host: opts.host,
+            rejectUnauthorized: false,
+          });
+
+          activeSocket = secureSocket;
+          isTlsActive = true;
+          attachListeners(activeSocket);
+
+          send('EHLO kamuilan.asistan');
         }
+        return;
+      }
+
+      // 2. Güvenli TLS Oturumu Akışı (Port 465 veya Upgrade Edilmiş 587)
+      if (step === 0 && code === '220') {
+        step = 4;
+        send('EHLO kamuilan.asistan');
+      } else if ((step === 3 || step === 4) && code === '250') {
+        step = 5;
+        send('AUTH LOGIN');
+      } else if (step === 5 && code === '334') {
+        step = 6;
+        send(Buffer.from(cleanUser).toString('base64'));
+      } else if (step === 6 && code === '334') {
+        step = 7;
+        send(Buffer.from(cleanPass).toString('base64'));
+      } else if (step === 7 && code === '235') {
+        step = 8;
+        send(`MAIL FROM:<${envFrom}>`);
+      } else if (step === 8 && code === '250') {
+        step = 9;
+        send(`RCPT TO:<${envTo}>`);
+      } else if (step === 9 && code === '250') {
+        step = 10;
+        send('DATA');
+      } else if (step === 10 && code === '354') {
+        step = 11;
+        send(createMessagePayload());
+      } else if (step === 11 && code === '250') {
+        step = 12;
+        send('QUIT');
+        activeSocket.end();
+        resolve();
       }
     };
 
-    socket.on('data', (chunk) => {
-      buffer += chunk.toString('utf8');
-      const lines = buffer.split(/\r?\n/);
-      buffer = lines.pop() || '';
-      for (const line of lines) {
-        if (line.trim()) processLine(line.trim());
-      }
-    });
+    const attachListeners = (s: net.Socket) => {
+      s.setTimeout(15000);
+      s.on('data', (chunk) => {
+        buffer += chunk.toString('utf8');
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (line.trim()) processLine(line.trim());
+        }
+      });
 
-    socket.on('timeout', () => {
-      socket.destroy();
-      reject(new Error('SMTP sunucu bağlantı zaman aşımı (15s)'));
-    });
-    socket.on('error', (err) => reject(err));
+      s.on('timeout', () => {
+        s.destroy();
+        reject(new Error('SMTP sunucu bağlantı zaman aşımı (15s)'));
+      });
+
+      s.on('error', (err) => reject(err));
+    };
+
+    if (isDirectTls) {
+      activeSocket = tls.connect({
+        host: opts.host,
+        port: opts.port,
+        rejectUnauthorized: false,
+      });
+    } else {
+      activeSocket = net.createConnection({
+        host: opts.host,
+        port: opts.port,
+      });
+    }
+
+    attachListeners(activeSocket);
   });
 }
