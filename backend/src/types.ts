@@ -35,7 +35,7 @@ export const JOB_TYPE_LABELS: Record<JobType, string> = {
   memur: 'Memur',
   sozlesmeli: 'Sözleşmeli (4/B)',
   isci: 'İşçi',
-  akademik: 'Akademik',
+  akademik: '🎓 Akademisyenlik (Üniversite)',
   diger: 'Diğer',
 };
 

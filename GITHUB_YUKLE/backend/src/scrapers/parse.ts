@@ -250,7 +250,12 @@ export function extractInstitution(title: string, text = ''): string | null {
 }
 
 export function detectJobType(n: string): JobType {
-  if (/ogretim (uyesi|elemani|gorevlisi)|arastirma gorevlisi|akademik|doktor ogretim|\bprofesor\b|\bdocent\b/.test(n)) {
+  // Üniversite akademik kadroları (2547 sayılı kanun, öğretim üyesi, doçent, profesör, dr. öğretim üyesi, öğretim görevlisi, araştırma görevlisi vb.)
+  if (
+    /ogretim (uyesi|elemani|gorevlisi)|arastirma gorevlisi|akademik|doktor ogretim|dr\.\s*ogretim|dr\.\s*ogr|ogr\.\s*gor|ar[as]\.\s*gor|\bprofesor\b|\bprof\b|\bdocent\b|\bdoc\b|2547\s*sayili|ogretim\s+kadro|akademisyen/i.test(
+      n,
+    )
+  ) {
     return 'akademik';
   }
   if (/sozlesmeli|4\s?\/\s?b|4b\b|kalkinma ajansi/.test(n)) return 'sozlesmeli';

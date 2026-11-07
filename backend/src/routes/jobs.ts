@@ -99,8 +99,8 @@ jobsRouter.get('/matches', requireAuth, (req, res) => {
 
   // 1. Önce ham ilanları şehir ve kadro türüne göre hızlıca ön elemeden geçir (toView CPU yükünü %90 azaltır)
   const rawJobs = allJobs(filters as JobFilters).filter((j) => {
-    // Kadro türü kontrolü
-    if (userJobTypes.length > 0 && j.jobType && !userJobTypes.includes(j.jobType as any)) {
+    // Kadro türü kontrolü (ekrandan özel bir kadro türü seçilmişse kullanıcının anlık filtresine öncelik verilir)
+    if (!filters.jobType && userJobTypes.length > 0 && j.jobType && !userJobTypes.includes(j.jobType as any)) {
       return false;
     }
     // Şehir kontrolü

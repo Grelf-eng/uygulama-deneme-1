@@ -640,6 +640,37 @@
       background: #0f172a !important;
       color: #cbd5e1 !important;
     }
+    [data-theme="dark"] #matchesScreen {
+      background: var(--bg);
+      color: var(--text);
+    }
+    [data-theme="dark"] #matchesFilterCard {
+      background: var(--card) !important;
+      border-color: var(--border) !important;
+      color: var(--text) !important;
+    }
+    [data-theme="dark"] #userProfilePreferencesDisplay {
+      background: #0f172a !important;
+      border-color: #334155 !important;
+      color: #94a3b8 !important;
+    }
+    [data-theme="dark"] #userProfilePreferencesDisplay b {
+      color: #f8fafc !important;
+    }
+    [data-theme="dark"] #matchesList .card {
+      background: var(--card) !important;
+      border-color: var(--border) !important;
+      color: var(--text) !important;
+    }
+    [data-theme="dark"] div[style*="background:#f8fafc"],
+    [data-theme="dark"] div[style*="background: #f8fafc"],
+    [data-theme="dark"] div[style*="background:#fff;"],
+    [data-theme="dark"] div[style*="background: #fff;"],
+    [data-theme="dark"] div[style*="background:white"] {
+      background: var(--card) !important;
+      border-color: var(--border) !important;
+      color: var(--text) !important;
+    }
     [data-theme="dark"] #certChips,
     [data-theme="dark"] #cityChips {
       background: #1e293b !important;
@@ -865,16 +896,19 @@
       <!-- GENEL İLANLAR FİLTRE KARTI (Tüm İlanlar sekmesinde görünür) -->
       <div id="allJobsFilterCard" class="card">
         <input id="searchInput" class="input" placeholder="İlan, kurum veya şehir ara..." oninput="debounceLoadJobs()" />
-        <div class="row" style="margin-bottom:8px;">
+        <div class="row" style="margin-bottom:8px;flex-wrap:wrap;gap:6px;">
           <span class="chip active" data-kpss="" onclick="setKpssFilter('')">Tümü</span>
           <span class="chip" data-kpss="yes" onclick="setKpssFilter('yes')">KPSS'li</span>
           <span class="chip" data-kpss="no" onclick="setKpssFilter('no')">KPSS'siz</span>
+          <span class="chip" data-quick-type="akademik" onclick="toggleQuickJobType('akademik')">🎓 Akademisyenlik</span>
+          <span class="chip" data-quick-type="memur" onclick="toggleQuickJobType('memur')">Memur</span>
+          <span class="chip" data-quick-type="isci" onclick="toggleQuickJobType('isci')">İşçi</span>
         </div>
         <div class="row" style="flex-wrap:wrap;gap:8px;">
           <select id="citySelect" style="flex:1;min-width:130px;margin:0" onchange="loadAllJobs()">
             <option value="">📍 Tüm Şehirler</option>
           </select>
-          <select id="typeSelect" style="flex:1;min-width:120px;margin:0" onchange="loadAllJobs()">
+          <select id="typeSelect" style="flex:1;min-width:120px;margin:0" onchange="syncQuickJobTypeChips();loadAllJobs();">
             <option value="">Tüm Türler</option>
           </select>
           <select id="certFilterSelect" style="flex:1.4;min-width:180px;margin:0" onchange="loadAllJobs()">
@@ -901,17 +935,26 @@
           <button type="button" class="btn btn-outline btn-sm" style="margin:0;padding:4px 8px;font-size:11.5px;" onclick="switchTab('profile')">⚙️ Tercihleri Değiştir</button>
         </div>
         
-        <div id="userProfilePreferencesDisplay" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.5;">
+        <div id="userProfilePreferencesDisplay" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.5;">
           <div>📍 <b>Tercih Ettiğiniz Şehirler:</b> <span id="userCitiesList" style="color:var(--primary);font-weight:700;">Yükleniyor...</span></div>
           <div style="margin-top:3px;">👔 <b>Tercih Ettiğiniz Kadrolar:</b> <span id="userJobTypesList" style="color:var(--primary);font-weight:700;">Profilinize göre otomatik</span></div>
         </div>
 
         <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Uyum Oranına Göre Filtrele:</div>
-        <div class="row" style="gap:6px;flex-wrap:wrap;">
+        <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:10px;">
           <span class="chip active" data-match-score="0" onclick="setMatchScoreFilter(0)">Tümü</span>
           <span class="chip" data-match-score="100" onclick="setMatchScoreFilter(100)">💯 %100 Tam Uyum</span>
           <span class="chip" data-match-score="75" onclick="setMatchScoreFilter(75)">⭐ %75 ve Üzeri</span>
           <span class="chip" data-match-score="50" onclick="setMatchScoreFilter(50)">🎯 %50 ve Üzeri</span>
+        </div>
+
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Kadro Türüne Göre Filtrele:</div>
+        <div class="row" style="gap:6px;flex-wrap:wrap;">
+          <span class="chip active" data-match-type="" onclick="setMatchTypeFilter('')">Tümü</span>
+          <span class="chip" data-match-type="akademik" onclick="setMatchTypeFilter('akademik')">🎓 Akademisyenlik</span>
+          <span class="chip" data-match-type="memur" onclick="setMatchTypeFilter('memur')">Memur</span>
+          <span class="chip" data-match-type="sozlesmeli" onclick="setMatchTypeFilter('sozlesmeli')">Sözleşmeli</span>
+          <span class="chip" data-match-type="isci" onclick="setMatchTypeFilter('isci')">İşçi</span>
         </div>
       </div>
 
@@ -1635,7 +1678,7 @@
       { value: 'memur', label: 'Memur' },
       { value: 'sozlesmeli', label: 'Sözleşmeli (4/B)' },
       { value: 'isci', label: 'İşçi' },
-      { value: 'akademik', label: 'Akademik' },
+      { value: 'akademik', label: '🎓 Akademisyenlik' },
       { value: 'diger', label: 'Diğer' }
     ];
     let meta = {
@@ -1659,7 +1702,7 @@
     const APP_LABELS = {
       planned: 'Planlandı', applied: 'Başvuruldu', interview: 'Mülakat / Sınav', accepted: 'Kabul edildi', rejected: 'Olumsuz'
     };
-    const TYPE_LABELS = { memur: 'Memur', sozlesmeli: 'Sözleşmeli (4/B)', isci: 'İşçi', akademik: 'Akademik', diger: 'Diğer' };
+    const TYPE_LABELS = { memur: 'Memur', sozlesmeli: 'Sözleşmeli (4/B)', isci: 'İşçi', akademik: '🎓 Akademisyenlik', diger: 'Diğer' };
     const SOURCE_LABELS = {
       memurlar: 'İlan.memurlar.net',
       kamuilan: 'Cumhurbaşkanlığı SBB',
@@ -3470,6 +3513,25 @@
       loadAllJobs();
     }
 
+    function toggleQuickJobType(type) {
+      const sel = document.getElementById('typeSelect');
+      if (!sel) return;
+      if (sel.value === type) {
+        sel.value = '';
+      } else {
+        sel.value = type;
+      }
+      syncQuickJobTypeChips();
+      loadAllJobs();
+    }
+
+    function syncQuickJobTypeChips() {
+      const val = document.getElementById('typeSelect')?.value || '';
+      document.querySelectorAll('[data-quick-type]').forEach(el => {
+        el.classList.toggle('active', el.dataset.quickType === val);
+      });
+    }
+
     function debounceLoadJobs() {
       clearTimeout(searchTimer);
       searchTimer = setTimeout(loadAllJobs, 300);
@@ -4409,6 +4471,7 @@
 
       const params = new URLSearchParams({ limit: '100' });
       if (matchScoreFilter > 0) params.set('minScore', String(matchScoreFilter));
+      if (matchTypeFilter) params.set('jobType', matchTypeFilter);
 
       try {
         const data = await api('/jobs/matches?' + params.toString());
