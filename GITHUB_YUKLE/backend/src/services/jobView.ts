@@ -2,10 +2,13 @@ import { db } from '../db';
 import { Job, Profile } from '../types';
 import { Eligibility, checkEligibility } from './eligibility';
 import { estimateHistoricalPlacement } from '../constants/kpss';
+import { estimateJobSalary, EstimatedSalary } from '../constants/salary';
 
 export interface JobView extends Job {
   isFavorite: boolean;
   applicationStatus: string | null;
+  historicalPlacement?: any;
+  estimatedSalary?: EstimatedSalary;
   eligibility: Omit<Eligibility, 'checks'> & { checks?: Eligibility['checks'] };
 }
 
@@ -37,9 +40,11 @@ export function toView(
   const e = checkEligibility(job, profile);
   const { checks, ...rest } = e;
   const historicalPlacement = estimateHistoricalPlacement(job);
+  const estimatedSalary = estimateJobSalary(job);
   return {
     ...job,
     historicalPlacement,
+    estimatedSalary,
     isFavorite: state.favorites.has(job.id),
     applicationStatus: state.applications.get(job.id) ?? null,
     eligibility: withChecks ? { ...rest, checks } : rest,

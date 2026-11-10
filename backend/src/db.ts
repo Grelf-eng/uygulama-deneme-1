@@ -118,8 +118,8 @@ CREATE TABLE IF NOT EXISTS email_verifications (
 
 CREATE TABLE IF NOT EXISTS job_comments (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  job_id      INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
-  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  job_id      INTEGER NOT NULL,
+  user_id     INTEGER NOT NULL DEFAULT 0,
   author_name TEXT NOT NULL,
   author_kpss TEXT,
   is_vip      INTEGER NOT NULL DEFAULT 0,
@@ -133,9 +133,43 @@ CREATE INDEX IF NOT EXISTS idx_job_comments_job ON job_comments(job_id);
 
 // Mevcut veritabanlarını yeni sütunlarla günceller (CREATE TABLE IF NOT EXISTS eski tabloya sütun eklemez)
 function addColumnIfMissing(table: string, column: string, ddl: string): void {
-  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
-  if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+  try {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+    if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+  } catch (e) {}
 }
+
+// job_comments tablosunun katı yabancı anahtar (FK) kısıtlarını kaldır (kullanıcı/ilan ID senkron farkında çökmemesi için)
+try {
+  const fkList = db.prepare('PRAGMA foreign_key_list(job_comments)').all() as any[];
+  if (fkList.length > 0) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS job_comments_safe (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        job_id      INTEGER NOT NULL,
+        user_id     INTEGER NOT NULL DEFAULT 0,
+        author_name TEXT NOT NULL,
+        author_kpss TEXT,
+        is_vip      INTEGER NOT NULL DEFAULT 0,
+        category    TEXT NOT NULL DEFAULT 'genel',
+        content     TEXT NOT NULL,
+        likes       INTEGER NOT NULL DEFAULT 0,
+        created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT OR IGNORE INTO job_comments_safe (id, job_id, user_id, author_name, author_kpss, is_vip, category, content, likes, created_at)
+        SELECT id, job_id, user_id, author_name, author_kpss, is_vip, category, content, likes, created_at FROM job_comments;
+      DROP TABLE job_comments;
+      ALTER TABLE job_comments_safe RENAME TO job_comments;
+      CREATE INDEX IF NOT EXISTS idx_job_comments_job ON job_comments(job_id);
+    `);
+  }
+} catch (e) {}
+
+addColumnIfMissing('job_comments', 'user_id', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('job_comments', 'author_kpss', 'TEXT');
+addColumnIfMissing('job_comments', 'is_vip', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('job_comments', 'category', "TEXT NOT NULL DEFAULT 'genel'");
+addColumnIfMissing('job_comments', 'likes', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'is_admin', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'is_verified', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'is_subscribed', 'INTEGER NOT NULL DEFAULT 0');

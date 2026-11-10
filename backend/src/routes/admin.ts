@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config } from '../config';
 import { db } from '../db';
-import { isScrapingRunning, runAllScrapers } from '../scrapers';
+import { isScrapingRunning, runAllScrapers, getScrapeStatus } from '../scrapers';
 import { deleteCloudUser, syncCloudSession, syncCloudSubscription, syncCloudUser, syncLocalJobsToCloud } from '../services/cloudDb';
 import { resetProfileLimit } from '../services/profileRepo';
 
@@ -467,10 +467,10 @@ adminRouter.post('/scrape', async (req: Request, res: Response) => {
 
 /**
  * GET /api/admin/scrape/status
- * İlan tarayıcısının o an çalışıp çalışmadığını kontrol eder
+ * İlan tarayıcısının anlık canlı durumunu (kaynak, bulunan, eklenen, süre) döner
  */
 adminRouter.get('/scrape/status', (_req: Request, res: Response) => {
-  res.json({ running: isScrapingRunning() });
+  res.json(getScrapeStatus());
 });
 
 /**

@@ -12,16 +12,45 @@ export interface ScrapeReport {
   error?: string;
 }
 
-let running = false;
-let runningStartedAt = 0;
+export interface ScrapeStatus {
+  running: boolean;
+  currentSource: string;
+  foundCount: number;
+  addedCount: number;
+  totalSources: number;
+  completedSources: number;
+  startedAt: number;
+  lastFinishedAt?: number;
+  lastDurationSeconds?: number;
+  lastSummary?: string;
+  error?: string;
+}
+
+export let scrapeProgress: ScrapeStatus = {
+  running: false,
+  currentSource: '',
+  foundCount: 0,
+  addedCount: 0,
+  totalSources: 0,
+  completedSources: 0,
+  startedAt: 0,
+  lastFinishedAt: 0,
+  lastDurationSeconds: 0,
+  lastSummary: '',
+};
 
 export function isScrapingRunning(): boolean {
-  if (running && Date.now() - runningStartedAt > 4 * 60 * 1000) {
-    // 4 dakikadan uzun sürmüşse kilitlenmiş demektir, kilidi kaldır
-    console.warn('[scraper] 4 dakikalık zaman aşımı: kilitlenen tarama sıfırlandı.');
-    running = false;
+  if (scrapeProgress.running && Date.now() - scrapeProgress.startedAt > 3 * 60 * 1000) {
+    // 3 dakikadan uzun sürmüşse kilitlenmiş demektir, kilidi kaldır
+    console.warn('[scraper] 3 dakikalık zaman aşımı: kilitlenen tarama sıfırlandı.');
+    scrapeProgress.running = false;
   }
-  return running;
+  return scrapeProgress.running;
+}
+
+export function getScrapeStatus(): ScrapeStatus {
+  isScrapingRunning();
+  return { ...scrapeProgress };
 }
 
 function instKey(inst: string | null): string {
@@ -124,42 +153,68 @@ export async function runAllScrapers(only?: string[]): Promise<{
   notifications: { matched: number; pushed: number };
 }> {
   if (isScrapingRunning()) throw new Error('İlan taraması zaten devam ediyor. Lütfen biraz bekleyin.');
-  running = true;
-  runningStartedAt = Date.now();
+  
+  const activeScrapers = scrapers.filter((x) => (only ? only.includes(x.name) : x.enabled));
+  const startTime = Date.now();
+  scrapeProgress = {
+    running: true,
+    currentSource: 'Başlatılıyor...',
+    foundCount: 0,
+    addedCount: 0,
+    totalSources: activeScrapers.length,
+    completedSources: 0,
+    startedAt: startTime,
+    lastSummary: 'Tarama başlatıldı...',
+  };
+
   const reports: ScrapeReport[] = [];
   const newIds: number[] = [];
   try {
-    for (const s of scrapers.filter((x) => (only ? only.includes(x.name) : x.enabled))) {
+    for (let i = 0; i < activeScrapers.length; i++) {
+      const s = activeScrapers[i];
+      scrapeProgress.currentSource = s.name;
       const report: ScrapeReport = { source: s.name, found: 0, added: 0 };
       try {
         const jobs = await s.run();
         report.found = jobs.length;
+        scrapeProgress.foundCount += jobs.length;
         for (const j of jobs) {
           const { id, isNew } = upsertJob(j);
           if (isNew) {
             report.added++;
             newIds.push(id);
+            scrapeProgress.addedCount++;
           }
         }
       } catch (err) {
         report.error = (err as Error).message;
         console.error(`[scraper:${s.name}]`, report.error);
       }
+      scrapeProgress.completedSources = i + 1;
       console.log(`[scraper:${s.name}] bulunan=${report.found} yeni=${report.added}`);
       reports.push(report);
     }
     deduplicateAndCleanJobs();
 
-    // Taranan güncel kamu ilanlarını Neon PostgreSQL bulutuna kalıcı kaydet
+    // Taranan yeni kamu ilanlarını Neon PostgreSQL bulutuna hızlı ve kalıcı kaydet
     try {
       const { syncLocalJobsToCloud } = await import('../services/cloudDb');
-      await syncLocalJobsToCloud();
+      if (newIds.length > 0) {
+        await syncLocalJobsToCloud(newIds);
+      } else {
+        await syncLocalJobsToCloud();
+      }
     } catch {}
+
+    const durationSec = Math.round((Date.now() - startTime) / 1000);
+    scrapeProgress.lastFinishedAt = Date.now();
+    scrapeProgress.lastDurationSeconds = durationSec;
+    scrapeProgress.lastSummary = `Tarama ${durationSec} saniyede tamamlandı. ${scrapeProgress.foundCount} ilan incelendi, ${newIds.length} yeni ilan sisteme eklendi.`;
 
     const validNewIds = newIds.filter((id) => db.prepare('SELECT 1 FROM jobs WHERE id = ?').get(id));
     const notifications = await notifyForNewJobs(validNewIds);
     return { reports, notifications };
   } finally {
-    running = false;
+    scrapeProgress.running = false;
   }
 }

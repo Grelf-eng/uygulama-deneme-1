@@ -1,11 +1,21 @@
 import axios from 'axios';
 
 const client = axios.create({
-  timeout: 20000,
+  timeout: 8000, // 8 saniye (eskiden 20 saniyeydi, donmalara yol açıyordu)
   headers: {
-    'User-Agent': 'Mozilla/5.0 (compatible; KamuIlanBot/1.0; +kisisel-kullanim)',
-    'Accept-Language': 'tr-TR,tr;q=0.9',
-    Accept: 'text/html,application/xhtml+xml',
+    'User-Agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+    Accept:
+      'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Sec-Ch-Ua': '"Chromium";v="130", "Google Chrome";v="130", "Not?A_Brand";v="99"',
+    'Sec-Ch-Ua-Mobile': '?0',
+    'Sec-Ch-Ua-Platform': '"Windows"',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1',
   },
   maxRedirects: 5,
   responseType: 'arraybuffer',

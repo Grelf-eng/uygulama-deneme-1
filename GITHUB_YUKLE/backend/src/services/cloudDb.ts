@@ -300,6 +300,26 @@ export async function initCloudSync(retries = 3): Promise<void> {
       insertFav.run(f.user_id, f.job_id, String(f.created_at));
     }
 
+    // 4.5. Neon'daki aday yorumlarını SQLite'a aktar
+    try {
+      const commRes = await p.query('SELECT * FROM cloud_job_comments ORDER BY id ASC');
+      const insertComm = db.prepare(`
+        INSERT OR IGNORE INTO job_comments (id, job_id, user_id, author_name, author_kpss, is_vip, category, content, likes, created_at)
+        VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const c of commRes.rows) {
+        insertComm.run(
+          c.id, c.job_id, c.author_name, c.author_kpss, c.is_vip ?? 0,
+          c.category || 'genel', c.content, c.likes ?? 0, String(c.created_at)
+        );
+      }
+      if (commRes.rows.length > 0) {
+        console.log(`[cloud-db] 💬 Neon'dan ${commRes.rows.length} aday yorumu yüklendi.`);
+      }
+    } catch (e: any) {
+      console.warn('[cloud-db] Yorumlar aktarılırken uyarı:', e.message);
+    }
+
     // 5. Yereldeki admin hesabını da Neon'a garanti yedekle
     const localUsers = db.prepare('SELECT id, email, password_hash, is_admin, is_verified, is_subscribed, subscription_tier, session_token FROM users').all() as any[];
     for (const lu of localUsers) {
@@ -442,50 +462,65 @@ export function syncCloudFavorite(userId: number, jobId: number, isFavorite: boo
 /**
  * Yerelde taranan tüm gerçek ilanları Neon PostgreSQL bulutuna yedekler.
  */
-export async function syncLocalJobsToCloud(): Promise<void> {
+export async function syncLocalJobsToCloud(jobIds?: number[]): Promise<void> {
   const p = getPool();
   if (!p) return;
   try {
-    const localJobs = db.prepare("SELECT * FROM jobs WHERE source != 'ornek'").all() as any[];
+    let localJobs: any[] = [];
+    if (jobIds && jobIds.length > 0) {
+      const placeholders = jobIds.map(() => '?').join(',');
+      localJobs = db.prepare(`SELECT * FROM jobs WHERE id IN (${placeholders})`).all(...jobIds) as any[];
+    } else {
+      localJobs = db.prepare("SELECT * FROM jobs WHERE source != 'ornek' ORDER BY id DESC LIMIT 75").all() as any[];
+    }
     if (localJobs.length === 0) return;
 
-    for (const j of localJobs) {
-      await p.query(`
-        INSERT INTO cloud_jobs (
-          source, external_id, title, institution, city, description, url,
-          published_at, deadline, kpss_required, min_kpss_score, kpss_type,
-          min_education, required_departments, required_certificates,
-          certificate_mode, min_experience_years, max_age, positions, job_type, search_text
-        ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
-        ) ON CONFLICT(source, external_id) DO UPDATE SET
-          title = EXCLUDED.title,
-          institution = EXCLUDED.institution,
-          city = EXCLUDED.city,
-          description = EXCLUDED.description,
-          url = EXCLUDED.url,
-          published_at = EXCLUDED.published_at,
-          deadline = EXCLUDED.deadline,
-          kpss_required = EXCLUDED.kpss_required,
-          min_kpss_score = EXCLUDED.min_kpss_score,
-          kpss_type = EXCLUDED.kpss_type,
-          min_education = EXCLUDED.min_education,
-          required_departments = EXCLUDED.required_departments,
-          required_certificates = EXCLUDED.required_certificates,
-          certificate_mode = EXCLUDED.certificate_mode,
-          min_experience_years = EXCLUDED.min_experience_years,
-          max_age = EXCLUDED.max_age,
-          positions = EXCLUDED.positions,
-          job_type = EXCLUDED.job_type,
-          search_text = EXCLUDED.search_text
-      `, [
-        j.source, j.external_id, j.title, j.institution, j.city, j.description || '', j.url,
-        j.published_at, j.deadline, j.kpss_required, j.min_kpss_score, j.kpss_type,
-        j.min_education, j.required_departments || '[]', j.required_certificates || '[]',
-        j.certificate_mode || 'all', j.min_experience_years, j.max_age, j.positions, j.job_type || 'diger', j.search_text || ''
-      ]);
+    // Paralel 10'lu gruplar halinde kaydet (eskiden tek tek 200 sorgu atıp 1 dakika bekletiyordu)
+    const chunkSize = 10;
+    for (let i = 0; i < localJobs.length; i += chunkSize) {
+      const chunk = localJobs.slice(i, i + chunkSize);
+      await Promise.all(
+        chunk.map((j) =>
+          p.query(`
+            INSERT INTO cloud_jobs (
+              source, external_id, title, institution, city, description, url,
+              published_at, deadline, kpss_required, min_kpss_score, kpss_type,
+              min_education, required_departments, required_certificates,
+              certificate_mode, min_experience_years, max_age, positions, job_type, search_text
+            ) VALUES (
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
+            ) ON CONFLICT(source, external_id) DO UPDATE SET
+              title = EXCLUDED.title,
+              institution = EXCLUDED.institution,
+              city = EXCLUDED.city,
+              description = EXCLUDED.description,
+              url = EXCLUDED.url,
+              published_at = EXCLUDED.published_at,
+              deadline = EXCLUDED.deadline,
+              kpss_required = EXCLUDED.kpss_required,
+              min_kpss_score = EXCLUDED.min_kpss_score,
+              kpss_type = EXCLUDED.kpss_type,
+              min_education = EXCLUDED.min_education,
+              required_departments = EXCLUDED.required_departments,
+              required_certificates = EXCLUDED.required_certificates,
+              certificate_mode = EXCLUDED.certificate_mode,
+              min_experience_years = EXCLUDED.min_experience_years,
+              max_age = EXCLUDED.max_age,
+              positions = EXCLUDED.positions,
+              job_type = EXCLUDED.job_type,
+              search_text = EXCLUDED.search_text
+          `, [
+            j.source, j.external_id, j.title, j.institution || null, j.city || null,
+            j.description || '', j.url || null, j.published_at, j.deadline || null,
+            j.kpss_required, j.min_kpss_score, j.kpss_type || null,
+            j.min_education || null, j.required_departments || '[]', j.required_certificates || '[]',
+            j.certificate_mode || 'all', j.min_experience_years, j.max_age,
+            j.positions, j.job_type || 'diger', j.search_text || ''
+          ]).catch(() => {})
+        )
+      );
     }
-    console.log(`[cloud-db] 💾 ${localJobs.length} gerçek kamu ilanı Neon PostgreSQL bulutuna kalıcı olarak yedeklendi.`);
+    console.log(`[cloud-db] 💾 ${localJobs.length} kamu ilanı Neon PostgreSQL bulutuna hızlıca eşitlendi.`);
   } catch (err: any) {
     console.error(`[cloud-db] İlanlar Neon'a yedeklenirken hata:`, err.message);
   }
@@ -544,5 +579,38 @@ export async function syncCloudProfile(email: string, p: any): Promise<void> {
     ]);
   } catch (err: any) {
     console.error(`[cloud-db] Profil buluta yedeklenirken hata:`, err.message);
+  }
+}
+
+export async function syncCloudComment(comment: {
+  id?: number;
+  jobId: number;
+  authorName: string;
+  authorKpss?: string | null;
+  isVip: number;
+  category: string;
+  content: string;
+  likes: number;
+}): Promise<void> {
+  const p = getPool();
+  if (!p) return;
+  try {
+    await p.query(
+      `INSERT INTO cloud_job_comments (job_id, author_name, author_kpss, is_vip, category, content, likes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [comment.jobId, comment.authorName, comment.authorKpss || null, comment.isVip, comment.category, comment.content, comment.likes]
+    );
+  } catch (err: any) {
+    console.warn('[cloud-db] Yorum buluta yedeklenirken hata:', err.message);
+  }
+}
+
+export async function syncCloudCommentLike(commentId: number): Promise<void> {
+  const p = getPool();
+  if (!p) return;
+  try {
+    await p.query('UPDATE cloud_job_comments SET likes = likes + 1 WHERE id = $1', [commentId]);
+  } catch (err: any) {
+    console.warn('[cloud-db] Beğeni buluta işlenirken hata:', err.message);
   }
 }

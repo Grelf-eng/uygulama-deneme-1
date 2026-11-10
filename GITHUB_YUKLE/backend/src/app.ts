@@ -62,6 +62,12 @@ app.get('/apk', serveApk);
 app.get('/indir', (_req, res) => {
   res.sendFile(path.join(publicDir, 'indir.html'));
 });
+app.get(['/gizlilik', '/gizlilik-politikasi'], (_req, res) => {
+  res.sendFile(path.join(publicDir, 'gizlilik-politikasi.html'));
+});
+app.get(['/kosullar', '/kullanim-sartlari'], (_req, res) => {
+  res.sendFile(path.join(publicDir, 'kullanim-sartlari.html'));
+});
 app.use(express.static(publicDir));
 
 app.get('/api/health', (_req, res) => {

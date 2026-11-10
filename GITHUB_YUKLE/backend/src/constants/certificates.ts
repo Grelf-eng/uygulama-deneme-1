@@ -104,7 +104,7 @@ export function certificatesMatch(have: string, required: string): boolean {
 
 /** İlanda geçen genel ifadeler (sertifika sayılmaz) */
 const BOILERPLATE =
-  /mezuniyet|diploma|docentlik|doktora|lisans|yuksek|mezun|unvan|askerlik|adli|sicil|saglik|kimlik|ikamet|yerlesim|nufus|basvuru|sonuc|kpss|ales|denklik|deneyim|hizmet|sgk|sigorta|gelir|ogrenci|durum|fotograf|dilekce|ilgili|gecerli|\bait\b|iliskin|\bbu\b|ilan|asil|ornek|fotokopi|onayli|devlet|\bve\b|\bile\b|\bolan\b|olarak|\bicin\b|tarihli|sayili|\bvb\b|gibi|\bher\b|\bbir\b|kurum|belgeler|belgenin|yukarida|asagida|ekli|istenen|aranan|sinav|puan|kayit|bilgi|\bevrak|teslim|cezai|tebligat|vekalet|taahhut|beyan/;
+  /mezuniyet|diploma|docentlik|doktora|lisans|yuksek|mezun|unvan|askerlik|adli|sicil|saglik|kimlik|ikamet|yerlesim|nufus|basvuru|sonuc|kpss|ales|denklik|deneyim|hizmet|sgk|sigorta|gelir|ogrenci|durum|fotograf|dilekce|ilgili|gecerli|\bait\b|iliskin|\bbu\b|ilan|asil|ornek|fotokopi|onayli|devlet|\bve\b|\bile\b|\bolan\b|olarak|\bicin\b|tarihli|sayili|\bvb\b|gibi|\bher\b|\bbir\b|kurum|belgeler|belgenin|yukarida|asagida|ekli|istenen|aranan|sinav|puan|kayit|bilgi|\bevrak|teslim|cezai|tebligat|vekalet|taahhut|beyan|\beksik\b|yapilmayan|fazla|sahte|yanlis|hatali|onaysiz|gecersiz|sureli|sureti|yeterli|yetersiz|gerekli|zorunlu|talep|soz\s*konusu|mezkur|muaf|orijinal|kanitlayan|gosterir|dair|dosyasi|coklu|uygulamasi|uzerinden|alincak|not\s*dokum|orcid/;
 
 const CERT_NOUN = /([\p{L}0-9/\-]+(?: [\p{L}0-9/\-]+){0,3}) (sertifika(?:sı|sına|sını|lı)?|belge(?:si|sine|sini|li)?)(?![\p{L}])/gu;
 
@@ -141,7 +141,7 @@ export function extractCertificates(title: string, text: string): ExtractedCerti
     if (custom >= 4) break;
     const phrase = m[1].trim();
     const np = norm(phrase);
-    if (np.length < 4 || BOILERPLATE.test(np)) continue;
+    if (np.length < 5 || BOILERPLATE.test(np) || /\b(eksik|yapilmayan|onaysiz|gecersiz|sahte|yanlis|hatali|dair|gosterir|kanitlayan)\b/.test(np)) continue;
     if (CERTIFICATE_CATALOG.some((d) => d.patterns.some((p) => p.test(norm(`${phrase} ${m[2]}`))))) continue;
     const noun = m[2].startsWith('sertifika') ? 'Sertifikası' : 'Belgesi';
     const name = `${titleCaseTr(phrase)} ${noun}`;

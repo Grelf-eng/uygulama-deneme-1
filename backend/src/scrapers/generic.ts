@@ -192,7 +192,7 @@ export function createScraper(cfg: SourceConfig): Scraper {
         } catch (err) {
           console.warn(`[${cfg.name}] liste alınamadı: ${listUrl} – ${(err as Error).message}`);
         }
-        await sleep(150);
+        await sleep(40);
       }
 
       const uncachedEntries = [...links.entries()].filter(([url]) => {
@@ -207,7 +207,7 @@ export function createScraper(cfg: SourceConfig): Scraper {
       }
 
       const jobs: NewJob[] = [];
-      const concurrency = cfg.listOnly ? 1 : 4;
+      const concurrency = cfg.listOnly ? 1 : 6;
       let cursor = 0;
 
       const worker = async () => {
@@ -242,7 +242,7 @@ export function createScraper(cfg: SourceConfig): Scraper {
                 continue;
               }
               structuredBody = beautifyTurkishText(rawExtracted, cleanListingTitle(title));
-              await sleep(160);
+              await sleep(40);
             }
 
             const cleanTitle = cleanListingTitle(title);

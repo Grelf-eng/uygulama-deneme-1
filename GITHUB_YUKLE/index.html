@@ -525,11 +525,14 @@
       color: #fff !important;
       box-shadow: 0 2px 8px rgba(37, 99, 235, 0.28);
     }
+    #detailScreen {
+      padding-bottom: 88px;
+    }
     .floating-forum-pill {
       position: fixed;
-      bottom: 74px;
+      bottom: calc(76px + env(safe-area-inset-bottom, 0px));
       right: 14px;
-      z-index: 25;
+      z-index: 20;
       background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
       color: #fff;
       border: 1.5px solid #c084fc;
@@ -543,7 +546,7 @@
       box-shadow: 0 4px 16px rgba(109, 40, 217, 0.45);
       cursor: pointer;
       user-select: none;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
     }
     .floating-forum-pill:hover {
       transform: translateY(-2px);
@@ -1444,47 +1447,34 @@
         </div>
       </div>
 
-      <!-- ÖDEME YÖNTEMLERİ -->
-      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;">Ödeme Yöntemini Seçin</div>
+      <!-- RESMİ MAĞAZA ÖDEME YÖNTEMLERİ (Google Play & Apple App Store) -->
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;">Resmi Mağaza Aboneliği</div>
       
-      <!-- 1. GOOGLE PLAY RESMİ ABONELİK (Google Play Billing - Android'de Öncelikli) -->
-      <div id="googlePlayPayWrap" style="margin-bottom:8px;">
-        <button class="btn" style="width:100%;background:#01875f;color:#fff;border:none;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;font-weight:700;border-radius:12px;box-shadow:0 2px 6px rgba(1,135,95,0.25);" onclick="checkoutWithGooglePlay()">
+      <!-- 1. GOOGLE PLAY RESMİ ABONELİK (Android Cihazlar İçin) -->
+      <div id="googlePlayPayWrap" style="margin-bottom:12px;">
+        <button class="btn" style="width:100%;background:#01875f;color:#fff;border:none;display:flex;align-items:center;justify-content:center;gap:10px;padding:13px;font-weight:800;font-size:15px;border-radius:12px;box-shadow:0 3px 10px rgba(1,135,95,0.3);cursor:pointer;" onclick="checkoutWithGooglePlay()">
           <span style="font-size:18px;">▶</span><span id="googlePlayBtnText">Google Play ile Abone Ol (149 ₺)</span>
         </button>
-        <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:4px;">Google Play güvencesiyle tek tıkla resmi abonelik. İstediğiniz an iptal edilebilir.</div>
+        <div style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:6px;line-height:1.4;">
+          🔒 Google Play güvencesiyle tek tıkla resmi abonelik. İstediğiniz an Google Play &gt; Abonelikler menüsünden iptal edilebilir.
+        </div>
       </div>
 
-      <!-- 2. APPLE RESMİ ABONELİK (Apple In-App Purchase - iOS'ta Öncelikli) -->
-      <div id="applePayWrap" class="hidden" style="margin-bottom:8px;">
-        <button class="btn" style="width:100%;background:#000000;color:#fff;border:none;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;font-weight:700;border-radius:12px;" onclick="checkoutWithApple()">
+      <!-- 2. APPLE APP STORE RESMİ ABONELİK (iPhone / iPad İçin) -->
+      <div id="applePayWrap" class="hidden" style="margin-bottom:12px;">
+        <button class="btn" style="width:100%;background:#000000;color:#fff;border:none;display:flex;align-items:center;justify-content:center;gap:10px;padding:13px;font-weight:800;font-size:15px;border-radius:12px;box-shadow:0 3px 10px rgba(0,0,0,0.3);cursor:pointer;" onclick="checkoutWithApple()">
           <span style="font-size:18px;"></span><span id="applePayBtnText">Apple ile Abone Ol (149 ₺)</span>
         </button>
-        <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:4px;">Apple App Store güvencesiyle Face ID / Touch ID ile resmi abonelik.</div>
-      </div>
-
-      <!-- 3. WEB TARAYICISI İÇİN KART & HAVALE (Sadece Web'de Görünür, Mağaza İncelemesini Riskeylemez) -->
-      <div id="webPayWrap" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
-        <button class="btn" style="width:100%;background:linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);color:#fff;border:none;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;" onclick="checkoutWithCard()">
-          <span>💳</span><span id="cardPayBtnText">Kredi / Banka Kartı ile Güvenli Öde (149 ₺)</span>
-        </button>
-        <button class="btn btn-outline" style="width:100%;border-color:#10b981;color:#059669;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="toggleIbanDetails()">
-          <span>🏛️</span><span>Havale / EFT / FAST ile Öde (IBAN)</span>
-        </button>
-        <a id="vipWhatsappLink" href="https://wa.me/905000000000?text=Merhaba%2C%20Kamu%20%C4%B0lan%20Asistan%C4%B1%20VIP%20abonelik%20almak%20istiyorum." target="_blank" rel="noopener noreferrer" class="btn btn-outline" style="width:100%;border-color:#22c55e;color:#16a34a;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;">
-          <span>💬</span><span>WhatsApp Destek / Canlı Yardım</span>
-        </a>
-      </div>
-
-      <!-- IBAN BİLGİLERİ AKORDİYON -->
-      <div id="ibanDetailsBox" class="hidden" style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px;line-height:1.6;color:#166534;">
-        <div style="font-weight:700;margin-bottom:4px;">🏛️ Havale / EFT Bilgileri:</div>
-        <div><b>Alıcı:</b> Kamu İlan Asistanı</div>
-        <div><b>IBAN:</b> TR00 0000 0000 0000 0000 00</div>
-        <div><b>Banka:</b> Ziraat Bankası / Vakıfbank</div>
-        <div style="margin-top:6px;padding:6px;background:#dcfce7;border-radius:6px;font-size:12px;color:#14532d;">
-          ⚠️ <b>Açıklama:</b> Lütfen havale/EFT yaparken açıklama kısmına kayıtlı e-posta adresinizi (<span id="ibanEmailLabel">hesabınız</span>) yazın. Ödemeniz 5-10 dakika içinde kontrol edilerek hesabınız VIP yapılır.
+        <div style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:6px;line-height:1.4;">
+          🔒 Apple App Store güvencesiyle Face ID / Touch ID ile resmi abonelik. Ayarlar &gt; Abonelikler menüsünden kolayca yönetilebilir.
         </div>
+      </div>
+
+      <!-- MAĞAZA İNCELEME ZORUNLU YASAL BİLGİLERİ (Apple & Google Play Store Policy) -->
+      <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:center;gap:14px;font-size:11.5px;color:var(--muted);">
+        <a href="/gizlilik-politikasi.html" target="_blank" style="color:var(--muted);text-decoration:underline;">Gizlilik Politikası</a>
+        <span>•</span>
+        <a href="/kullanim-sartlari.html" target="_blank" style="color:var(--muted);text-decoration:underline;">Kullanım Koşulları (EULA)</a>
       </div>
     </div>
   </div>
@@ -2337,38 +2327,47 @@
       const sysBtn = document.getElementById('adminSystemScrapeBtn');
       const statusEl = document.getElementById('adminScrapeStatus');
       if (btn) { btn.disabled = true; btn.innerText = '⏳ İlanlar taranıyor...'; }
-      if (sysBtn) { sysBtn.disabled = true; sysBtn.innerText = '⏳ Resmi kaynaklar taranıyor...'; }
-      if (statusEl) statusEl.innerText = '⏳ Resmi Gazete, Kariyer Kapısı ve İŞKUR taranıyor, lütfen bekleyin...';
+      if (sysBtn) { sysBtn.disabled = true; sysBtn.innerText = '⏳ Taranıyor...'; }
+      if (statusEl) statusEl.innerText = '⏳ Resmi ilan kaynakları taranıyor, lütfen bekleyin...';
 
       try {
         const r = await api('/admin/scrape', { method: 'POST' });
-        await loadAdminDashboard();
-        if (btn) btn.innerText = '✅ Tarama Başlatıldı!';
-        if (sysBtn) sysBtn.innerText = '✅ Tarama Başlatıldı!';
-        if (statusEl) statusEl.innerText = '✅ ' + (r.message || 'Tarama arka planda başarıyla başlatıldı.');
-
-        // 4 saniye sonra yeni gelen ilanları ekrana yansıt
-        setTimeout(async () => {
-          await loadAdminDashboard();
-          if (typeof loadAllJobs === 'function') await loadAllJobs();
-          if (statusEl) statusEl.innerText = '✅ Güncel ilanlar sisteme işlendi.';
-        }, 4000);
+        
+        // Canlı durum takibi: Tarama bitene kadar her 1.5 saniyede bir durumu sorgula
+        let pollCount = 0;
+        const checkInterval = setInterval(async () => {
+          pollCount++;
+          try {
+            const s = await api('/admin/scrape/status');
+            if (s && s.running) {
+              const src = s.currentSource || 'Kaynaklar';
+              const progressTxt = `⏳ Taranıyor: ${src} (${s.completedSources || 0}/${s.totalSources || 4} kaynak, ${s.foundCount || 0} ilan incelendi, +${s.addedCount || 0} yeni)...`;
+              if (statusEl) statusEl.innerText = progressTxt;
+              if (btn) btn.innerText = `⏳ Taranıyor (+${s.addedCount || 0} yeni)...`;
+              if (sysBtn) sysBtn.innerText = `⏳ Taranıyor...`;
+            } else {
+              clearInterval(checkInterval);
+              if (btn) { btn.disabled = false; btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek'; }
+              if (sysBtn) { sysBtn.disabled = false; sysBtn.innerText = '🔄 Resmi Kaynaklardan İlanları Şimdi Tara (Scrape)'; }
+              if (statusEl) {
+                statusEl.innerText = '✅ ' + (s.lastSummary || 'Tarama tamamlandı! Güncel ilanlar işlendi.');
+              }
+              await loadAdminDashboard();
+              if (typeof loadAllJobs === 'function') await loadAllJobs();
+            }
+          } catch (err) {
+            if (pollCount > 40) {
+              clearInterval(checkInterval);
+              if (btn) { btn.disabled = false; btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek'; }
+              if (sysBtn) { sysBtn.disabled = false; sysBtn.innerText = '🔄 Resmi Kaynaklardan İlanları Şimdi Tara (Scrape)'; }
+            }
+          }
+        }, 1500);
       } catch (e) {
         alert(e.message || 'Tarama sırasında hata oluştu.');
-        if (btn) btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek';
-        if (sysBtn) sysBtn.innerText = '🔄 Resmi Kaynaklardan İlanları Şimdi Tara (Scrape)';
-        if (statusEl) statusEl.innerText = '❌ Tarama başarısız: ' + e.message;
-      } finally {
-        setTimeout(() => {
-          if (btn) {
-            btn.disabled = false;
-            btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek';
-          }
-          if (sysBtn) {
-            sysBtn.disabled = false;
-            sysBtn.innerText = '🔄 Resmi Kaynaklardan İlanları Şimdi Tara (Scrape)';
-          }
-        }, 3000);
+        if (btn) { btn.disabled = false; btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek'; }
+        if (sysBtn) { sysBtn.disabled = false; sysBtn.innerText = '🔄 Resmi Kaynaklardan İlanları Şimdi Tara (Scrape)'; }
+        if (statusEl) statusEl.innerText = '❌ Tarama başlatılamadı: ' + e.message;
       }
     }
 
@@ -3601,9 +3600,13 @@
     function openExternalUrl(url) {
       if (!url) return;
       let clean = url.trim();
-      // Kariyer kapısı DNS hatası düzeltmesi: kariyerkapisi.gov.tr -> isealimkariyerkapisi.cbiko.gov.tr
-      if (/kariyerkapisi/i.test(clean) && !clean.includes('cbiko.gov.tr')) {
-        clean = 'https://isealimkariyerkapisi.cbiko.gov.tr';
+      // Kariyer kapısı DNS hatası düzeltmesi: isealimkariyerkapisi.cbiko.gov.tr veya kariyerkapisi.gov.tr -> kariyerkapisi.cbiko.gov.tr
+      if (/isealimkariyerkapisi/i.test(clean) || (/kariyerkapisi/i.test(clean) && !clean.includes('cbiko.gov.tr'))) {
+        clean = 'https://kariyerkapisi.cbiko.gov.tr';
+      }
+      // e-Devlet kariyer kapısı 404 düzeltmesi
+      if (/turkiye\.gov\.tr\/kamu-ise-alim-ve-kariyer-kapisi/i.test(clean)) {
+        clean = 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim';
       }
       if (window.AndroidBridge && window.AndroidBridge.openExternal) {
         window.AndroidBridge.openExternal(clean);
@@ -3678,7 +3681,7 @@
             return {
               portalName: `${escapeHtml(j.institution || 'Kurum')} Başvuru Sayfası`,
               primaryUrl: u,
-              edevletUrl: 'https://isealimkariyerkapisi.cbiko.gov.tr',
+              edevletUrl: 'https://kariyerkapisi.cbiko.gov.tr',
               tipText: `💡 <b>Kurum Portalı:</b> Başvuru doğrudan kurumun online sınav/başvuru ekranı veya Kariyer Kapısı üzerinden alınmaktadır.`
             };
           }
@@ -3688,8 +3691,8 @@
       // 7. Genel Tüm Kamu İlanları (Cumhurbaşkanlığı Kariyer Kapısı)
       return {
         portalName: 'Cumhurbaşkanlığı Kariyer Kapısı (Resmi Portal)',
-        primaryUrl: 'https://isealimkariyerkapisi.cbiko.gov.tr',
-        edevletUrl: 'https://www.turkiye.gov.tr/kamu-ise-alim-ve-kariyer-kapisi',
+        primaryUrl: 'https://kariyerkapisi.cbiko.gov.tr',
+        edevletUrl: 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim',
         tipText: `💡 <b>Kariyer Kapısı:</b> T.C. Cumhurbaşkanlığı İnsan Kaynakları Ofisi resmi sistemidir. e-Devlet ile giriş yaptıktan sonra kurumlar listesinden <b>"${escapeHtml(j.institution || 'Kurum')}"</b> seçerek başvurunuzu 2 dakikada tamamlayabilirsiniz.`
       };
     }
@@ -3707,7 +3710,7 @@
       }
       const j = (currentOpenJob && currentOpenJob.id === jobId) ? currentOpenJob : null;
       if (!j) {
-        openExternalUrl('https://isealimkariyerkapisi.cbiko.gov.tr');
+        openExternalUrl('https://kariyerkapisi.cbiko.gov.tr');
         return;
       }
       const officialInfo = resolveOfficialApplyInfo(j);
@@ -3757,18 +3760,21 @@
       const btnForum = document.getElementById('btnDetailTabForum');
       const viewInfo = document.getElementById('detailView_info');
       const viewForum = document.getElementById('detailView_forum');
+      const floatBtn = document.getElementById('floatingForumBtn');
 
       if (tab === 'forum') {
         if (btnInfo) btnInfo.classList.remove('active');
         if (btnForum) btnForum.classList.add('active');
         if (viewInfo) viewInfo.classList.add('hidden');
         if (viewForum) viewForum.classList.remove('hidden');
+        if (floatBtn) floatBtn.classList.add('hidden');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         if (btnForum) btnForum.classList.remove('active');
         if (btnInfo) btnInfo.classList.add('active');
         if (viewForum) viewForum.classList.add('hidden');
         if (viewInfo) viewInfo.classList.remove('hidden');
+        if (floatBtn) floatBtn.classList.remove('hidden');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
@@ -4023,6 +4029,295 @@
             </div>
             <button class="btn btn-sm" style="width:100%;background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#fff;border:none;font-weight:800;" onclick="openVipModal()">
               👑 VIP'ye Yükselt ve Tüyoları Gör
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    function getEstimatedSalaryForJob(j) {
+      if (j && j.estimatedSalary && j.estimatedSalary.rangeText) return j.estimatedSalary;
+      const title = (j && j.title || '').toLowerCase();
+      const desc = (j && j.description || '').toLowerCase();
+      const combined = `${title} ${desc}`;
+      
+      if (/yazilim|bilisim|siber|programci/i.test(combined)) {
+        return {
+          minSalary: 68000, maxSalary: 115000, averageSalary: 88000,
+          rangeText: '68.000 ₺ - 115.000 ₺ / Ay',
+          category: 'Sözleşmeli Bilişim Personeli (375 KHK)',
+          summary: 'Kamu kurumlarındaki sözleşmeli bilişim kadroları, memur tavan ücretinin 2 ile 4 katına kadar brüt tavan katsayısı ile istihdam edilmektedir.',
+          benefits: ['Tavan Ücret Katsayısı (2x - 4x)', 'Ek Proje Tazminatı', 'Esnek / Hibrit Çalışma'],
+          disclaimer: 'Tecrübe yılı ve bilinen programlama dillerine göre tavan katsayısı değişir.'
+        };
+      }
+      if (/uzman tabip|tabip|doktor|dis hekimi|eczaci/i.test(title)) {
+        return {
+          minSalary: 88000, maxSalary: 145000, averageSalary: 112000,
+          rangeText: '88.000 ₺ - 145.000 ₺ / Ay',
+          category: 'Sağlık Hizmetleri Sınıfı (Tabip)',
+          summary: 'Temel memur maaşına ek olarak aylık sabit ek ödeme, taban ve teşvik ek ödemeleri bordroya dahildir.',
+          benefits: ['Taban ve Teşvik Ek Ödemesi', 'Sabit Ek Ödeme', 'Aylık Nöbet Ücretleri'],
+          disclaimer: 'Hastane sınıfına, poliklinik/ameliyat teşvik katsayısına göre kazanç artar.'
+        };
+      }
+      if (/profesor|docent/i.test(title)) {
+        return {
+          minSalary: 82000, maxSalary: 118000, averageSalary: 96000,
+          rangeText: '82.000 ₺ - 118.000 ₺ / Ay',
+          category: 'Akademik Personel (2547 S.K.)',
+          summary: 'Kıdemli akademik kadro maaşına ek olarak akademik teşvik ve ek ders ücretleri uygulanır.',
+          benefits: ['Akademik Teşvik Ödeneği', 'Haftalık Ek Ders Ücretleri', 'Üniversite Geliştirme Ödeneği'],
+          disclaimer: 'Yayınlanan makale sayısı ve ek ders yüküne göre aylık gelir farklılık gösterir.'
+        };
+      }
+      if (/doktor ogretim|dr\.\s*ogr/i.test(title)) {
+        return {
+          minSalary: 65000, maxSalary: 78000, averageSalary: 71000,
+          rangeText: '65.000 ₺ - 78.000 ₺ / Ay',
+          category: 'Akademik Personel (Dr. Öğr. Üyesi)',
+          summary: 'Temel akademik kadro maaşına ek ders ücretleri, jüri/sınav ödemeleri ve akademik teşvik dahildir.',
+          benefits: ['Ek Ders Ücreti', 'Akademik Teşvik Puanı', 'Geliştirme / Araştırma Ödeneği'],
+          disclaimer: 'Haftalık verilen ek ders saatine göre net maaş yükselir.'
+        };
+      }
+      if (/ogretim gorevlisi|arastirma gorevlisi|ars\.\s*gor/i.test(title)) {
+        return {
+          minSalary: 56000, maxSalary: 66000, averageSalary: 61000,
+          rangeText: '56.000 ₺ - 66.000 ₺ / Ay',
+          category: 'Öğretim / Araştırma Görevlisi (2547 S.K.)',
+          summary: 'Yeni başlayan araştırma veya öğretim görevlisi için taban net aylık ve üniversite ödeneğidir.',
+          benefits: ['Üniversite Ödeneği', 'Ek Ders Payı', 'Yayın ve Kongre Destekleri'],
+          disclaimer: 'Büyükşehir dışındaki devlet üniversitelerinde ilave geliştirme ödeneği ödenir.'
+        };
+      }
+      if (/mufettis|denetci|kontrolor|uzman yardimci|hazine|kaymakam/i.test(title)) {
+        return {
+          minSalary: 62000, maxSalary: 75000, averageSalary: 68000,
+          rangeText: '62.000 ₺ - 75.000 ₺ / Ay',
+          category: 'Kariyer Meslek (A Grubu Kadro)',
+          summary: 'Bakanlık ve genel müdürlüklerdeki kariyer kadrolarında özel hizmet tazminatı ve 3600/4200 ek gösterge uygulanır.',
+          benefits: ['Özel Hizmet Tazminatı', '3600/4200 Ek Gösterge', 'Görev Harcırahı / Yolluk'],
+          disclaimer: 'Turne ve teftiş görevlerinde günlük resmi harcırah ödemesi eklenir.'
+        };
+      }
+      if (/muhendis|mimar|sehir plancisi/i.test(title)) {
+        return {
+          minSalary: 58000, maxSalary: 68000, averageSalary: 63000,
+          rangeText: '58.000 ₺ - 68.000 ₺ / Ay',
+          category: 'Teknik Hizmetler Sınıfı (Mühendis / Mimar)',
+          summary: 'Devlet kadrolarındaki mühendis ve mimarlar arazi tazminatı ve teknik sorumluluk ek ödemesi alır.',
+          benefits: ['3 Aylık Arazi Tazminatı', 'Teknik Sorumluluk Zammı', 'Ek Gösterge Avantajı'],
+          disclaimer: 'Arazide veya şantiyede görev yapılan günlere göre ek arazi tazminatı ödenir.'
+        };
+      }
+      if (/avukat|hukuk musaviri/i.test(title)) {
+        return {
+          minSalary: 56000, maxSalary: 67000, averageSalary: 61000,
+          rangeText: '56.000 ₺ - 67.000 ₺ / Ay',
+          category: 'Avukatlık Hizmetleri Sınıfı',
+          summary: 'Kamu avukatları aylık sabit net maaşın yanında kurumun kazandığı davalardan yasal vekalet ücreti payı alır.',
+          benefits: ['Yıllık Vekalet Ücreti Payı', 'Özel Hizmet Tazminatı', 'Baro Aidat / Sigorta Karşılama'],
+          disclaimer: 'Yıllık vekalet ücreti payı aylık ortalama kazanca ciddi oranda katkı sağlar.'
+        };
+      }
+      if (/subay|astsubay|uzman cavus|uzman erbas/i.test(title)) {
+        return {
+          minSalary: 56000, maxSalary: 72000, averageSalary: 64000,
+          rangeText: '56.000 ₺ - 72.000 ₺ / Ay',
+          category: 'Türk Silahlı Kuvvetleri Personeli',
+          summary: 'Kadro maaşına ek olarak operasyon tazminatı, tayin bedeli ve fiili hizmet zammı uygulanır.',
+          benefits: ['Operasyon / Asayiş Tazminatı', 'Tayin Bedeli (Yemek Yardımı)', 'Fiili Hizmet Zammı (Yıpranma)'],
+          disclaimer: 'Görev yapılan bölgeye ve hudut görevine göre ek tazminatlar uygulanır.'
+        };
+      }
+      if (/polis|komiser/i.test(title)) {
+        return {
+          minSalary: 55000, maxSalary: 65000, averageSalary: 59000,
+          rangeText: '55.000 ₺ - 65.000 ₺ / Ay',
+          category: 'Emniyet Hizmetleri Sınıfı (Polis)',
+          summary: 'Polis memurlarına emniyet hizmeti tazminatı, fazla çalışma ücreti ve yıpranma payı dahil net aylıktır.',
+          benefits: ['Emniyet Hizmet Tazminatı', 'Maktu Fazla Çalışma Ücreti', 'Silah ve Teçhizat Ödeneği'],
+          disclaimer: 'Bölgeye göre operasyon ve terör tazminatı eklenir.'
+        };
+      }
+      if (/bekci|carsi ve mahalle/i.test(title)) {
+        return {
+          minSalary: 49000, maxSalary: 55000, averageSalary: 52000,
+          rangeText: '49.000 ₺ - 55.000 ₺ / Ay',
+          category: 'Çarşı ve Mahalle Bekçisi',
+          summary: 'Emniyet bünyesinde gece çalışma tazminatı ve maktu mesai ile net ele geçen tutardır.',
+          benefits: ['Gece Görev Tazminatı', 'Maktu Çalışma Ücreti', 'Yıpranma Payı'],
+          disclaimer: 'Nöbet ve fazla çalışma saatine göre net gelir artar.'
+        };
+      }
+      if (/hemsire|ebe|saglik teknikeri|radyoloji|anestezi|laborant|paramedik|acil tip/i.test(title)) {
+        return {
+          minSalary: 48000, maxSalary: 58000, averageSalary: 52000,
+          rangeText: '48.000 ₺ - 58.000 ₺ / Ay',
+          category: 'Sağlık Hizmetleri Sınıfı (SHS)',
+          summary: 'Hastanelerde görev yapan sağlık personeline temel maaş haricinde taban ek ödeme ve nöbet ücreti verilir.',
+          benefits: ['Sağlık Taban Ek Ödemesi', 'Aylık Nöbet Ücretleri', 'Teşvik / Döner Sermaye Payı'],
+          disclaimer: 'Aylık tutulan nöbet sayısına ve hastanenin döner sermaye puanına göre artar.'
+        };
+      }
+      if (/zabita|itfaiye/i.test(title)) {
+        return {
+          minSalary: 46000, maxSalary: 54000, averageSalary: 50000,
+          rangeText: '46.000 ₺ - 54.000 ₺ / Ay',
+          category: 'Belediye Zabıta / İtfaiye Personeli',
+          summary: 'Belediyelerin zabıta ve itfaiye kadrolarında maktu mesai ve SDS (Sosyal Denge Sözleşmesi) uygulanır.',
+          benefits: ['Maktu Fazla Mesai Ücreti', 'Sosyal Denge Sözleşmesi (SDS)', 'Yıpranma Payı'],
+          disclaimer: 'Belediye meclisinin belirlediği SDS oranı bordroya ilave edilir.'
+        };
+      }
+      if (/ogretmen|egitici|egitmen/i.test(title)) {
+        return {
+          minSalary: 47000, maxSalary: 56000, averageSalary: 51000,
+          rangeText: '47.000 ₺ - 56.000 ₺ / Ay',
+          category: 'Eğitim ve Öğretim Hizmetleri (EÖHS)',
+          summary: 'Öğretmenler aylık taban maaşın üzerine haftalık ek ders ücreti ve hazırlık ödeneği alırlar.',
+          benefits: ['Haftalık Ek Ders Ücreti', 'Eğitime Hazırlık Ödeneği', 'Kıdem ve Derece Tazminatı'],
+          disclaimer: 'Haftalık ek ders saatine göre aylık net kazanç artar.'
+        };
+      }
+      if (/tekniker/i.test(title)) {
+        return {
+          minSalary: 47500, maxSalary: 54000, averageSalary: 50500,
+          rangeText: '47.500 ₺ - 54.000 ₺ / Ay',
+          category: 'Teknik Hizmetler Sınıfı (Tekniker)',
+          summary: 'Önlisans mezunu tekniker kadrolarında özel hizmet tazminatı ve teknik sorumluluk zammı uygulanır.',
+          benefits: ['Teknik Tazminat', 'Arazi / Saha Ödeneği', 'Yol ve Yemek Desteği'],
+          disclaimer: 'Arazide veya atölyede görev yapılan günlere göre ek tazminat ödenir.'
+        };
+      }
+      if (/teknisyen|usta/i.test(title)) {
+        return {
+          minSalary: 44500, maxSalary: 49500, averageSalary: 47000,
+          rangeText: '44.500 ₺ - 49.500 ₺ / Ay',
+          category: 'Teknik Hizmetler Sınıfı (Teknisyen)',
+          summary: 'Meslek lisesi mezunu teknisyen kadroları için taban net aylık ve teknik yan ödemelerdir.',
+          benefits: ['Teknik Hizmet Tazminatı', 'Atölye / Bakım Zammı', 'Yemek / Servis'],
+          disclaimer: 'Vardiyalı çalışan teknisyenlere ilave nöbet/vardiya ücreti ödenir.'
+        };
+      }
+      if (j && (j.jobType === 'isci' || /isci|temizlik|hizmetli|destek personeli|asci|sofor|bakim|bahcivan/i.test(title))) {
+        return {
+          minSalary: 43000, maxSalary: 49000, averageSalary: 46000,
+          rangeText: '43.000 ₺ - 49.000 ₺ / Ay',
+          category: 'Sürekli İşçi (Kamu Çerçeve Protokolü & TİS)',
+          summary: 'Kamu işçileri taban maaşa ek olarak yılda 52 günlük İlave Tediye ve toplu iş sözleşmesi (TİS) ikramiyesi alırlar. İkramiyelerle birlikte aylık ortalama kazanç ~52.000 ₺ - 58.000 ₺ seviyesine ulaşır.',
+          benefits: ['52 Günlük İlave Tediye (Yılda 4 Taksit)', 'TİS İkramiyesi (Yılda 2 Tam Maaş)', 'Sosyal Yardım & Yemek Ücreti'],
+          disclaimer: 'Kamu Çerçeve Protokolü kapsamındaki ikramiyeler aylık net ortalamayı ciddi oranda yükseltir.'
+        };
+      }
+      if (/buro|memur|vhki|bilgisayar isletmen|muhasebe|sekreter|veznedar/i.test(title)) {
+        return {
+          minSalary: 44500, maxSalary: 50000, averageSalary: 47000,
+          rangeText: '44.500 ₺ - 50.000 ₺ / Ay',
+          category: 'Genel İdare Hizmetleri Sınıfı (GİHS)',
+          summary: 'Yeni başlayan bekar 9/1 memur veya sözleşmeli büro personeli için temel net aylık bordro tutarıdır.',
+          benefits: ['Taban Aylık & Yan Ödeme', 'Aile ve Çocuk Yardımı', 'Banka Maaş Promosyonu'],
+          disclaimer: 'Evli ve çocuklu personelde aile yardımı ödeneği ile tutar artar.'
+        };
+      }
+      
+      const edu = (j && j.minEducation || '').toLowerCase();
+      if (edu === 'lisans' || edu === 'yukseklisans' || edu === 'doktora') {
+        return {
+          minSalary: 45000, maxSalary: 51000, averageSalary: 48000,
+          rangeText: '45.000 ₺ - 51.000 ₺ / Ay',
+          category: 'Kamu Personeli (Lisans Kadrosu)',
+          summary: 'Lisans mezunu yeni başlayan kamu görevlisi için net temel maaş ve kanuni ek ödemelerdir.',
+          benefits: ['Taban Aylık', 'Özel Hizmet Tazminatı', 'Sendika ve Aile Yardımı'],
+          disclaimer: 'Kurumun tabi olduğu teşkilat kanununa ve döner sermaye imkânlarına göre net maaş değişebilir.'
+        };
+      } else if (edu === 'onlisans') {
+        return {
+          minSalary: 43500, maxSalary: 48500, averageSalary: 46000,
+          rangeText: '43.500 ₺ - 48.500 ₺ / Ay',
+          category: 'Kamu Personeli (Önlisans Kadrosu)',
+          summary: 'Önlisans mezunu memur veya sözleşmeli personel başlangıç derecesi net maaşıdır.',
+          benefits: ['Taban Aylık', 'Ek Ödeme', 'Yol ve Yemek Desteği'],
+          disclaimer: 'Kadro unvanına göre teknik sorumluluk veya vardiya ücreti eklenebilir.'
+        };
+      }
+      return {
+        minSalary: 42500, maxSalary: 47000, averageSalary: 44500,
+        rangeText: '42.500 ₺ - 47.000 ₺ / Ay',
+        category: 'Kamu Personeli (Temel Kadro)',
+        summary: '2026 yılı güncel en düşük memur taban aylığı ve yan ödemeleri baz alınarak hesaplanmıştır.',
+        benefits: ['Devlet Güvencesi & Taban Aylık', 'Aile Yardımı', 'Yemek / Servis İmkânı'],
+        disclaimer: 'Kamu kurum ve kuruluşlarının ek ödeme kararnamelerine göre net tutar artabilir.'
+      };
+    }
+
+    function renderSalaryBox(j) {
+      const active = isVipActive();
+      const s = getEstimatedSalaryForJob(j);
+
+      if (active) {
+        return `
+          <div class="card" style="border:1.5px solid #10b981;background:linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(5, 150, 105, 0.1) 100%);box-shadow:0 2px 8px rgba(16, 185, 129, 0.1);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:24px;">💰</span>
+                <div>
+                  <h3 style="margin:0;color:#065f46;font-size:16px;">Tahmini Net Kamu Maaşı</h3>
+                  <span style="font-size:11.5px;color:#047857;font-weight:700;">👑 VIP Maaş & Ek Ödeme Rehberi</span>
+                </div>
+              </div>
+              <span class="badge" style="background:#d1fae5;color:#065f46;font-weight:800;font-size:13.5px;padding:6px 12px;border:1px solid #6ee7b7;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                ${escapeHtml(s.rangeText)}
+              </span>
+            </div>
+
+            <div style="font-size:12.5px;color:#064e3b;font-weight:700;margin-bottom:4px;">
+              📋 Kadro Statüsü: <span style="font-weight:800;color:#047857;">${escapeHtml(s.category)}</span>
+            </div>
+            <div style="font-size:13.5px;color:var(--text);line-height:1.55;margin-bottom:10px;">
+              ${escapeHtml(s.summary)}
+            </div>
+
+            <div style="margin-bottom:8px;">
+              <span style="font-size:12px;font-weight:700;color:#065f46;">🎁 Dahil Edilen Ek Gelir & Yan Haklar:</span>
+              <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:5px;">
+                ${s.benefits.map(b => `<span class="badge" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-size:11.5px;padding:4px 8px;font-weight:600;">✨ ${escapeHtml(b)}</span>`).join('')}
+              </div>
+            </div>
+
+            <div style="font-size:11px;color:var(--muted);line-height:1.4;border-top:1px dashed #a7f3d0;padding-top:6px;margin-top:6px;">
+              ℹ️ ${escapeHtml(s.disclaimer)} <i>(2026 yılı memur katsayısı ve taban aylıklar baz alınmıştır.)</i>
+            </div>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="card vip-locked-box" style="border:1.5px solid #fcd34d;background:#fffdf5;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:24px;">💰</span>
+                <div>
+                  <h3 style="margin:0;color:#b45309;font-size:15.5px;">Tahmini Net Kamu Maaşı & Yan Haklar</h3>
+                  <span style="font-size:11.5px;color:#92400e;font-weight:600;">Bu kadronun aylık kazancı ne kadar?</span>
+                </div>
+              </div>
+              <span class="badge" style="background:#fef3c7;color:#92400e;font-weight:800;font-size:11px;padding:4px 8px;">👑 VIP ÖZEL</span>
+            </div>
+
+            <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;line-height:1.5;">
+              Bu kadroya atandığınızda alacağınız <b>net aylık taban maaş, döner sermaye / ek ödemeler, tediye ve ikramiye</b> dökümü sadece VIP Üyelere açıktır.
+            </p>
+
+            <!-- Bulanık Önizleme -->
+            <div style="display:flex;gap:8px;filter:blur(4.5px);user-select:none;opacity:0.55;margin-bottom:12px;pointer-events:none;">
+              <span class="badge" style="background:#d1fae5;color:#065f46;font-size:14px;padding:6px 12px;font-weight:800;">49.500 ₺ - 56.000 ₺ / Ay</span>
+              <span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:12px;padding:6px 10px;">+ İkramiye / Tediye</span>
+              <span class="badge" style="background:#fef3c7;color:#92400e;font-size:12px;padding:6px 10px;">+ Döner Sermaye</span>
+            </div>
+
+            <button class="btn btn-sm" style="width:100%;background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#fff;border:none;font-weight:800;padding:9px 14px;box-shadow:0 3px 8px rgba(245, 158, 11, 0.35);" onclick="openVipModal()">
+              👑 VIP Üye Ol ve Maaşı Gör ↗
             </button>
           </div>
         `;
@@ -4413,6 +4708,14 @@
             <span class="badge" style="background:var(--border);color:var(--text)">${escapeHtml(TYPE_LABELS[j.jobType] || j.jobType)}</span>
             <span class="badge" style="background:${kb.bg};color:${kb.color}">${escapeHtml(kb.text)}</span>
             ${j.positions ? `<span class="badge" style="background:var(--border)">${escapeHtml(j.positions)} kişi</span>` : ''}
+            ${(() => {
+              const sal = getEstimatedSalaryForJob(j);
+              if (isVipActive()) {
+                return `<span class="badge" style="background:#d1fae5;color:#065f46;font-weight:700;">💰 ~${Math.round(sal.averageSalary / 1000)}k ₺</span>`;
+              } else {
+                return `<span class="badge" style="background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;">💰 Maaş: 🔒 VIP</span>`;
+              }
+            })()}
             ${j.applicationStatus ? `<span class="badge" style="background:var(--primary-light);color:var(--primary)">${escapeHtml(APP_LABELS[j.applicationStatus] || j.applicationStatus)}</span>` : ''}
           </div>
           ${(j.requiredCertificates || []).length ? `<div class="sub" style="margin-bottom:8px">📜 Aranan belge: ${escapeHtml(j.requiredCertificates.join(j.certificateMode === 'any' ? ' veya ' : ', '))}</div>` : ''}
@@ -4778,6 +5081,7 @@
             </button>
           </div>
           `) : ''}
+          ${renderSalaryBox(j)}
           ${renderVipJobBox(j)}
           
           <!-- ŞART KONTROLÜ KARTI -->
