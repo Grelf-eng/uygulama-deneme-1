@@ -525,11 +525,14 @@
       color: #fff !important;
       box-shadow: 0 2px 8px rgba(37, 99, 235, 0.28);
     }
+    #detailScreen {
+      padding-bottom: 88px;
+    }
     .floating-forum-pill {
       position: fixed;
-      bottom: 74px;
+      bottom: calc(76px + env(safe-area-inset-bottom, 0px));
       right: 14px;
-      z-index: 25;
+      z-index: 20;
       background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
       color: #fff;
       border: 1.5px solid #c084fc;
@@ -543,7 +546,7 @@
       box-shadow: 0 4px 16px rgba(109, 40, 217, 0.45);
       cursor: pointer;
       user-select: none;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
     }
     .floating-forum-pill:hover {
       transform: translateY(-2px);
@@ -2324,38 +2327,47 @@
       const sysBtn = document.getElementById('adminSystemScrapeBtn');
       const statusEl = document.getElementById('adminScrapeStatus');
       if (btn) { btn.disabled = true; btn.innerText = '⏳ İlanlar taranıyor...'; }
-      if (sysBtn) { sysBtn.disabled = true; sysBtn.innerText = '⏳ Resmi kaynaklar taranıyor...'; }
-      if (statusEl) statusEl.innerText = '⏳ Resmi Gazete, Kariyer Kapısı ve İŞKUR taranıyor, lütfen bekleyin...';
+      if (sysBtn) { sysBtn.disabled = true; sysBtn.innerText = '⏳ Taranıyor...'; }
+      if (statusEl) statusEl.innerText = '⏳ Resmi ilan kaynakları taranıyor, lütfen bekleyin...';
 
       try {
         const r = await api('/admin/scrape', { method: 'POST' });
-        await loadAdminDashboard();
-        if (btn) btn.innerText = '✅ Tarama Başlatıldı!';
-        if (sysBtn) sysBtn.innerText = '✅ Tarama Başlatıldı!';
-        if (statusEl) statusEl.innerText = '✅ ' + (r.message || 'Tarama arka planda başarıyla başlatıldı.');
-
-        // 4 saniye sonra yeni gelen ilanları ekrana yansıt
-        setTimeout(async () => {
-          await loadAdminDashboard();
-          if (typeof loadAllJobs === 'function') await loadAllJobs();
-          if (statusEl) statusEl.innerText = '✅ Güncel ilanlar sisteme işlendi.';
-        }, 4000);
+        
+        // Canlı durum takibi: Tarama bitene kadar her 1.5 saniyede bir durumu sorgula
+        let pollCount = 0;
+        const checkInterval = setInterval(async () => {
+          pollCount++;
+          try {
+            const s = await api('/admin/scrape/status');
+            if (s && s.running) {
+              const src = s.currentSource || 'Kaynaklar';
+              const progressTxt = `⏳ Taranıyor: ${src} (${s.completedSources || 0}/${s.totalSources || 4} kaynak, ${s.foundCount || 0} ilan incelendi, +${s.addedCount || 0} yeni)...`;
+              if (statusEl) statusEl.innerText = progressTxt;
+              if (btn) btn.innerText = `⏳ Taranıyor (+${s.addedCount || 0} yeni)...`;
+              if (sysBtn) sysBtn.innerText = `⏳ Taranıyor...`;
+            } else {
+              clearInterval(checkInterval);
+              if (btn) { btn.disabled = false; btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek'; }
+              if (sysBtn) { sysBtn.disabled = false; sysBtn.innerText = '🔄 Resmi Kaynaklardan İlanları Şimdi Tara (Scrape)'; }
+              if (statusEl) {
+                statusEl.innerText = '✅ ' + (s.lastSummary || 'Tarama tamamlandı! Güncel ilanlar işlendi.');
+              }
+              await loadAdminDashboard();
+              if (typeof loadAllJobs === 'function') await loadAllJobs();
+            }
+          } catch (err) {
+            if (pollCount > 40) {
+              clearInterval(checkInterval);
+              if (btn) { btn.disabled = false; btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek'; }
+              if (sysBtn) { sysBtn.disabled = false; sysBtn.innerText = '🔄 Resmi Kaynaklardan İlanları Şimdi Tara (Scrape)'; }
+            }
+          }
+        }, 1500);
       } catch (e) {
         alert(e.message || 'Tarama sırasında hata oluştu.');
-        if (btn) btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek';
-        if (sysBtn) sysBtn.innerText = '🔄 Resmi Kaynaklardan İlanları Şimdi Tara (Scrape)';
-        if (statusEl) statusEl.innerText = '❌ Tarama başarısız: ' + e.message;
-      } finally {
-        setTimeout(() => {
-          if (btn) {
-            btn.disabled = false;
-            btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek';
-          }
-          if (sysBtn) {
-            sysBtn.disabled = false;
-            sysBtn.innerText = '🔄 Resmi Kaynaklardan İlanları Şimdi Tara (Scrape)';
-          }
-        }, 3000);
+        if (btn) { btn.disabled = false; btn.innerText = '🔄 Kaynaklardan İlanları Yeniden Çek'; }
+        if (sysBtn) { sysBtn.disabled = false; sysBtn.innerText = '🔄 Resmi Kaynaklardan İlanları Şimdi Tara (Scrape)'; }
+        if (statusEl) statusEl.innerText = '❌ Tarama başlatılamadı: ' + e.message;
       }
     }
 
@@ -3588,9 +3600,15 @@
     function openExternalUrl(url) {
       if (!url) return;
       let clean = url.trim();
-      // Kariyer kapısı DNS hatası düzeltmesi: kariyerkapisi.gov.tr -> isealimkariyerkapisi.cbiko.gov.tr
-      if (/kariyerkapisi/i.test(clean) && !clean.includes('cbiko.gov.tr')) {
-        clean = 'https://isealimkariyerkapisi.cbiko.gov.tr';
+      // Kariyer kapısı DNS hatası ve e-Devlet 404 düzeltmesi:
+      // isealimkariyerkapisi.cbiko.gov.tr, kariyerkapisi.gov.tr veya eski turkiye.gov.tr slug'ları -> doğrudan çalışan kariyerkapisi.cbiko.gov.tr
+      if (
+        /isealimkariyerkapisi/i.test(clean) ||
+        /kariyerkapisi\.gov\.tr/i.test(clean) ||
+        (/kariyerkapisi/i.test(clean) && !clean.includes('cbiko.gov.tr')) ||
+        /turkiye\.gov\.tr\/(cumhurbaskanligi-)?kamu-ise-alim/i.test(clean)
+      ) {
+        clean = 'https://kariyerkapisi.cbiko.gov.tr';
       }
       if (window.AndroidBridge && window.AndroidBridge.openExternal) {
         window.AndroidBridge.openExternal(clean);
@@ -3665,7 +3683,7 @@
             return {
               portalName: `${escapeHtml(j.institution || 'Kurum')} Başvuru Sayfası`,
               primaryUrl: u,
-              edevletUrl: 'https://isealimkariyerkapisi.cbiko.gov.tr',
+              edevletUrl: 'https://kariyerkapisi.cbiko.gov.tr',
               tipText: `💡 <b>Kurum Portalı:</b> Başvuru doğrudan kurumun online sınav/başvuru ekranı veya Kariyer Kapısı üzerinden alınmaktadır.`
             };
           }
@@ -3675,8 +3693,8 @@
       // 7. Genel Tüm Kamu İlanları (Cumhurbaşkanlığı Kariyer Kapısı)
       return {
         portalName: 'Cumhurbaşkanlığı Kariyer Kapısı (Resmi Portal)',
-        primaryUrl: 'https://isealimkariyerkapisi.cbiko.gov.tr',
-        edevletUrl: 'https://www.turkiye.gov.tr/kamu-ise-alim-ve-kariyer-kapisi',
+        primaryUrl: 'https://kariyerkapisi.cbiko.gov.tr',
+        edevletUrl: 'https://kariyerkapisi.cbiko.gov.tr',
         tipText: `💡 <b>Kariyer Kapısı:</b> T.C. Cumhurbaşkanlığı İnsan Kaynakları Ofisi resmi sistemidir. e-Devlet ile giriş yaptıktan sonra kurumlar listesinden <b>"${escapeHtml(j.institution || 'Kurum')}"</b> seçerek başvurunuzu 2 dakikada tamamlayabilirsiniz.`
       };
     }
@@ -3694,7 +3712,7 @@
       }
       const j = (currentOpenJob && currentOpenJob.id === jobId) ? currentOpenJob : null;
       if (!j) {
-        openExternalUrl('https://isealimkariyerkapisi.cbiko.gov.tr');
+        openExternalUrl('https://kariyerkapisi.cbiko.gov.tr');
         return;
       }
       const officialInfo = resolveOfficialApplyInfo(j);
@@ -3744,18 +3762,21 @@
       const btnForum = document.getElementById('btnDetailTabForum');
       const viewInfo = document.getElementById('detailView_info');
       const viewForum = document.getElementById('detailView_forum');
+      const floatBtn = document.getElementById('floatingForumBtn');
 
       if (tab === 'forum') {
         if (btnInfo) btnInfo.classList.remove('active');
         if (btnForum) btnForum.classList.add('active');
         if (viewInfo) viewInfo.classList.add('hidden');
         if (viewForum) viewForum.classList.remove('hidden');
+        if (floatBtn) floatBtn.classList.add('hidden');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         if (btnForum) btnForum.classList.remove('active');
         if (btnInfo) btnInfo.classList.add('active');
         if (viewForum) viewForum.classList.add('hidden');
         if (viewInfo) viewInfo.classList.remove('hidden');
+        if (floatBtn) floatBtn.classList.remove('hidden');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
@@ -4010,6 +4031,329 @@
             </div>
             <button class="btn btn-sm" style="width:100%;background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#fff;border:none;font-weight:800;" onclick="openVipModal()">
               👑 VIP'ye Yükselt ve Tüyoları Gör
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    function getEstimatedSalaryForJob(j) {
+      if (j && j.estimatedSalary && j.estimatedSalary.rangeText) return j.estimatedSalary;
+      const rawTitle = (j && j.title || '').toString();
+      const rawDesc = (j && j.description || '').toString().slice(0, 2800);
+      const normTr = (s) => (s || '').toLowerCase()
+        .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c');
+      const titleNorm = normTr(rawTitle);
+      const descSnippet = normTr(rawDesc);
+      const full = `${titleNorm} ${descSnippet}`;
+
+      // 1. Tabip / Diş Hekimi / Eczacı (~110.000 ₺ - 165.000 ₺)
+      if (/\b(uzman tabip|tabip|doktor|dis hekimi|eczaci)\b/.test(titleNorm) || (/\b(tabip|doktor|dis hekimi)\b/.test(descSnippet) && !/\bdoktora\b|\bdoktor ogretim\b/.test(full))) {
+        return {
+          minSalary: 110000, maxSalary: 165000, averageSalary: 135000,
+          rangeText: '110.000 ₺ - 165.000 ₺ / Ay',
+          category: 'Sağlık Hizmetleri Sınıfı (Tabip / Uzman Hekim)',
+          summary: 'Temel memur maaşına ek olarak aylık sabit ek ödeme, taban ve teşvik ek ödemeleri bordroya dahildir.',
+          benefits: ['Taban ve Teşvik Ek Ödemesi', 'Sabit Ek Ödeme', 'Aylık Nöbet Ücretleri'],
+          disclaimer: 'Hastane sınıfına, poliklinik/ameliyat teşvik katsayısına göre kazanç artar.'
+        };
+      }
+
+      // 2. Sözleşmeli Bilişim Personeli (375 KHK) (~95.000 ₺ - 150.000 ₺)
+      if (/\b(bilisim personeli|yazilim|siber guvenlik|veritabani programcisi|sistem yoneticisi)\b/.test(titleNorm) || (/\b(sozlesmeli bilisim|yazilim gelistirme|ag yoneticisi)\b/.test(descSnippet) && !/\bburo\b|\bdestek\b/.test(titleNorm))) {
+        return {
+          minSalary: 95000, maxSalary: 150000, averageSalary: 118000,
+          rangeText: '95.000 ₺ - 150.000 ₺ / Ay',
+          category: 'Sözleşmeli Bilişim Personeli (375 KHK)',
+          summary: 'Kamu kurumlarındaki sözleşmeli bilişim kadroları, memur tavan ücretinin 2 ile 4 katına kadar brüt tavan katsayısı ile istihdam edilmektedir.',
+          benefits: ['Tavan Ücret Katsayısı (2x - 4x)', 'Ek Proje Tazminatı', 'Esnek / Hibrit Çalışma'],
+          disclaimer: 'Tecrübe yılı ve bilinen programlama dillerine göre tavan katsayısı değişir.'
+        };
+      }
+
+      // 3. Profesör / Doçent (~105.000 ₺ - 135.000 ₺)
+      if (/\b(profesor|docent)\b/.test(titleNorm) || (/\b(profesor kadrosu|docent kadrosu)\b/.test(descSnippet) && !/\barastirma gorevlisi\b/.test(titleNorm))) {
+        return {
+          minSalary: 105000, maxSalary: 135000, averageSalary: 118000,
+          rangeText: '105.000 ₺ - 135.000 ₺ / Ay',
+          category: 'Akademik Personel (Prof. / Doç.)',
+          summary: 'Kıdemli akademik kadro maaşına ek olarak akademik teşvik ve ek ders ücretleri uygulanır.',
+          benefits: ['Akademik Teşvik Ödeneği', 'Haftalık Ek Ders Ücretleri', 'Üniversite Geliştirme Ödeneği'],
+          disclaimer: 'Yayınlanan makale sayısı ve ek ders yüküne göre aylık gelir farklılık gösterir.'
+        };
+      }
+
+      // 4. Doktor Öğretim Üyesi (~88.000 ₺ - 105.000 ₺)
+      if (/\b(doktor ogretim|dr\.?\s*ogr)\b/.test(titleNorm) || /\bdoktor ogretim uyesi\b/.test(descSnippet)) {
+        return {
+          minSalary: 88000, maxSalary: 105000, averageSalary: 95000,
+          rangeText: '88.000 ₺ - 105.000 ₺ / Ay',
+          category: 'Akademik Personel (Dr. Öğr. Üyesi)',
+          summary: 'Temel akademik kadro maaşına ek ders ücretleri, jüri/sınav ödemeleri ve akademik teşvik dahildir.',
+          benefits: ['Ek Ders Ücreti', 'Akademik Teşvik Puanı', 'Geliştirme / Araştırma Ödeneği'],
+          disclaimer: 'Haftalık verilen ek ders saatine göre net maaş yükselir.'
+        };
+      }
+
+      // 5. Araştırma Görevlisi / Öğretim Görevlisi (~76.000 ₺ - 88.000 ₺)
+      if (/\b(ogretim gorevlisi|arastirma gorevlisi|ars\.?\s*gor)\b/.test(titleNorm) || /\b(arastirma gorevlisi|ogretim gorevlisi)\b/.test(descSnippet)) {
+        return {
+          minSalary: 76000, maxSalary: 88000, averageSalary: 81000,
+          rangeText: '76.000 ₺ - 88.000 ₺ / Ay',
+          category: 'Öğretim / Araştırma Görevlisi (2547 S.K.)',
+          summary: 'Yeni başlayan araştırma veya öğretim görevlisi için taban net aylık ve üniversite ödeneğidir.',
+          benefits: ['Üniversite Ödeneği', 'Ek Ders Payı', 'Yayın ve Kongre Destekleri'],
+          disclaimer: 'Büyükşehir dışındaki devlet üniversitelerinde ilave geliştirme ödeneği ödenir.'
+        };
+      }
+
+      // 6. Müfettiş / Uzman / Denetçi / Kaymakam (~85.000 ₺ - 105.000 ₺)
+      if (/\b(mufettis|denetci|kontrolor|uzman yardimci|kaymakam)\b/.test(titleNorm) || /\b(mufettis yardimcisi|uzman yardimcisi|denetci yardimcisi)\b/.test(descSnippet)) {
+        return {
+          minSalary: 85000, maxSalary: 105000, averageSalary: 94000,
+          rangeText: '85.000 ₺ - 105.000 ₺ / Ay',
+          category: 'Kariyer Meslek (A Grubu Kadro)',
+          summary: 'Bakanlık ve genel müdürlüklerdeki kariyer kadrolarında özel hizmet tazminatı ve ek gösterge uygulanır.',
+          benefits: ['Özel Hizmet Tazminatı', 'Ek Gösterge Avantajı', 'Görev Harcırahı / Yolluk'],
+          disclaimer: 'Turne ve teftiş görevlerinde günlük resmi harcırah ödemesi eklenir.'
+        };
+      }
+
+      // 7. Mühendis / Mimar / Şehir Plancısı (~82.000 ₺ - 98.000 ₺)
+      if (/\b(muhendis|mimar|sehir plancisi)\b/.test(titleNorm) || /\b(muhendis kadrosu|mimar kadrosu|muhendis alimi)\b/.test(descSnippet)) {
+        return {
+          minSalary: 82000, maxSalary: 98000, averageSalary: 89000,
+          rangeText: '82.000 ₺ - 98.000 ₺ / Ay',
+          category: 'Teknik Hizmetler Sınıfı (Mühendis / Mimar)',
+          summary: 'Devlet kadrolarındaki mühendis ve mimarlar arazi tazminatı ve teknik sorumluluk ek ödemesi alır.',
+          benefits: ['3 Aylık Arazi Tazminatı', 'Teknik Sorumluluk Zammı', 'Ek Gösterge Avantajı'],
+          disclaimer: 'Arazide veya şantiyede görev yapılan günlere göre ek arazi tazminatı ödenir.'
+        };
+      }
+
+      // 8. Avukat / Hukuk Müşaviri (~78.000 ₺ - 92.000 ₺)
+      if (/\b(avukat|hukuk musaviri)\b/.test(titleNorm) || /\b(avukat kadrosu|avukat alimi)\b/.test(descSnippet)) {
+        return {
+          minSalary: 78000, maxSalary: 92000, averageSalary: 84000,
+          rangeText: '78.000 ₺ - 92.000 ₺ / Ay',
+          category: 'Avukatlık Hizmetleri Sınıfı',
+          summary: 'Kamu avukatları aylık net maaşın yanında kurumun kazandığı davalardan yasal vekalet ücreti payı alır.',
+          benefits: ['Yıllık Vekalet Ücreti Payı', 'Özel Hizmet Tazminatı', 'Baro Aidat / Sigorta Karşılama'],
+          disclaimer: 'Yıllık vekalet ücreti payı aylık ortalama kazanca ciddi oranda katkı sağlar.'
+        };
+      }
+
+      // 9. TSK / Emniyet (~78.000 ₺ - 105.000 ₺)
+      if (/\b(subay|astsubay|uzman cavus|uzman erbas|polis|komiser)\b/.test(titleNorm) || /\b(subay|astsubay|uzman erbas|polis alimi)\b/.test(descSnippet)) {
+        return {
+          minSalary: 78000, maxSalary: 105000, averageSalary: 88000,
+          rangeText: '78.000 ₺ - 105.000 ₺ / Ay',
+          category: 'Güvenlik / TSK / Emniyet Hizmetleri',
+          summary: 'Kadro maaşına ek olarak asayiş/operasyon tazminatı, fazla çalışma ve tayin bedeli uygulanır.',
+          benefits: ['Operasyon / Asayiş Tazminatı', 'Tayin Bedeli (Yemek Yardımı)', 'Fiili Hizmet Zammı (Yıpranma)'],
+          disclaimer: 'Görev yapılan bölgeye ve operasyonel şartlara göre ek tazminatlar uygulanır.'
+        };
+      }
+
+      // 10. Hemşire / Ebe / Sağlık Teknikeri (SHS) (~72.000 ₺ - 86.000 ₺)
+      if (/\b(hemsire|ebe|saglik teknikeri|radyoloji|anestezi|laborant|paramedik|acil tip)\b/.test(titleNorm) || /\b(hemsire|ebe|saglik teknikeri|laborant|paramedik)\b/.test(descSnippet)) {
+        return {
+          minSalary: 72000, maxSalary: 86000, averageSalary: 78000,
+          rangeText: '72.000 ₺ - 86.000 ₺ / Ay',
+          category: 'Sağlık Hizmetleri Sınıfı (Hemşire / SHS)',
+          summary: 'Hastanelerde görev yapan sağlık personeline temel taban maaş, sabit ek ödeme, nöbet ve teşvik ödemeleri verilir.',
+          benefits: ['Sağlık Taban ve Teşvik Ek Ödemesi', 'Aylık Nöbet Ücretleri', 'Yemek ve Giyim Yardımı'],
+          disclaimer: 'Aylık tutulan nöbet sayısına ve hastanenin döner sermaye puanına göre artar.'
+        };
+      }
+
+      // 11. Psikolog / Sosyal Hizmet / Diyetisyen / Fizyoterapist (~74.000 ₺ - 85.000 ₺)
+      if (/\b(psikolog|sosyal calimaci|sosyal hizmet|diyetisyen|fizyoterapist|cocuk gelisimcisi)\b/.test(titleNorm) || /\b(psikolog|sosyal calimaci|diyetisyen)\b/.test(descSnippet)) {
+        return {
+          minSalary: 74000, maxSalary: 85000, averageSalary: 79000,
+          rangeText: '74.000 ₺ - 85.000 ₺ / Ay',
+          category: 'Sağlık Hizmetleri Sınıfı (Uzman / Lisans)',
+          summary: 'Kamu kurumları ve hastanelerde lisans mezunu sağlık uzmanları için net aylık ve ek ödemelerdir.',
+          benefits: ['Sabit Ek Ödeme', 'Nöbet / Mesai Ücreti', 'Sosyal Denge / Teşvik Payı'],
+          disclaimer: 'Görev yapılan birime (SHÇEK, Hastane, Adliye) göre ek tazminatlar uygulanır.'
+        };
+      }
+
+      // 12. Zabıta / İtfaiye (~70.000 ₺ - 82.000 ₺)
+      if (/\b(zabita|itfaiye)\b/.test(titleNorm) || /\b(zabita memuru|itfaiye eri)\b/.test(descSnippet)) {
+        return {
+          minSalary: 70000, maxSalary: 82000, averageSalary: 75000,
+          rangeText: '70.000 ₺ - 82.000 ₺ / Ay',
+          category: 'Belediye Zabıta / İtfaiye Personeli',
+          summary: 'Belediyelerin zabıta ve itfaiye kadrolarında maktu mesai ve SDS (Sosyal Denge Sözleşmesi) uygulanır.',
+          benefits: ['Maktu Fazla Mesai Ücreti', 'Sosyal Denge Sözleşmesi (SDS)', 'Yıpranma Payı'],
+          disclaimer: 'Belediye meclisinin belirlediği SDS oranı bordroya ilave edilir.'
+        };
+      }
+
+      // 13. Tekniker / Teknisyen (~70.000 ₺ - 80.000 ₺)
+      if (/\b(tekniker|teknisyen|laborant|usta|surveyan)\b/.test(titleNorm) || /\b(tekniker kadrosu|teknisyen kadrosu)\b/.test(descSnippet)) {
+        return {
+          minSalary: 70000, maxSalary: 80000, averageSalary: 74500,
+          rangeText: '70.000 ₺ - 80.000 ₺ / Ay',
+          category: 'Teknik Hizmetler Sınıfı (Tekniker / Teknisyen)',
+          summary: 'Teknik kadrolar için başlangıç net maaşı, özel hizmet tazminatı ve saha ödemeleridir.',
+          benefits: ['Teknik Hizmet Tazminatı', 'Atölye / Bakım Zammı', 'Yemek / Servis'],
+          disclaimer: 'Arazide veya atölyede görev yapılan günlere göre ek tazminat ödenir.'
+        };
+      }
+
+      // 14. Büro Personeli / VHKİ / Memur / Sekreter (~68.000 ₺ - 75.000 ₺)
+      if (/\b(buro personeli|memur|vhki|bilgisayar isletmen|sekreter|veznedar|muhasebe)\b/.test(titleNorm) || /\b(buro personeli|veri hazirlama)\b/.test(descSnippet)) {
+        return {
+          minSalary: 68000, maxSalary: 75000, averageSalary: 69200,
+          rangeText: '68.000 ₺ - 75.000 ₺ / Ay',
+          category: 'Genel İdare Hizmetleri (Büro / VHKİ / Memur)',
+          summary: 'VHKİ ve büro personeli kadrolarında yemek dahil net maaş ~68.700 TL ile 69.700 TL arasında gerçekleşmektedir.',
+          benefits: ['Yemek Dahil Net Maaş (~68.700 - 69.700 ₺)', 'Taban Aylık & Yan Ödeme', 'Banka Maaş Promosyonu & Aile Yardımı'],
+          disclaimer: 'İkramiye veya tediye yatan aylarda ele geçen net gelir 87.000 TL ila 95.000 TL üzerine çıkar.'
+        };
+      }
+
+      // 15. Koruma ve Güvenlik Görevlisi / Bekçi (~68.000 ₺ - 77.000 ₺)
+      if (/\b(guvenlik|koruma ve guvenlik|bekci|carsi ve mahalle)\b/.test(titleNorm) || /\b(koruma ve guvenlik gorevlisi|ozel guvenlik)\b/.test(descSnippet)) {
+        return {
+          minSalary: 68000, maxSalary: 77000, averageSalary: 72500,
+          rangeText: '68.000 ₺ - 77.000 ₺ / Ay',
+          category: 'Güvenlik ve Koruma Hizmetleri (Kamusal)',
+          summary: 'Kamu kurumlarında vardiyalı çalışan koruma ve güvenlik personeli net maaş, gece mesai farkı ve yemek yardımı dahil ortalama ~72.500 TL net almaktadır.',
+          benefits: ['Gece Görev / Vardiya Zammı', 'Giyim / Üniforma Desteği', 'Yol ve Yemek Yardımı'],
+          disclaimer: 'Sürekli işçi statüsündeki personelde yılda 52 günlük tediye ve TİS ikramiyesi ile kazanç katlanır.'
+        };
+      }
+
+      // 16. Sürekli İşçi (Kamu Çerçeve Protokolü & TİS) (~68.000 ₺ - 78.000 ₺)
+      if (j && j.jobType === 'isci' || /\b(surekli isci|kamu iscisi)\b/.test(titleNorm) || /\bsurekli isci\b/.test(descSnippet)) {
+        return {
+          minSalary: 68000, maxSalary: 78000, averageSalary: 73000,
+          rangeText: '68.000 ₺ - 78.000 ₺ / Ay',
+          category: 'Sürekli İşçi (Kamu Çerçeve Protokolü & TİS)',
+          summary: 'Ortalama kamu işçisi net maaşı 68.000 TL – 78.000 TL aralığındadır. 13 günlük İlave Tediye (taksit başı ~21.900 - 25.500 TL) ve TİS ikramiyeleri (~49.400 TL) yatan aylarda ele geçen toplam gelir 87.000 TL ila 130.000 TL bandına ulaşmaktadır.',
+          benefits: [
+            '52 Günlük İlave Tediye (Taksit Başı ~22.000 - 25.500 ₺)',
+            'TİS İkramiyesi (Yılda 2 Kez ~49.400 ₺)',
+            'Tediye/İkramiye Aylarında 87.000 - 130.000 ₺ Toplam Gelir'
+          ],
+          disclaimer: 'Toplu İş Sözleşmesi (TİS) ve İlave Tediye ödemeleri kamu işçilerinin aylık ortalamasını ciddi oranda yükseltir.'
+        };
+      }
+
+      // 17. Destek Personeli / Temizlik / Hizmetli / Aşçı / Şoför (~65.400 ₺ - 72.000 ₺)
+      if (/\b(destek personeli|temizlik|hizmetli|asci|sofor|bakim|bahcivan|kaloriferci)\b/.test(titleNorm) || /\b(destek personeli|temizlik gorevlisi|hizmetli alimi)\b/.test(descSnippet)) {
+        return {
+          minSalary: 65400, maxSalary: 72000, averageSalary: 67600,
+          rangeText: '65.400 ₺ - 72.000 ₺ / Ay',
+          category: 'Yardımcı Hizmetler (Destek / Temizlik / Hizmetli)',
+          summary: 'Temizlik personeli ve yardımcı hizmet kadrolarında yemek dahil net maaş ~67.600 TL (yemek hariç ~65.400 TL) seviyesindedir. İkramiye ve tediye aylarında ele geçen tutar ~87.000 TL - 95.000 TL bandına ulaşır.',
+          benefits: ['Yemek Dahil Net Maaş (~67.600 ₺)', '52 Günlük İlave Tediye (Yılda 4 Taksit)', 'TİS İkramiyesi (Yılda 2 Tam İkramiye)'],
+          disclaimer: 'Sürekli işçi statüsündeki personele toplu sözleşme gereği yılda 52 günlük ilave tediye ve ikramiye ödenir.'
+        };
+      }
+
+      // 18. Eğitim Seviyesi Tabanı Fallback (Yalnızca Resmi Kamu Bordroları)
+      const edu = (j && j.minEducation || '').toLowerCase();
+      if (edu === 'lisans' || edu === 'yukseklisans' || edu === 'doktora') {
+        return {
+          minSalary: 68000, maxSalary: 76000, averageSalary: 71000,
+          rangeText: '68.000 ₺ - 76.000 ₺ / Ay',
+          category: 'Kamu Personeli (Lisans Başlangıç)',
+          summary: 'Lisans mezunu yeni başlayan kamu görevlisi için net temel maaş ve kanuni ek ödemelerdir.',
+          benefits: ['Devlet Güvencesi & Taban Aylık', 'Özel Hizmet Tazminatı', 'Sendika ve Aile Yardımı'],
+          disclaimer: 'Kurumun tabi olduğu teşkilat kanununa ve döner sermaye/ek ödeme imkânlarına göre net maaş değişebilir.'
+        };
+      } else if (edu === 'onlisans') {
+        return {
+          minSalary: 66500, maxSalary: 73500, averageSalary: 69500,
+          rangeText: '66.500 ₺ - 73.500 ₺ / Ay',
+          category: 'Kamu Personeli (Önlisans Başlangıç)',
+          summary: 'Önlisans mezunu memur veya sözleşmeli personel başlangıç derecesi net maaşıdır.',
+          benefits: ['Taban Aylık & Ek Ödeme', 'Yemek ve Yol Desteği', 'Banka Promosyonu'],
+          disclaimer: 'Kadro unvanına göre teknik sorumluluk veya vardiya ücreti eklenebilir.'
+        };
+      }
+
+      // Genel En Düşük Kamu Net Tabanı (~65.000 ₺ - 71.000 ₺)
+      return {
+        minSalary: 65000, maxSalary: 71000, averageSalary: 67600,
+        rangeText: '65.000 ₺ - 71.000 ₺ / Ay',
+        category: 'Kamu Personeli (En Düşük Kamu Tabanı)',
+        summary: 'Temmuz 2026 sonrası kamu çerçeve protokolü ve memur taban maaşları baz alınmıştır. Yemek yardımı, tediye ve ikramiyelerle birlikte kamuda en düşük başlangıç gelirleri net 65.000 TL üzerindedir.',
+        benefits: ['Devlet Güvencesi & Taban Aylık', 'Yol ve Yemek Desteği', 'İlave Tediye & İkramiye İmkânı'],
+        disclaimer: 'Sadece kamu kurum ve kuruluşları baz alınmıştır; özel sektör asgari ücreti dahil edilmemiştir.'
+      };
+    }
+
+    function renderSalaryBox(j) {
+      const active = isVipActive();
+      const s = getEstimatedSalaryForJob(j);
+
+      if (active) {
+        return `
+          <div class="card" style="border:1.5px solid #10b981;background:linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(5, 150, 105, 0.1) 100%);box-shadow:0 2px 8px rgba(16, 185, 129, 0.1);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:24px;">💰</span>
+                <div>
+                  <h3 style="margin:0;color:#065f46;font-size:16px;">Tahmini Net Kamu Maaşı</h3>
+                  <span style="font-size:11.5px;color:#047857;font-weight:700;">👑 VIP Maaş & Ek Ödeme Rehberi</span>
+                </div>
+              </div>
+              <span class="badge" style="background:#d1fae5;color:#065f46;font-weight:800;font-size:13.5px;padding:6px 12px;border:1px solid #6ee7b7;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                ${escapeHtml(s.rangeText)}
+              </span>
+            </div>
+
+            <div style="font-size:12.5px;color:#064e3b;font-weight:700;margin-bottom:4px;">
+              📋 Kadro Statüsü: <span style="font-weight:800;color:#047857;">${escapeHtml(s.category)}</span>
+            </div>
+            <div style="font-size:13.5px;color:var(--text);line-height:1.55;margin-bottom:10px;">
+              ${escapeHtml(s.summary)}
+            </div>
+
+            <div style="margin-bottom:8px;">
+              <span style="font-size:12px;font-weight:700;color:#065f46;">🎁 Dahil Edilen Ek Gelir & Yan Haklar:</span>
+              <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:5px;">
+                ${s.benefits.map(b => `<span class="badge" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-size:11.5px;padding:4px 8px;font-weight:600;">✨ ${escapeHtml(b)}</span>`).join('')}
+              </div>
+            </div>
+
+            <div style="font-size:11px;color:var(--muted);line-height:1.4;border-top:1px dashed #a7f3d0;padding-top:6px;margin-top:6px;">
+              ℹ️ ${escapeHtml(s.disclaimer)} <i>(2026 yılı memur katsayısı ve taban aylıklar baz alınmıştır.)</i>
+            </div>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="card vip-locked-box" style="border:1.5px solid #fcd34d;background:#fffdf5;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:24px;">💰</span>
+                <div>
+                  <h3 style="margin:0;color:#b45309;font-size:15.5px;">Tahmini Net Kamu Maaşı & Yan Haklar</h3>
+                  <span style="font-size:11.5px;color:#92400e;font-weight:600;">Bu kadronun aylık kazancı ne kadar?</span>
+                </div>
+              </div>
+              <span class="badge" style="background:#fef3c7;color:#92400e;font-weight:800;font-size:11px;padding:4px 8px;">👑 VIP ÖZEL</span>
+            </div>
+
+            <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;line-height:1.5;">
+              Bu kadroya atandığınızda alacağınız <b>net aylık taban maaş, döner sermaye / ek ödemeler, tediye ve ikramiye</b> dökümü sadece VIP Üyelere açıktır.
+            </p>
+
+            <!-- Bulanık Önizleme -->
+            <div style="display:flex;gap:8px;filter:blur(4.5px);user-select:none;opacity:0.55;margin-bottom:12px;pointer-events:none;">
+              <span class="badge" style="background:#d1fae5;color:#065f46;font-size:14px;padding:6px 12px;font-weight:800;">49.500 ₺ - 56.000 ₺ / Ay</span>
+              <span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:12px;padding:6px 10px;">+ İkramiye / Tediye</span>
+              <span class="badge" style="background:#fef3c7;color:#92400e;font-size:12px;padding:6px 10px;">+ Döner Sermaye</span>
+            </div>
+
+            <button class="btn btn-sm" style="width:100%;background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#fff;border:none;font-weight:800;padding:9px 14px;box-shadow:0 3px 8px rgba(245, 158, 11, 0.35);" onclick="openVipModal()">
+              👑 VIP Üye Ol ve Maaşı Gör ↗
             </button>
           </div>
         `;
@@ -4400,6 +4744,14 @@
             <span class="badge" style="background:var(--border);color:var(--text)">${escapeHtml(TYPE_LABELS[j.jobType] || j.jobType)}</span>
             <span class="badge" style="background:${kb.bg};color:${kb.color}">${escapeHtml(kb.text)}</span>
             ${j.positions ? `<span class="badge" style="background:var(--border)">${escapeHtml(j.positions)} kişi</span>` : ''}
+            ${(() => {
+              const sal = getEstimatedSalaryForJob(j);
+              if (isVipActive()) {
+                return `<span class="badge" style="background:#d1fae5;color:#065f46;font-weight:700;">💰 ~${Math.round(sal.averageSalary / 1000)}k ₺</span>`;
+              } else {
+                return `<span class="badge" style="background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;">💰 Maaş: 🔒 VIP</span>`;
+              }
+            })()}
             ${j.applicationStatus ? `<span class="badge" style="background:var(--primary-light);color:var(--primary)">${escapeHtml(APP_LABELS[j.applicationStatus] || j.applicationStatus)}</span>` : ''}
           </div>
           ${(j.requiredCertificates || []).length ? `<div class="sub" style="margin-bottom:8px">📜 Aranan belge: ${escapeHtml(j.requiredCertificates.join(j.certificateMode === 'any' ? ' veya ' : ', '))}</div>` : ''}
@@ -4765,6 +5117,7 @@
             </button>
           </div>
           `) : ''}
+          ${renderSalaryBox(j)}
           ${renderVipJobBox(j)}
           
           <!-- ŞART KONTROLÜ KARTI -->
@@ -4970,6 +5323,16 @@
       const input = document.getElementById('commentInput_' + jobId);
       const msgEl = document.getElementById('commMsg_' + jobId);
       if (!input) return;
+
+      if (!token) {
+        if (msgEl) {
+          msgEl.style.color = 'var(--fail)';
+          msgEl.innerHTML = '<b>Aday topluluğunda yorum paylaşabilmek için lütfen giriş yapın.</b>';
+        }
+        showAuthModal('login');
+        return;
+      }
+
       const content = input.value.trim();
       if (!content || content.length < 2) {
         if (msgEl) {
@@ -4997,7 +5360,7 @@
       } catch (e) {
         if (msgEl) {
           msgEl.style.color = 'var(--fail)';
-          msgEl.innerHTML = `<b>${escapeHtml(e.message || 'Yorum gönderilemedi.')}</b>`;
+          msgEl.innerHTML = `<b>${escapeHtml(e.message || 'Yorum gönderilemedi. Lütfen tekrar deneyin.')}</b>`;
         }
         if (e && e.data && e.data.banned) {
           input.disabled = true;

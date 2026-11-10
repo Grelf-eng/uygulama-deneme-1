@@ -123,7 +123,15 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
                 if (uri != null && ("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme()))) {
-                    openInBrowser(uri.toString());
+                    String urlStr = uri.toString();
+                    // Kariyer kapısı DNS hatası ve e-Devlet 404 düzeltmesi
+                    if (urlStr.contains("isealimkariyerkapisi") || (urlStr.contains("kariyerkapisi") && !urlStr.contains("cbiko.gov.tr"))) {
+                        urlStr = "https://kariyerkapisi.cbiko.gov.tr";
+                    }
+                    if (urlStr.contains("turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim") || urlStr.contains("turkiye.gov.tr/kamu-ise-alim")) {
+                        urlStr = "https://kariyerkapisi.cbiko.gov.tr";
+                    }
+                    openInBrowser(urlStr);
                     return true;
                 }
                 return false;

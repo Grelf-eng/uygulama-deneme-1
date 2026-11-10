@@ -139,6 +139,12 @@ function addColumnIfMissing(table: string, column: string, ddl: string): void {
   } catch (e) {}
 }
 
+addColumnIfMissing('job_comments', 'user_id', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('job_comments', 'author_kpss', 'TEXT');
+addColumnIfMissing('job_comments', 'is_vip', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('job_comments', 'category', "TEXT NOT NULL DEFAULT 'genel'");
+addColumnIfMissing('job_comments', 'likes', 'INTEGER NOT NULL DEFAULT 0');
+
 // job_comments tablosunun katı yabancı anahtar (FK) kısıtlarını kaldır (kullanıcı/ilan ID senkron farkında çökmemesi için)
 try {
   const fkList = db.prepare('PRAGMA foreign_key_list(job_comments)').all() as any[];
@@ -164,12 +170,6 @@ try {
     `);
   }
 } catch (e) {}
-
-addColumnIfMissing('job_comments', 'user_id', 'INTEGER NOT NULL DEFAULT 0');
-addColumnIfMissing('job_comments', 'author_kpss', 'TEXT');
-addColumnIfMissing('job_comments', 'is_vip', 'INTEGER NOT NULL DEFAULT 0');
-addColumnIfMissing('job_comments', 'category', "TEXT NOT NULL DEFAULT 'genel'");
-addColumnIfMissing('job_comments', 'likes', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'is_admin', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'is_verified', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'is_subscribed', 'INTEGER NOT NULL DEFAULT 0');

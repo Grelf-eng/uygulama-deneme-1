@@ -6,6 +6,7 @@ import { db } from '../src/db';
 import { NO_DEPARTMENT_LEVELS } from '../src/services/profileRepo';
 import { KPSS_TYPE_OPTIONS, estimateHistoricalPlacement } from '../src/constants/kpss';
 import { UNDERGRAD_PLUS_DEPARTMENTS, ASSOCIATE_DEPARTMENTS, POOL_ONLY_EDUCATION_LEVELS } from '../src/constants/departments';
+import { estimateJobSalary } from '../src/constants/salary';
 
 const root = path.resolve(__dirname, '..', '..');
 const outDir = path.join(root, 'android-apk', 'assets', 'www');
@@ -84,6 +85,7 @@ const jobs = rows.map((r) => {
     positions: r.positions,
     jobType,
     historicalPlacement,
+    estimatedSalary: estimateJobSalary(r),
   };
 });
 

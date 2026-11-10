@@ -315,17 +315,21 @@ jobsRouter.post('/:id/comments', requireAuth, (req, res) => {
 
     // Yazar bilgilerini profil ve kullanıcı tablosundan al
     const profile = getProfile(req.userId!);
-    let userRow: { email: string; username?: string; is_subscribed?: number } | undefined;
+    let userRow: { email: string; is_subscribed?: number } | undefined;
     try {
-      userRow = db.prepare('SELECT email, username, is_subscribed FROM users WHERE id = ?').get(req.userId!) as any;
-    } catch (e) {}
+      userRow = db.prepare('SELECT email, is_subscribed FROM users WHERE id = ?').get(req.userId!) as any;
+    } catch (e: any) {
+      console.warn('[comments] userRow sorgulama hatası:', e.message);
+    }
 
-    let displayName = 'Aday';
+    let displayName = 'Kamu Adayı';
     if (profile?.fullName && profile.fullName.trim().length > 0) {
-      const parts = profile.fullName.trim().split(/\s+/);
+      // "(Yönetici)", "(Admin)" gibi ek etiketleri temizle
+      const cleanName = profile.fullName.replace(/\s*\([^)]*\)/g, '').trim();
+      const parts = cleanName.split(/\s+/).filter(Boolean);
       if (parts.length > 1) {
-        displayName = `${parts[0]} ${parts[parts.length - 1][0]}.`;
-      } else {
+        displayName = `${parts[0]} ${parts[parts.length - 1][0].toLocaleUpperCase('tr')}.`;
+      } else if (parts.length === 1) {
         displayName = parts[0];
       }
     } else if (userRow?.email) {
@@ -362,8 +366,8 @@ jobsRouter.post('/:id/comments', requireAuth, (req, res) => {
 
     res.json({ success: true, comment: newComment });
   } catch (err: any) {
-    console.error('[comments] Yorum kaydetme hatası:', err);
-    res.status(500).json({ error: 'Yorum kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.' });
+    console.error('[comments] Yorum kaydetme hatası:', err.message || err);
+    res.status(500).json({ error: 'Yorum kaydedilirken bir hata oluştu: ' + (err.message || 'Sunucu hatası') });
   }
 });
 

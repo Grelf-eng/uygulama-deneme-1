@@ -3600,13 +3600,15 @@
     function openExternalUrl(url) {
       if (!url) return;
       let clean = url.trim();
-      // Kariyer kapısı DNS hatası düzeltmesi: isealimkariyerkapisi.cbiko.gov.tr veya kariyerkapisi.gov.tr -> kariyerkapisi.cbiko.gov.tr
-      if (/isealimkariyerkapisi/i.test(clean) || (/kariyerkapisi/i.test(clean) && !clean.includes('cbiko.gov.tr'))) {
+      // Kariyer kapısı DNS hatası ve e-Devlet 404 düzeltmesi:
+      // isealimkariyerkapisi.cbiko.gov.tr, kariyerkapisi.gov.tr veya eski turkiye.gov.tr slug'ları -> doğrudan çalışan kariyerkapisi.cbiko.gov.tr
+      if (
+        /isealimkariyerkapisi/i.test(clean) ||
+        /kariyerkapisi\.gov\.tr/i.test(clean) ||
+        (/kariyerkapisi/i.test(clean) && !clean.includes('cbiko.gov.tr')) ||
+        /turkiye\.gov\.tr\/(cumhurbaskanligi-)?kamu-ise-alim/i.test(clean)
+      ) {
         clean = 'https://kariyerkapisi.cbiko.gov.tr';
-      }
-      // e-Devlet kariyer kapısı 404 düzeltmesi
-      if (/turkiye\.gov\.tr\/kamu-ise-alim-ve-kariyer-kapisi/i.test(clean)) {
-        clean = 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim';
       }
       if (window.AndroidBridge && window.AndroidBridge.openExternal) {
         window.AndroidBridge.openExternal(clean);
@@ -3692,7 +3694,7 @@
       return {
         portalName: 'Cumhurbaşkanlığı Kariyer Kapısı (Resmi Portal)',
         primaryUrl: 'https://kariyerkapisi.cbiko.gov.tr',
-        edevletUrl: 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim',
+        edevletUrl: 'https://kariyerkapisi.cbiko.gov.tr',
         tipText: `💡 <b>Kariyer Kapısı:</b> T.C. Cumhurbaşkanlığı İnsan Kaynakları Ofisi resmi sistemidir. e-Devlet ile giriş yaptıktan sonra kurumlar listesinden <b>"${escapeHtml(j.institution || 'Kurum')}"</b> seçerek başvurunuzu 2 dakikada tamamlayabilirsiniz.`
       };
     }
@@ -4037,218 +4039,252 @@
 
     function getEstimatedSalaryForJob(j) {
       if (j && j.estimatedSalary && j.estimatedSalary.rangeText) return j.estimatedSalary;
-      const title = (j && j.title || '').toLowerCase();
-      const desc = (j && j.description || '').toLowerCase();
-      const combined = `${title} ${desc}`;
-      
-      if (/yazilim|bilisim|siber|programci/i.test(combined)) {
+      const rawTitle = (j && j.title || '').toString();
+      const rawDesc = (j && j.description || '').toString().slice(0, 2800);
+      const normTr = (s) => (s || '').toLowerCase()
+        .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c');
+      const titleNorm = normTr(rawTitle);
+      const descSnippet = normTr(rawDesc);
+      const full = `${titleNorm} ${descSnippet}`;
+
+      // 1. Tabip / Diş Hekimi / Eczacı (~110.000 ₺ - 165.000 ₺)
+      if (/\b(uzman tabip|tabip|doktor|dis hekimi|eczaci)\b/.test(titleNorm) || (/\b(tabip|doktor|dis hekimi)\b/.test(descSnippet) && !/\bdoktora\b|\bdoktor ogretim\b/.test(full))) {
         return {
-          minSalary: 68000, maxSalary: 115000, averageSalary: 88000,
-          rangeText: '68.000 ₺ - 115.000 ₺ / Ay',
+          minSalary: 110000, maxSalary: 165000, averageSalary: 135000,
+          rangeText: '110.000 ₺ - 165.000 ₺ / Ay',
+          category: 'Sağlık Hizmetleri Sınıfı (Tabip / Uzman Hekim)',
+          summary: 'Temel memur maaşına ek olarak aylık sabit ek ödeme, taban ve teşvik ek ödemeleri bordroya dahildir.',
+          benefits: ['Taban ve Teşvik Ek Ödemesi', 'Sabit Ek Ödeme', 'Aylık Nöbet Ücretleri'],
+          disclaimer: 'Hastane sınıfına, poliklinik/ameliyat teşvik katsayısına göre kazanç artar.'
+        };
+      }
+
+      // 2. Sözleşmeli Bilişim Personeli (375 KHK) (~95.000 ₺ - 150.000 ₺)
+      if (/\b(bilisim personeli|yazilim|siber guvenlik|veritabani programcisi|sistem yoneticisi)\b/.test(titleNorm) || (/\b(sozlesmeli bilisim|yazilim gelistirme|ag yoneticisi)\b/.test(descSnippet) && !/\bburo\b|\bdestek\b/.test(titleNorm))) {
+        return {
+          minSalary: 95000, maxSalary: 150000, averageSalary: 118000,
+          rangeText: '95.000 ₺ - 150.000 ₺ / Ay',
           category: 'Sözleşmeli Bilişim Personeli (375 KHK)',
           summary: 'Kamu kurumlarındaki sözleşmeli bilişim kadroları, memur tavan ücretinin 2 ile 4 katına kadar brüt tavan katsayısı ile istihdam edilmektedir.',
           benefits: ['Tavan Ücret Katsayısı (2x - 4x)', 'Ek Proje Tazminatı', 'Esnek / Hibrit Çalışma'],
           disclaimer: 'Tecrübe yılı ve bilinen programlama dillerine göre tavan katsayısı değişir.'
         };
       }
-      if (/uzman tabip|tabip|doktor|dis hekimi|eczaci/i.test(title)) {
+
+      // 3. Profesör / Doçent (~105.000 ₺ - 135.000 ₺)
+      if (/\b(profesor|docent)\b/.test(titleNorm) || (/\b(profesor kadrosu|docent kadrosu)\b/.test(descSnippet) && !/\barastirma gorevlisi\b/.test(titleNorm))) {
         return {
-          minSalary: 88000, maxSalary: 145000, averageSalary: 112000,
-          rangeText: '88.000 ₺ - 145.000 ₺ / Ay',
-          category: 'Sağlık Hizmetleri Sınıfı (Tabip)',
-          summary: 'Temel memur maaşına ek olarak aylık sabit ek ödeme, taban ve teşvik ek ödemeleri bordroya dahildir.',
-          benefits: ['Taban ve Teşvik Ek Ödemesi', 'Sabit Ek Ödeme', 'Aylık Nöbet Ücretleri'],
-          disclaimer: 'Hastane sınıfına, poliklinik/ameliyat teşvik katsayısına göre kazanç artar.'
-        };
-      }
-      if (/profesor|docent/i.test(title)) {
-        return {
-          minSalary: 82000, maxSalary: 118000, averageSalary: 96000,
-          rangeText: '82.000 ₺ - 118.000 ₺ / Ay',
-          category: 'Akademik Personel (2547 S.K.)',
+          minSalary: 105000, maxSalary: 135000, averageSalary: 118000,
+          rangeText: '105.000 ₺ - 135.000 ₺ / Ay',
+          category: 'Akademik Personel (Prof. / Doç.)',
           summary: 'Kıdemli akademik kadro maaşına ek olarak akademik teşvik ve ek ders ücretleri uygulanır.',
           benefits: ['Akademik Teşvik Ödeneği', 'Haftalık Ek Ders Ücretleri', 'Üniversite Geliştirme Ödeneği'],
           disclaimer: 'Yayınlanan makale sayısı ve ek ders yüküne göre aylık gelir farklılık gösterir.'
         };
       }
-      if (/doktor ogretim|dr\.\s*ogr/i.test(title)) {
+
+      // 4. Doktor Öğretim Üyesi (~88.000 ₺ - 105.000 ₺)
+      if (/\b(doktor ogretim|dr\.?\s*ogr)\b/.test(titleNorm) || /\bdoktor ogretim uyesi\b/.test(descSnippet)) {
         return {
-          minSalary: 65000, maxSalary: 78000, averageSalary: 71000,
-          rangeText: '65.000 ₺ - 78.000 ₺ / Ay',
+          minSalary: 88000, maxSalary: 105000, averageSalary: 95000,
+          rangeText: '88.000 ₺ - 105.000 ₺ / Ay',
           category: 'Akademik Personel (Dr. Öğr. Üyesi)',
           summary: 'Temel akademik kadro maaşına ek ders ücretleri, jüri/sınav ödemeleri ve akademik teşvik dahildir.',
           benefits: ['Ek Ders Ücreti', 'Akademik Teşvik Puanı', 'Geliştirme / Araştırma Ödeneği'],
           disclaimer: 'Haftalık verilen ek ders saatine göre net maaş yükselir.'
         };
       }
-      if (/ogretim gorevlisi|arastirma gorevlisi|ars\.\s*gor/i.test(title)) {
+
+      // 5. Araştırma Görevlisi / Öğretim Görevlisi (~76.000 ₺ - 88.000 ₺)
+      if (/\b(ogretim gorevlisi|arastirma gorevlisi|ars\.?\s*gor)\b/.test(titleNorm) || /\b(arastirma gorevlisi|ogretim gorevlisi)\b/.test(descSnippet)) {
         return {
-          minSalary: 56000, maxSalary: 66000, averageSalary: 61000,
-          rangeText: '56.000 ₺ - 66.000 ₺ / Ay',
+          minSalary: 76000, maxSalary: 88000, averageSalary: 81000,
+          rangeText: '76.000 ₺ - 88.000 ₺ / Ay',
           category: 'Öğretim / Araştırma Görevlisi (2547 S.K.)',
           summary: 'Yeni başlayan araştırma veya öğretim görevlisi için taban net aylık ve üniversite ödeneğidir.',
           benefits: ['Üniversite Ödeneği', 'Ek Ders Payı', 'Yayın ve Kongre Destekleri'],
           disclaimer: 'Büyükşehir dışındaki devlet üniversitelerinde ilave geliştirme ödeneği ödenir.'
         };
       }
-      if (/mufettis|denetci|kontrolor|uzman yardimci|hazine|kaymakam/i.test(title)) {
+
+      // 6. Müfettiş / Uzman / Denetçi / Kaymakam (~85.000 ₺ - 105.000 ₺)
+      if (/\b(mufettis|denetci|kontrolor|uzman yardimci|kaymakam)\b/.test(titleNorm) || /\b(mufettis yardimcisi|uzman yardimcisi|denetci yardimcisi)\b/.test(descSnippet)) {
         return {
-          minSalary: 62000, maxSalary: 75000, averageSalary: 68000,
-          rangeText: '62.000 ₺ - 75.000 ₺ / Ay',
+          minSalary: 85000, maxSalary: 105000, averageSalary: 94000,
+          rangeText: '85.000 ₺ - 105.000 ₺ / Ay',
           category: 'Kariyer Meslek (A Grubu Kadro)',
-          summary: 'Bakanlık ve genel müdürlüklerdeki kariyer kadrolarında özel hizmet tazminatı ve 3600/4200 ek gösterge uygulanır.',
-          benefits: ['Özel Hizmet Tazminatı', '3600/4200 Ek Gösterge', 'Görev Harcırahı / Yolluk'],
+          summary: 'Bakanlık ve genel müdürlüklerdeki kariyer kadrolarında özel hizmet tazminatı ve ek gösterge uygulanır.',
+          benefits: ['Özel Hizmet Tazminatı', 'Ek Gösterge Avantajı', 'Görev Harcırahı / Yolluk'],
           disclaimer: 'Turne ve teftiş görevlerinde günlük resmi harcırah ödemesi eklenir.'
         };
       }
-      if (/muhendis|mimar|sehir plancisi/i.test(title)) {
+
+      // 7. Mühendis / Mimar / Şehir Plancısı (~82.000 ₺ - 98.000 ₺)
+      if (/\b(muhendis|mimar|sehir plancisi)\b/.test(titleNorm) || /\b(muhendis kadrosu|mimar kadrosu|muhendis alimi)\b/.test(descSnippet)) {
         return {
-          minSalary: 58000, maxSalary: 68000, averageSalary: 63000,
-          rangeText: '58.000 ₺ - 68.000 ₺ / Ay',
+          minSalary: 82000, maxSalary: 98000, averageSalary: 89000,
+          rangeText: '82.000 ₺ - 98.000 ₺ / Ay',
           category: 'Teknik Hizmetler Sınıfı (Mühendis / Mimar)',
           summary: 'Devlet kadrolarındaki mühendis ve mimarlar arazi tazminatı ve teknik sorumluluk ek ödemesi alır.',
           benefits: ['3 Aylık Arazi Tazminatı', 'Teknik Sorumluluk Zammı', 'Ek Gösterge Avantajı'],
           disclaimer: 'Arazide veya şantiyede görev yapılan günlere göre ek arazi tazminatı ödenir.'
         };
       }
-      if (/avukat|hukuk musaviri/i.test(title)) {
+
+      // 8. Avukat / Hukuk Müşaviri (~78.000 ₺ - 92.000 ₺)
+      if (/\b(avukat|hukuk musaviri)\b/.test(titleNorm) || /\b(avukat kadrosu|avukat alimi)\b/.test(descSnippet)) {
         return {
-          minSalary: 56000, maxSalary: 67000, averageSalary: 61000,
-          rangeText: '56.000 ₺ - 67.000 ₺ / Ay',
+          minSalary: 78000, maxSalary: 92000, averageSalary: 84000,
+          rangeText: '78.000 ₺ - 92.000 ₺ / Ay',
           category: 'Avukatlık Hizmetleri Sınıfı',
-          summary: 'Kamu avukatları aylık sabit net maaşın yanında kurumun kazandığı davalardan yasal vekalet ücreti payı alır.',
+          summary: 'Kamu avukatları aylık net maaşın yanında kurumun kazandığı davalardan yasal vekalet ücreti payı alır.',
           benefits: ['Yıllık Vekalet Ücreti Payı', 'Özel Hizmet Tazminatı', 'Baro Aidat / Sigorta Karşılama'],
           disclaimer: 'Yıllık vekalet ücreti payı aylık ortalama kazanca ciddi oranda katkı sağlar.'
         };
       }
-      if (/subay|astsubay|uzman cavus|uzman erbas/i.test(title)) {
+
+      // 9. TSK / Emniyet (~78.000 ₺ - 105.000 ₺)
+      if (/\b(subay|astsubay|uzman cavus|uzman erbas|polis|komiser)\b/.test(titleNorm) || /\b(subay|astsubay|uzman erbas|polis alimi)\b/.test(descSnippet)) {
         return {
-          minSalary: 56000, maxSalary: 72000, averageSalary: 64000,
-          rangeText: '56.000 ₺ - 72.000 ₺ / Ay',
-          category: 'Türk Silahlı Kuvvetleri Personeli',
-          summary: 'Kadro maaşına ek olarak operasyon tazminatı, tayin bedeli ve fiili hizmet zammı uygulanır.',
+          minSalary: 78000, maxSalary: 105000, averageSalary: 88000,
+          rangeText: '78.000 ₺ - 105.000 ₺ / Ay',
+          category: 'Güvenlik / TSK / Emniyet Hizmetleri',
+          summary: 'Kadro maaşına ek olarak asayiş/operasyon tazminatı, fazla çalışma ve tayin bedeli uygulanır.',
           benefits: ['Operasyon / Asayiş Tazminatı', 'Tayin Bedeli (Yemek Yardımı)', 'Fiili Hizmet Zammı (Yıpranma)'],
-          disclaimer: 'Görev yapılan bölgeye ve hudut görevine göre ek tazminatlar uygulanır.'
+          disclaimer: 'Görev yapılan bölgeye ve operasyonel şartlara göre ek tazminatlar uygulanır.'
         };
       }
-      if (/polis|komiser/i.test(title)) {
+
+      // 10. Hemşire / Ebe / Sağlık Teknikeri (SHS) (~72.000 ₺ - 86.000 ₺)
+      if (/\b(hemsire|ebe|saglik teknikeri|radyoloji|anestezi|laborant|paramedik|acil tip)\b/.test(titleNorm) || /\b(hemsire|ebe|saglik teknikeri|laborant|paramedik)\b/.test(descSnippet)) {
         return {
-          minSalary: 55000, maxSalary: 65000, averageSalary: 59000,
-          rangeText: '55.000 ₺ - 65.000 ₺ / Ay',
-          category: 'Emniyet Hizmetleri Sınıfı (Polis)',
-          summary: 'Polis memurlarına emniyet hizmeti tazminatı, fazla çalışma ücreti ve yıpranma payı dahil net aylıktır.',
-          benefits: ['Emniyet Hizmet Tazminatı', 'Maktu Fazla Çalışma Ücreti', 'Silah ve Teçhizat Ödeneği'],
-          disclaimer: 'Bölgeye göre operasyon ve terör tazminatı eklenir.'
-        };
-      }
-      if (/bekci|carsi ve mahalle/i.test(title)) {
-        return {
-          minSalary: 49000, maxSalary: 55000, averageSalary: 52000,
-          rangeText: '49.000 ₺ - 55.000 ₺ / Ay',
-          category: 'Çarşı ve Mahalle Bekçisi',
-          summary: 'Emniyet bünyesinde gece çalışma tazminatı ve maktu mesai ile net ele geçen tutardır.',
-          benefits: ['Gece Görev Tazminatı', 'Maktu Çalışma Ücreti', 'Yıpranma Payı'],
-          disclaimer: 'Nöbet ve fazla çalışma saatine göre net gelir artar.'
-        };
-      }
-      if (/hemsire|ebe|saglik teknikeri|radyoloji|anestezi|laborant|paramedik|acil tip/i.test(title)) {
-        return {
-          minSalary: 48000, maxSalary: 58000, averageSalary: 52000,
-          rangeText: '48.000 ₺ - 58.000 ₺ / Ay',
-          category: 'Sağlık Hizmetleri Sınıfı (SHS)',
-          summary: 'Hastanelerde görev yapan sağlık personeline temel maaş haricinde taban ek ödeme ve nöbet ücreti verilir.',
-          benefits: ['Sağlık Taban Ek Ödemesi', 'Aylık Nöbet Ücretleri', 'Teşvik / Döner Sermaye Payı'],
+          minSalary: 72000, maxSalary: 86000, averageSalary: 78000,
+          rangeText: '72.000 ₺ - 86.000 ₺ / Ay',
+          category: 'Sağlık Hizmetleri Sınıfı (Hemşire / SHS)',
+          summary: 'Hastanelerde görev yapan sağlık personeline temel taban maaş, sabit ek ödeme, nöbet ve teşvik ödemeleri verilir.',
+          benefits: ['Sağlık Taban ve Teşvik Ek Ödemesi', 'Aylık Nöbet Ücretleri', 'Yemek ve Giyim Yardımı'],
           disclaimer: 'Aylık tutulan nöbet sayısına ve hastanenin döner sermaye puanına göre artar.'
         };
       }
-      if (/zabita|itfaiye/i.test(title)) {
+
+      // 11. Psikolog / Sosyal Hizmet / Diyetisyen / Fizyoterapist (~74.000 ₺ - 85.000 ₺)
+      if (/\b(psikolog|sosyal calimaci|sosyal hizmet|diyetisyen|fizyoterapist|cocuk gelisimcisi)\b/.test(titleNorm) || /\b(psikolog|sosyal calimaci|diyetisyen)\b/.test(descSnippet)) {
         return {
-          minSalary: 46000, maxSalary: 54000, averageSalary: 50000,
-          rangeText: '46.000 ₺ - 54.000 ₺ / Ay',
+          minSalary: 74000, maxSalary: 85000, averageSalary: 79000,
+          rangeText: '74.000 ₺ - 85.000 ₺ / Ay',
+          category: 'Sağlık Hizmetleri Sınıfı (Uzman / Lisans)',
+          summary: 'Kamu kurumları ve hastanelerde lisans mezunu sağlık uzmanları için net aylık ve ek ödemelerdir.',
+          benefits: ['Sabit Ek Ödeme', 'Nöbet / Mesai Ücreti', 'Sosyal Denge / Teşvik Payı'],
+          disclaimer: 'Görev yapılan birime (SHÇEK, Hastane, Adliye) göre ek tazminatlar uygulanır.'
+        };
+      }
+
+      // 12. Zabıta / İtfaiye (~70.000 ₺ - 82.000 ₺)
+      if (/\b(zabita|itfaiye)\b/.test(titleNorm) || /\b(zabita memuru|itfaiye eri)\b/.test(descSnippet)) {
+        return {
+          minSalary: 70000, maxSalary: 82000, averageSalary: 75000,
+          rangeText: '70.000 ₺ - 82.000 ₺ / Ay',
           category: 'Belediye Zabıta / İtfaiye Personeli',
           summary: 'Belediyelerin zabıta ve itfaiye kadrolarında maktu mesai ve SDS (Sosyal Denge Sözleşmesi) uygulanır.',
           benefits: ['Maktu Fazla Mesai Ücreti', 'Sosyal Denge Sözleşmesi (SDS)', 'Yıpranma Payı'],
           disclaimer: 'Belediye meclisinin belirlediği SDS oranı bordroya ilave edilir.'
         };
       }
-      if (/ogretmen|egitici|egitmen/i.test(title)) {
+
+      // 13. Tekniker / Teknisyen (~70.000 ₺ - 80.000 ₺)
+      if (/\b(tekniker|teknisyen|laborant|usta|surveyan)\b/.test(titleNorm) || /\b(tekniker kadrosu|teknisyen kadrosu)\b/.test(descSnippet)) {
         return {
-          minSalary: 47000, maxSalary: 56000, averageSalary: 51000,
-          rangeText: '47.000 ₺ - 56.000 ₺ / Ay',
-          category: 'Eğitim ve Öğretim Hizmetleri (EÖHS)',
-          summary: 'Öğretmenler aylık taban maaşın üzerine haftalık ek ders ücreti ve hazırlık ödeneği alırlar.',
-          benefits: ['Haftalık Ek Ders Ücreti', 'Eğitime Hazırlık Ödeneği', 'Kıdem ve Derece Tazminatı'],
-          disclaimer: 'Haftalık ek ders saatine göre aylık net kazanç artar.'
-        };
-      }
-      if (/tekniker/i.test(title)) {
-        return {
-          minSalary: 47500, maxSalary: 54000, averageSalary: 50500,
-          rangeText: '47.500 ₺ - 54.000 ₺ / Ay',
-          category: 'Teknik Hizmetler Sınıfı (Tekniker)',
-          summary: 'Önlisans mezunu tekniker kadrolarında özel hizmet tazminatı ve teknik sorumluluk zammı uygulanır.',
-          benefits: ['Teknik Tazminat', 'Arazi / Saha Ödeneği', 'Yol ve Yemek Desteği'],
+          minSalary: 70000, maxSalary: 80000, averageSalary: 74500,
+          rangeText: '70.000 ₺ - 80.000 ₺ / Ay',
+          category: 'Teknik Hizmetler Sınıfı (Tekniker / Teknisyen)',
+          summary: 'Teknik kadrolar için başlangıç net maaşı, özel hizmet tazminatı ve saha ödemeleridir.',
+          benefits: ['Teknik Hizmet Tazminatı', 'Atölye / Bakım Zammı', 'Yemek / Servis'],
           disclaimer: 'Arazide veya atölyede görev yapılan günlere göre ek tazminat ödenir.'
         };
       }
-      if (/teknisyen|usta/i.test(title)) {
+
+      // 14. Büro Personeli / VHKİ / Memur / Sekreter (~68.000 ₺ - 75.000 ₺)
+      if (/\b(buro personeli|memur|vhki|bilgisayar isletmen|sekreter|veznedar|muhasebe)\b/.test(titleNorm) || /\b(buro personeli|veri hazirlama)\b/.test(descSnippet)) {
         return {
-          minSalary: 44500, maxSalary: 49500, averageSalary: 47000,
-          rangeText: '44.500 ₺ - 49.500 ₺ / Ay',
-          category: 'Teknik Hizmetler Sınıfı (Teknisyen)',
-          summary: 'Meslek lisesi mezunu teknisyen kadroları için taban net aylık ve teknik yan ödemelerdir.',
-          benefits: ['Teknik Hizmet Tazminatı', 'Atölye / Bakım Zammı', 'Yemek / Servis'],
-          disclaimer: 'Vardiyalı çalışan teknisyenlere ilave nöbet/vardiya ücreti ödenir.'
+          minSalary: 68000, maxSalary: 75000, averageSalary: 69200,
+          rangeText: '68.000 ₺ - 75.000 ₺ / Ay',
+          category: 'Genel İdare Hizmetleri (Büro / VHKİ / Memur)',
+          summary: 'VHKİ ve büro personeli kadrolarında yemek dahil net maaş ~68.700 TL ile 69.700 TL arasında gerçekleşmektedir.',
+          benefits: ['Yemek Dahil Net Maaş (~68.700 - 69.700 ₺)', 'Taban Aylık & Yan Ödeme', 'Banka Maaş Promosyonu & Aile Yardımı'],
+          disclaimer: 'İkramiye veya tediye yatan aylarda ele geçen net gelir 87.000 TL ila 95.000 TL üzerine çıkar.'
         };
       }
-      if (j && (j.jobType === 'isci' || /isci|temizlik|hizmetli|destek personeli|asci|sofor|bakim|bahcivan/i.test(title))) {
+
+      // 15. Koruma ve Güvenlik Görevlisi / Bekçi (~68.000 ₺ - 77.000 ₺)
+      if (/\b(guvenlik|koruma ve guvenlik|bekci|carsi ve mahalle)\b/.test(titleNorm) || /\b(koruma ve guvenlik gorevlisi|ozel guvenlik)\b/.test(descSnippet)) {
         return {
-          minSalary: 43000, maxSalary: 49000, averageSalary: 46000,
-          rangeText: '43.000 ₺ - 49.000 ₺ / Ay',
+          minSalary: 68000, maxSalary: 77000, averageSalary: 72500,
+          rangeText: '68.000 ₺ - 77.000 ₺ / Ay',
+          category: 'Güvenlik ve Koruma Hizmetleri (Kamusal)',
+          summary: 'Kamu kurumlarında vardiyalı çalışan koruma ve güvenlik personeli net maaş, gece mesai farkı ve yemek yardımı dahil ortalama ~72.500 TL net almaktadır.',
+          benefits: ['Gece Görev / Vardiya Zammı', 'Giyim / Üniforma Desteği', 'Yol ve Yemek Yardımı'],
+          disclaimer: 'Sürekli işçi statüsündeki personelde yılda 52 günlük tediye ve TİS ikramiyesi ile kazanç katlanır.'
+        };
+      }
+
+      // 16. Sürekli İşçi (Kamu Çerçeve Protokolü & TİS) (~68.000 ₺ - 78.000 ₺)
+      if (j && j.jobType === 'isci' || /\b(surekli isci|kamu iscisi)\b/.test(titleNorm) || /\bsurekli isci\b/.test(descSnippet)) {
+        return {
+          minSalary: 68000, maxSalary: 78000, averageSalary: 73000,
+          rangeText: '68.000 ₺ - 78.000 ₺ / Ay',
           category: 'Sürekli İşçi (Kamu Çerçeve Protokolü & TİS)',
-          summary: 'Kamu işçileri taban maaşa ek olarak yılda 52 günlük İlave Tediye ve toplu iş sözleşmesi (TİS) ikramiyesi alırlar. İkramiyelerle birlikte aylık ortalama kazanç ~52.000 ₺ - 58.000 ₺ seviyesine ulaşır.',
-          benefits: ['52 Günlük İlave Tediye (Yılda 4 Taksit)', 'TİS İkramiyesi (Yılda 2 Tam Maaş)', 'Sosyal Yardım & Yemek Ücreti'],
-          disclaimer: 'Kamu Çerçeve Protokolü kapsamındaki ikramiyeler aylık net ortalamayı ciddi oranda yükseltir.'
+          summary: 'Ortalama kamu işçisi net maaşı 68.000 TL – 78.000 TL aralığındadır. 13 günlük İlave Tediye (taksit başı ~21.900 - 25.500 TL) ve TİS ikramiyeleri (~49.400 TL) yatan aylarda ele geçen toplam gelir 87.000 TL ila 130.000 TL bandına ulaşmaktadır.',
+          benefits: [
+            '52 Günlük İlave Tediye (Taksit Başı ~22.000 - 25.500 ₺)',
+            'TİS İkramiyesi (Yılda 2 Kez ~49.400 ₺)',
+            'Tediye/İkramiye Aylarında 87.000 - 130.000 ₺ Toplam Gelir'
+          ],
+          disclaimer: 'Toplu İş Sözleşmesi (TİS) ve İlave Tediye ödemeleri kamu işçilerinin aylık ortalamasını ciddi oranda yükseltir.'
         };
       }
-      if (/buro|memur|vhki|bilgisayar isletmen|muhasebe|sekreter|veznedar/i.test(title)) {
+
+      // 17. Destek Personeli / Temizlik / Hizmetli / Aşçı / Şoför (~65.400 ₺ - 72.000 ₺)
+      if (/\b(destek personeli|temizlik|hizmetli|asci|sofor|bakim|bahcivan|kaloriferci)\b/.test(titleNorm) || /\b(destek personeli|temizlik gorevlisi|hizmetli alimi)\b/.test(descSnippet)) {
         return {
-          minSalary: 44500, maxSalary: 50000, averageSalary: 47000,
-          rangeText: '44.500 ₺ - 50.000 ₺ / Ay',
-          category: 'Genel İdare Hizmetleri Sınıfı (GİHS)',
-          summary: 'Yeni başlayan bekar 9/1 memur veya sözleşmeli büro personeli için temel net aylık bordro tutarıdır.',
-          benefits: ['Taban Aylık & Yan Ödeme', 'Aile ve Çocuk Yardımı', 'Banka Maaş Promosyonu'],
-          disclaimer: 'Evli ve çocuklu personelde aile yardımı ödeneği ile tutar artar.'
+          minSalary: 65400, maxSalary: 72000, averageSalary: 67600,
+          rangeText: '65.400 ₺ - 72.000 ₺ / Ay',
+          category: 'Yardımcı Hizmetler (Destek / Temizlik / Hizmetli)',
+          summary: 'Temizlik personeli ve yardımcı hizmet kadrolarında yemek dahil net maaş ~67.600 TL (yemek hariç ~65.400 TL) seviyesindedir. İkramiye ve tediye aylarında ele geçen tutar ~87.000 TL - 95.000 TL bandına ulaşır.',
+          benefits: ['Yemek Dahil Net Maaş (~67.600 ₺)', '52 Günlük İlave Tediye (Yılda 4 Taksit)', 'TİS İkramiyesi (Yılda 2 Tam İkramiye)'],
+          disclaimer: 'Sürekli işçi statüsündeki personele toplu sözleşme gereği yılda 52 günlük ilave tediye ve ikramiye ödenir.'
         };
       }
-      
+
+      // 18. Eğitim Seviyesi Tabanı Fallback (Yalnızca Resmi Kamu Bordroları)
       const edu = (j && j.minEducation || '').toLowerCase();
       if (edu === 'lisans' || edu === 'yukseklisans' || edu === 'doktora') {
         return {
-          minSalary: 45000, maxSalary: 51000, averageSalary: 48000,
-          rangeText: '45.000 ₺ - 51.000 ₺ / Ay',
-          category: 'Kamu Personeli (Lisans Kadrosu)',
+          minSalary: 68000, maxSalary: 76000, averageSalary: 71000,
+          rangeText: '68.000 ₺ - 76.000 ₺ / Ay',
+          category: 'Kamu Personeli (Lisans Başlangıç)',
           summary: 'Lisans mezunu yeni başlayan kamu görevlisi için net temel maaş ve kanuni ek ödemelerdir.',
-          benefits: ['Taban Aylık', 'Özel Hizmet Tazminatı', 'Sendika ve Aile Yardımı'],
-          disclaimer: 'Kurumun tabi olduğu teşkilat kanununa ve döner sermaye imkânlarına göre net maaş değişebilir.'
+          benefits: ['Devlet Güvencesi & Taban Aylık', 'Özel Hizmet Tazminatı', 'Sendika ve Aile Yardımı'],
+          disclaimer: 'Kurumun tabi olduğu teşkilat kanununa ve döner sermaye/ek ödeme imkânlarına göre net maaş değişebilir.'
         };
       } else if (edu === 'onlisans') {
         return {
-          minSalary: 43500, maxSalary: 48500, averageSalary: 46000,
-          rangeText: '43.500 ₺ - 48.500 ₺ / Ay',
-          category: 'Kamu Personeli (Önlisans Kadrosu)',
+          minSalary: 66500, maxSalary: 73500, averageSalary: 69500,
+          rangeText: '66.500 ₺ - 73.500 ₺ / Ay',
+          category: 'Kamu Personeli (Önlisans Başlangıç)',
           summary: 'Önlisans mezunu memur veya sözleşmeli personel başlangıç derecesi net maaşıdır.',
-          benefits: ['Taban Aylık', 'Ek Ödeme', 'Yol ve Yemek Desteği'],
+          benefits: ['Taban Aylık & Ek Ödeme', 'Yemek ve Yol Desteği', 'Banka Promosyonu'],
           disclaimer: 'Kadro unvanına göre teknik sorumluluk veya vardiya ücreti eklenebilir.'
         };
       }
+
+      // Genel En Düşük Kamu Net Tabanı (~65.000 ₺ - 71.000 ₺)
       return {
-        minSalary: 42500, maxSalary: 47000, averageSalary: 44500,
-        rangeText: '42.500 ₺ - 47.000 ₺ / Ay',
-        category: 'Kamu Personeli (Temel Kadro)',
-        summary: '2026 yılı güncel en düşük memur taban aylığı ve yan ödemeleri baz alınarak hesaplanmıştır.',
-        benefits: ['Devlet Güvencesi & Taban Aylık', 'Aile Yardımı', 'Yemek / Servis İmkânı'],
-        disclaimer: 'Kamu kurum ve kuruluşlarının ek ödeme kararnamelerine göre net tutar artabilir.'
+        minSalary: 65000, maxSalary: 71000, averageSalary: 67600,
+        rangeText: '65.000 ₺ - 71.000 ₺ / Ay',
+        category: 'Kamu Personeli (En Düşük Kamu Tabanı)',
+        summary: 'Temmuz 2026 sonrası kamu çerçeve protokolü ve memur taban maaşları baz alınmıştır. Yemek yardımı, tediye ve ikramiyelerle birlikte kamuda en düşük başlangıç gelirleri net 65.000 TL üzerindedir.',
+        benefits: ['Devlet Güvencesi & Taban Aylık', 'Yol ve Yemek Desteği', 'İlave Tediye & İkramiye İmkânı'],
+        disclaimer: 'Sadece kamu kurum ve kuruluşları baz alınmıştır; özel sektör asgari ücreti dahil edilmemiştir.'
       };
     }
 
@@ -5287,6 +5323,16 @@
       const input = document.getElementById('commentInput_' + jobId);
       const msgEl = document.getElementById('commMsg_' + jobId);
       if (!input) return;
+
+      if (!token) {
+        if (msgEl) {
+          msgEl.style.color = 'var(--fail)';
+          msgEl.innerHTML = '<b>Aday topluluğunda yorum paylaşabilmek için lütfen giriş yapın.</b>';
+        }
+        showAuthModal('login');
+        return;
+      }
+
       const content = input.value.trim();
       if (!content || content.length < 2) {
         if (msgEl) {
@@ -5314,7 +5360,7 @@
       } catch (e) {
         if (msgEl) {
           msgEl.style.color = 'var(--fail)';
-          msgEl.innerHTML = `<b>${escapeHtml(e.message || 'Yorum gönderilemedi.')}</b>`;
+          msgEl.innerHTML = `<b>${escapeHtml(e.message || 'Yorum gönderilemedi. Lütfen tekrar deneyin.')}</b>`;
         }
         if (e && e.data && e.data.banned) {
           input.disabled = true;
