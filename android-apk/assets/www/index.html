@@ -1536,17 +1536,12 @@
       </div>
 
       <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
-        <!-- 1. Seçenek: Resmi Portal (Kariyer Kapısı vb.) -->
+        <!-- Resmi Başvuru Portalı Butonu -->
         <button id="applyGwPrimaryBtn" class="btn" style="width:100%;background:linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);color:#fff;border:none;font-weight:800;padding:12px;font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 3px 10px rgba(124,58,237,0.35);">
-          <span>🚀</span> <span>Kariyer Kapısı Portalı ↗</span>
+          <span>🚀</span> <span>Resmi Başvuru Portalı ↗</span>
         </button>
 
-        <!-- 2. Seçenek: e-Devlet Kapısı Üzerinden Giriş -->
-        <button id="applyGwEdevletBtn" class="btn btn-outline" style="width:100%;border:1.5px solid #2563eb;color:#1d4ed8;font-weight:800;padding:11px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(37, 99, 235, 0.04);">
-          <span>🏛️</span> <span>e-Devlet Kamu İşe Alım Portalı ↗</span>
-        </button>
-
-        <!-- 3. Seçenek: Kurum Kılavuzu / İlan Metni -->
+        <!-- Kurum Kılavuzu / İlan Metni -->
         <button id="applyGwGuideBtn" class="btn btn-outline" style="width:100%;border:1px solid var(--border);color:var(--text);font-weight:700;padding:10px;font-size:12.5px;display:flex;align-items:center;justify-content:center;gap:8px;">
           <span>📄</span> <span>Resmi İlan Metni & Kılavuz ↗</span>
         </button>
@@ -3809,44 +3804,14 @@
       }
       const officialInfo = resolveOfficialApplyInfo(j);
       
-      const modal = document.getElementById('applyGatewayModal');
-      const titleEl = document.getElementById('applyGwTitle');
-      const instEl = document.getElementById('applyGwInst');
-      const primaryBtn = document.getElementById('applyGwPrimaryBtn');
-      const edevletBtn = document.getElementById('applyGwEdevletBtn');
-      const guideBtn = document.getElementById('applyGwGuideBtn');
-      const tipEl = document.getElementById('applyGwTip');
-
-      if (titleEl) titleEl.innerText = j.title || 'Kamu Kadrosu';
-      if (instEl) instEl.innerText = j.institution || 'Resmi Kurum';
-      
-      if (primaryBtn) {
-        primaryBtn.innerHTML = `<span>🚀</span> <span>${officialInfo.btnText || (officialInfo.portalName + ' ↗')}</span>`;
-        primaryBtn.onclick = () => openExternalUrl(officialInfo.primaryUrl);
+      // Tek tıkla doğrudan en doğru resmi başvuru ekranına yönlendir (Fazladan buton ve açılır modal karmaşası yok!)
+      if (officialInfo.type === 'belediye' && officialInfo.primaryUrl === j.url) {
+        showToast('🏛️ ' + (j.institution || 'Kurum') + ': Başvuru ve evrak teslimi şahsen/posta iledir.');
+      } else {
+        const cleanName = (officialInfo.btnText || officialInfo.portalName || 'Resmi Başvuru Ekranı').replace(/[🏛️🎓🏢🎖️👮🛡️📝🚀↗]/g, '').trim();
+        showToast('🚀 ' + cleanName + ' açılıyor...');
       }
-      if (edevletBtn) {
-        if (officialInfo.primaryUrl === officialInfo.edevletUrl) {
-          edevletBtn.classList.add('hidden');
-        } else {
-          edevletBtn.classList.remove('hidden');
-          edevletBtn.innerHTML = `<span>🏛️</span> <span>Alternatif: e-Devlet Kamu İşe Alım Portalı ↗</span>`;
-          edevletBtn.onclick = () => openExternalUrl(officialInfo.edevletUrl);
-        }
-      }
-      if (guideBtn) {
-        if (j.url && safeUrl(j.url)) {
-          guideBtn.classList.remove('hidden');
-          guideBtn.innerHTML = `<span>📄</span> <span>Resmi İlan Metni & Başvuru Kılavuzu ↗</span>`;
-          guideBtn.onclick = () => openExternalUrl(j.url);
-        } else {
-          guideBtn.classList.add('hidden');
-        }
-      }
-      if (tipEl) {
-        tipEl.innerHTML = officialInfo.tipText;
-      }
-      
-      if (modal) modal.classList.remove('hidden');
+      openExternalUrl(officialInfo.primaryUrl);
     }
 
     function closeApplyGatewayModal(e) {
@@ -5130,7 +5095,7 @@
             ${j.url && safeUrl(j.url) ? `<a class="btn btn-outline" style="flex:1;min-width:130px;" href="${safeUrl(j.url)}" target="_blank" rel="noopener noreferrer">📄 İlan Metni / Kılavuz ↗</a>` : ''}
             ${isVipActive() ? `
               <button class="btn" style="flex:1.4;min-width:175px;background:linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);color:#fff;border:none;font-weight:800;box-shadow:0 3px 10px rgba(124,58,237,0.35);" onclick="openApplyGateway(${j.id})">
-                🚀 Resmi Başvuru Ekranına Git ↗
+                ${escapeHtml(resolveOfficialApplyInfo(j).btnText || '🚀 Resmi Başvuru Ekranına Git ↗')}
               </button>
             ` : `
               <button class="btn" style="flex:1.4;min-width:175px;background:linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);border:1.5px dashed #f59e0b;color:#b45309;font-weight:800;" onclick="promptVipApply()">
