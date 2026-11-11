@@ -3639,6 +3639,109 @@
       }
     }
 
+    const KNOWN_UNIVERSITY_DOMAINS = {
+      'boğaziçi': 'https://www.boun.edu.tr',
+      'bogazici': 'https://www.boun.edu.tr',
+      'muş alparslan': 'https://www.alparslan.edu.tr',
+      'alparslan': 'https://www.alparslan.edu.tr',
+      'yeditepe': 'https://www.yeditepe.edu.tr',
+      'fırat': 'https://www.firat.edu.tr',
+      'firat': 'https://www.firat.edu.tr',
+      'karatay': 'https://www.karatay.edu.tr',
+      'kto karatay': 'https://www.karatay.edu.tr',
+      'çağ': 'https://www.cag.edu.tr',
+      'cag': 'https://www.cag.edu.tr',
+      'koç': 'https://www.koc.edu.tr',
+      'koc': 'https://www.koc.edu.tr',
+      'esenyurt': 'https://www.esenyurt.edu.tr',
+      'antalya belek': 'https://www.belek.edu.tr',
+      'belek': 'https://www.belek.edu.tr',
+      'tarsus': 'https://www.tarsus.edu.tr',
+      'bitlis eren': 'https://www.beu.edu.tr',
+      'bakırçay': 'https://www.bakircay.edu.tr',
+      'bakircay': 'https://www.bakircay.edu.tr',
+      'kocaeli sağlık': 'https://www.kocaelisaglik.edu.tr',
+      'abdullah gül': 'https://www.agu.edu.tr',
+      'atatürk': 'https://www.atauni.edu.tr',
+      'ataturk': 'https://www.atauni.edu.tr',
+      'marmara': 'https://www.marmara.edu.tr',
+      'harran': 'https://www.harran.edu.tr',
+      'giresun': 'https://www.giresun.edu.tr',
+      'gazi': 'https://personelilan.gazi.edu.tr',
+      'sağlık bilimleri': 'https://akbys.sbu.edu.tr',
+      'sbu': 'https://akbys.sbu.edu.tr',
+      'batman': 'https://batman.edu.tr',
+      'ege': 'https://www.ege.edu.tr',
+      'dokuz eylül': 'https://www.deu.edu.tr',
+      'istanbul üniversitesi': 'https://www.istanbul.edu.tr',
+      'hacı bayram': 'https://hacibayram.edu.tr',
+      'nevşehir': 'https://www.nevsehir.edu.tr',
+      'aksaray': 'https://www.aksaray.edu.tr',
+      'inönü': 'https://www.inonu.edu.tr',
+      'inonu': 'https://www.inonu.edu.tr',
+      'uludağ': 'https://www.uludag.edu.tr',
+      'dicle': 'https://www.dicle.edu.tr',
+      'ağrı ibrahim çeçen': 'https://www.agri.edu.tr',
+      'akdeniz': 'https://www.akdeniz.edu.tr',
+      'kırıkkale': 'https://www.kku.edu.tr',
+      'haliç': 'https://www.halic.edu.tr',
+      'kayseri': 'https://www.kayseri.edu.tr',
+      'pamukkale': 'https://www.pau.edu.tr',
+      'adana alparslan türkeş': 'https://www.atu.edu.tr',
+      'iskenderun teknik': 'https://iste.edu.tr',
+      'sütçü imam': 'https://www.ksu.edu.tr',
+      'celal bayar': 'https://www.mcbu.edu.tr',
+      'karatekin': 'https://www.karatekin.edu.tr',
+      'adıyaman': 'https://www.adiyaman.edu.tr',
+      'abant izzet baysal': 'https://www.ibu.edu.tr',
+      'beykent': 'https://www.beykent.edu.tr',
+      'fatih sultan mehmet': 'https://www.fsm.edu.tr',
+      'bahçeşehir': 'https://bau.edu.tr',
+      'fenerbahçe': 'https://www.fbu.edu.tr',
+      'izmir ekonomi': 'https://www.ieu.edu.tr',
+      'gedik': 'https://www.gedik.edu.tr',
+      'başkent': 'https://www.baskent.edu.tr',
+      'istinye': 'https://www.istinye.edu.tr'
+    };
+
+    function trSlugify(str) {
+      if (!str) return '';
+      const trMap = { 'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u' };
+      return (str || '')
+        .replace(/İ/g, 'i')
+        .replace(/I/g, 'ı')
+        .toLowerCase()
+        .replace(/[çğıöşü]/g, ch => trMap[ch] || ch)
+        .replace(/[^a-z0-9]/g, '');
+    }
+
+    function extractCleanOfficialUrls(text) {
+      if (!text) return [];
+      const regex = /(?:https?:\/\/|www\.)[a-zA-Z0-9\-_]+(?:\.[a-zA-Z0-9\-_]+)+(?:\/[^\s)"',;<>]*)*[a-zA-Z0-9_\/]/gi;
+      const matches = text.match(regex) || [];
+      const results = [];
+      const seen = new Set();
+
+      for (let raw of matches) {
+        let u = raw.replace(/[.,;:!?)("']+$/, '').trim();
+        if (/^www\./i.test(u)) {
+          u = 'https://' + u;
+        } else if (!/^https?:\/\//i.test(u)) {
+          u = 'https://' + u;
+        }
+        u = u.replace(/(\.(?:edu|gov|bel|org|com|net)\.tr)[^\/a-zA-Z0-9_\-?&=].*$/i, '$1');
+
+        if (/memurlar\.net|resmigazete\.gov\.tr|mevzuat\.gov\.tr/i.test(u)) {
+          continue;
+        }
+        if (!seen.has(u)) {
+          seen.add(u);
+          results.push(u);
+        }
+      }
+      return results;
+    }
+
     function resolveOfficialApplyInfo(j) {
       j = j || {};
       const desc = (j.description || '').toLowerCase();
@@ -3729,54 +3832,78 @@
       }
 
       // Metin içindeki resmi web linklerini tara (memurlar.net, resmigazete, mevzuat hariç)
-      const rawUrls = (j.description || '').match(/https?:\/\/[^\s)"',;<>]+/gi) || [];
-      const cleanUrls = rawUrls.map(u => u.replace(/[.,;:]+$/, '').trim()).filter(u => {
-        return !/memurlar\.net|resmigazete\.gov\.tr|mevzuat\.gov\.tr/i.test(u);
-      });
+      const cleanUrls = extractCleanOfficialUrls(j.description || '');
       const eduUrl = cleanUrls.find(u => /\.edu\.tr/i.test(u));
       const govOrBelUrl = cleanUrls.find(u => /\.gov\.tr|\.bel\.tr|\.org\.tr/i.test(u));
 
       // 7. Üniversite Akademik & İdari Kadroları
       if (/üniversite|universite|rektörlük|akademik|öğretim\s*(üyesi|görevlisi|elemanı)|enstitü/i.test(inst) || /üniversite|universite/i.test(title)) {
-        const targetUrl = eduUrl || cleanUrls[0] || j.url;
+        let targetUrl = eduUrl;
+        if (!targetUrl) {
+          for (const [key, domain] of Object.entries(KNOWN_UNIVERSITY_DOMAINS)) {
+            if (inst.includes(key) || title.includes(key)) {
+              targetUrl = domain;
+              break;
+            }
+          }
+        }
+        if (!targetUrl && cleanUrls.length > 0) targetUrl = cleanUrls[0];
+        if (!targetUrl) targetUrl = 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim';
+
+        const instName = (j.institution || 'Üniversite').replace(/Rektörlüğü|Başkanlığı/i, '').trim();
         return {
           type: 'universite',
-          portalName: `${escapeHtml(j.institution || 'Üniversite')} Başvuru Ekranı`,
+          portalName: `${escapeHtml(instName)} Başvuru Ekranı`,
           primaryUrl: targetUrl,
           edevletUrl: 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim',
-          btnText: `🎓 ${escapeHtml((j.institution || 'Üniversite').slice(0, 26))} Başvuru Portalı ↗`,
+          btnText: `🎓 ${escapeHtml(instName.slice(0, 26))} Başvuru Portalı ↗`,
           tipText: `💡 <b>Üniversite Kadrosu:</b> Üniversite akademik kadro başvuruları Rektörlük Personel Daire Başkanlığı veya üniversitenin online başvuru portalı üzerinden şahsen/posta/elektronik ortamda kabul edilir. Başvuru şartları ve evraklarını resmi kılavuzdan inceleyebilirsiniz.`
         };
       }
 
       // 8. Belediyeler & Mahalli İdareler (Zabıta, İtfaiye, Memur vb.)
       if (/belediye|il\s*özel\s*idaresi|büyükşehir/i.test(inst) || /belediye|zab[ıi]ta|itfaiye/i.test(title)) {
-        const targetUrl = govOrBelUrl || cleanUrls[0] || j.url;
+        let targetUrl = govOrBelUrl;
+        if (!targetUrl) {
+          const fullText = (j.institution || '') + ' ' + (title || '');
+          const m = fullText.match(/([a-zA-ZçğıöşüÇĞİÖŞÜ]+)\s+(?:büyükşehir\s+)?belediye/i);
+          if (m && m[1]) {
+            const slug = trSlugify(m[1]);
+            if (slug.length >= 3 && !/buyuksehir|merkez|belediye/.test(slug)) {
+              targetUrl = `https://www.${slug}.bel.tr`;
+            }
+          }
+        }
+        if (!targetUrl && cleanUrls.length > 0) targetUrl = cleanUrls[0];
+        if (!targetUrl) targetUrl = 'https://www.turkiye.gov.tr/belediyeler';
+
+        const instName = (j.institution || 'Belediye').replace(/Başkanlığı/i, '').trim();
         return {
           type: 'belediye',
-          portalName: `${escapeHtml(j.institution || 'Belediye')} İlan & Başvuru Sayfası`,
+          portalName: `${escapeHtml(instName)} Resmi Portalı`,
           primaryUrl: targetUrl,
           edevletUrl: 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim',
-          btnText: `🏛️ ${escapeHtml((j.institution || 'Belediye').slice(0, 26))} İlan & Başvuru Sayfası ↗`,
-          tipText: `💡 <b>Belediye / Mahalli İdare Alımı:</b> Mahalli idare, zabıta ve memur başvuruları ilgili belediyenin Yazı İşleri/İnsan Kaynakları birimine şahsen veya posta ile yapılmaktadır. İlan kılavuzundaki başvuru formunu ve evrak listesini kontrol ediniz.`
+          btnText: `🏛️ ${escapeHtml(instName.slice(0, 26))} Resmi Başvuru Portalı ↗`,
+          tipText: `💡 <b>Belediye / Mahalli İdare Alımı:</b> Mahalli idare, zabıta ve memur başvuruları ilgili idarenin Yazı İşleri/İnsan Kaynakları birimine şahsen veya resmi portalı üzerinden yapılmaktadır. İlan kılavuzundaki başvuru formunu ve evrak listesini kontrol ediniz.`
         };
       }
 
       // 9. Metin içinde doğrudan resmi bir kurum URL'si tespit edilmişse
       if (govOrBelUrl || eduUrl || cleanUrls[0]) {
         const chosenUrl = govOrBelUrl || eduUrl || cleanUrls[0];
+        const instName = (j.institution || 'Kurum').slice(0, 26);
         return {
           type: 'kurum',
-          portalName: `${escapeHtml(j.institution || 'Kurum')} Resmi Sayfası`,
+          portalName: `${escapeHtml(instName)} Resmi Sayfası`,
           primaryUrl: chosenUrl,
           edevletUrl: 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim',
-          btnText: `🚀 ${escapeHtml((j.institution || 'Kurum').slice(0, 26))} Başvuru Sayfası ↗`,
+          btnText: `🚀 ${escapeHtml(instName)} Başvuru Sayfası ↗`,
           tipText: `💡 <b>Kurum Başvurusu:</b> Bu kadro için başvurular doğrudan kurumun resmi web portalı veya sınav ekranı üzerinden alınmaktadır.`
         };
       }
 
       // 10. Genel Merkezi Kamu Alımı (Cumhurbaşkanlığı Kariyer Kapısı e-Devlet Portalı)
-      return {
+      const res = {
         type: 'genel',
         portalName: 'e-Devlet ile Doğrudan Başvuru Ekranı (Kariyer Kapısı)',
         primaryUrl: 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim',
@@ -3784,6 +3911,12 @@
         btnText: '🏛️ e-Devlet ile Başvuru Ekranına Git ↗',
         tipText: `💡 <b>e-Devlet ile Doğrudan Başvuru:</b> İlan başvurusu Cumhurbaşkanlığı Kariyer Kapısı resmi e-Devlet entegrasyonu üzerinden alınmaktadır. e-Devlet şifrenizle giriş yaparak başvurunuzu kolayca tamamlayabilirsiniz.`
       };
+
+      // KESİN GÜVENLİK KURALI: primaryUrl ASLA memurlar.net olamaz!
+      if (res.primaryUrl && /memurlar\.net/i.test(res.primaryUrl)) {
+        res.primaryUrl = 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim';
+      }
+      return res;
     }
 
     function findOfficialApplyUrl(descOrJob, optionalJob) {
@@ -3805,12 +3938,8 @@
       const officialInfo = resolveOfficialApplyInfo(j);
       
       // Tek tıkla doğrudan en doğru resmi başvuru ekranına yönlendir (Fazladan buton ve açılır modal karmaşası yok!)
-      if (officialInfo.type === 'belediye' && officialInfo.primaryUrl === j.url) {
-        showToast('🏛️ ' + (j.institution || 'Kurum') + ': Başvuru ve evrak teslimi şahsen/posta iledir.');
-      } else {
-        const cleanName = (officialInfo.btnText || officialInfo.portalName || 'Resmi Başvuru Ekranı').replace(/[🏛️🎓🏢🎖️👮🛡️📝🚀↗]/g, '').trim();
-        showToast('🚀 ' + cleanName + ' açılıyor...');
-      }
+      const cleanName = (officialInfo.btnText || officialInfo.portalName || 'Resmi Başvuru Ekranı').replace(/[🏛️🎓🏢🎖️👮🛡️📝🚀↗]/g, '').trim();
+      showToast('🚀 ' + cleanName + ' açılıyor...');
       openExternalUrl(officialInfo.primaryUrl);
     }
 
@@ -5092,7 +5221,7 @@
           <h2 style="margin:0 0 6px 0;font-size:19px;">${escapeHtml(j.title)}</h2>
           <div class="sub">${[escapeHtml(j.institution), escapeHtml(j.city), 'Kaynak: ' + escapeHtml(srcName)].filter(Boolean).join(' • ')}</div>
           <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap;">
-            ${j.url && safeUrl(j.url) ? `<a class="btn btn-outline" style="flex:1;min-width:130px;" href="${safeUrl(j.url)}" target="_blank" rel="noopener noreferrer">📄 İlan Metni / Kılavuz ↗</a>` : ''}
+            ${j.url && safeUrl(j.url) ? `<a class="btn btn-outline" style="flex:1;min-width:130px;" href="${safeUrl(j.url)}" target="_blank" rel="noopener noreferrer">${/memurlar\.net/i.test(j.url) ? '📰 İlan Metni ↗' : '📄 İlan Metni / Kılavuz ↗'}</a>` : ''}
             ${isVipActive() ? `
               <button class="btn" style="flex:1.4;min-width:175px;background:linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);color:#fff;border:none;font-weight:800;box-shadow:0 3px 10px rgba(124,58,237,0.35);" onclick="openApplyGateway(${j.id})">
                 ${escapeHtml(resolveOfficialApplyInfo(j).btnText || '🚀 Resmi Başvuru Ekranına Git ↗')}
