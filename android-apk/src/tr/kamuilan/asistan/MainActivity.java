@@ -124,12 +124,9 @@ public class MainActivity extends Activity {
                 Uri uri = request.getUrl();
                 if (uri != null && ("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme()))) {
                     String urlStr = uri.toString();
-                    // Kariyer kapısı DNS hatası ve e-Devlet 404 düzeltmesi
-                    if (urlStr.contains("isealimkariyerkapisi") || (urlStr.contains("kariyerkapisi") && !urlStr.contains("cbiko.gov.tr"))) {
-                        urlStr = "https://kariyerkapisi.cbiko.gov.tr";
-                    }
-                    if (urlStr.contains("turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim") || urlStr.contains("turkiye.gov.tr/kamu-ise-alim")) {
-                        urlStr = "https://kariyerkapisi.cbiko.gov.tr";
+                    // Kariyer kapısı linklerini doğrudan e-Devlet resmi kamu işe alım ekranına yönlendir
+                    if (urlStr.contains("isealimkariyerkapisi") || (urlStr.contains("kariyerkapisi") && !urlStr.contains("turkiye.gov.tr"))) {
+                        urlStr = "https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim";
                     }
                     openInBrowser(urlStr);
                     return true;
@@ -170,7 +167,12 @@ public class MainActivity extends Activity {
                     "Kamu İlan Bildirimleri",
                     NotificationManager.IMPORTANCE_HIGH
             );
-            channel.setDescription("Profilinize uygun yeni kamu personel ilanları");
+            channel.setDescription("Profilinize uygun yeni kamu personel ilanları ve alarmlar");
+            channel.enableLights(true);
+            channel.setLightColor(0xFF7C3AED);
+            channel.enableVibration(true);
+            channel.setVibrationPattern(new long[]{0, 300, 200, 300});
+            channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
                 nm.createNotificationChannel(channel);
@@ -361,13 +363,18 @@ public class MainActivity extends Activity {
                 builder.setSmallIcon(R.mipmap.ic_launcher)
                         .setContentTitle(title)
                         .setContentText(body)
+                        .setStyle(new Notification.BigTextStyle().bigText(body))
                         .setAutoCancel(true)
+                        .setShowWhen(true)
                         .setDefaults(Notification.DEFAULT_ALL)
                         .setContentIntent(pi);
 
                 if (Build.VERSION.SDK_INT >= 21) {
-                    builder.setPriority(Notification.PRIORITY_HIGH);
-                    builder.setVibrate(new long[]{0, 250, 200, 250});
+                    builder.setPriority(Notification.PRIORITY_MAX);
+                    builder.setVisibility(Notification.VISIBILITY_PUBLIC);
+                    builder.setCategory(Notification.CATEGORY_EVENT);
+                    builder.setColor(0xFF7C3AED);
+                    builder.setVibrate(new long[]{0, 300, 200, 300});
                 }
 
                 NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -376,6 +383,16 @@ public class MainActivity extends Activity {
                 }
             } catch (Exception ignored) {
             }
+        }
+
+        @JavascriptInterface
+        public void requestNotifPermission() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    requestNotifPermissionIfNeeded();
+                }
+            });
         }
 
         @JavascriptInterface

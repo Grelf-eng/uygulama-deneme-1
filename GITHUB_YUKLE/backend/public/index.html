@@ -2278,8 +2278,13 @@
         });
         resultEl.style.color = 'var(--ok)';
         resultEl.innerText = '✅ ' + (r.message || 'Bildirim başarıyla gönderildi.');
+
+        // Admin cihazında da anında Binance tarzı telefon durum çubuğu bildirimi çalsın ve gözüksün
+        sendPhoneSystemNotification(title, body, 0, true);
+
         document.getElementById('adminNotifTitle').value = '';
         document.getElementById('adminNotifBody').value = '';
+        loadNotificationsCount();
       } catch (e) {
         resultEl.style.color = 'var(--fail)';
         resultEl.innerText = '❌ ' + (e.message || 'Bildirim gönderilemedi.');
@@ -3303,6 +3308,8 @@
       }
     }
 
+    let lastNotifiedNotifId = Number(localStorage.getItem('kamu_last_notified_id') || 0);
+
     async function loadNotificationsCount() {
       if (!token) return;
       try {
@@ -3314,6 +3321,20 @@
             notifBtn.innerHTML = `🔔 <span style="background:#ef4444;color:#fff;font-size:10.5px;font-weight:800;padding:2px 6px;border-radius:10px;margin-left:2px;">${unread}</span>`;
           } else {
             notifBtn.innerHTML = '🔔';
+          }
+        }
+
+        // Yeni gelen okunmamış bildirimleri doğrudan TELEFONUN DURUM ÇUBUĞUNA (Binance tarzı kilit ekranı & bildirim paneli) fırlat!
+        if (res.items && res.items.length > 0) {
+          const unreadNewItems = res.items.filter(item => !item.read && item.id > lastNotifiedNotifId);
+          if (unreadNewItems.length > 0) {
+            const topItem = unreadNewItems[0];
+            lastNotifiedNotifId = Math.max(...unreadNewItems.map(i => i.id));
+            localStorage.setItem('kamu_last_notified_id', String(lastNotifiedNotifId));
+            sendPhoneSystemNotification(topItem.title, topItem.body, topItem.jobId, true);
+          } else if (lastNotifiedNotifId === 0 && res.items[0]) {
+            lastNotifiedNotifId = res.items[0].id;
+            localStorage.setItem('kamu_last_notified_id', String(lastNotifiedNotifId));
           }
         }
       } catch (e) {}
@@ -3344,11 +3365,16 @@
       }
     }
 
+    let notifPollTimer = null;
+
     function startVipMatchPolling() {
       if (vipMatchPollTimer) clearInterval(vipMatchPollTimer);
-      // İlk kontrol 6 saniye sonra, sonrasında her 45 saniyede bir düzenli kontrol
+      if (notifPollTimer) clearInterval(notifPollTimer);
+      // İlk kontrol 5-6 saniye sonra, sonrasında düzenli kontrol
       setTimeout(checkVipNewMatches, 6000);
+      setTimeout(loadNotificationsCount, 4000);
       vipMatchPollTimer = setInterval(checkVipNewMatches, 45000);
+      notifPollTimer = setInterval(loadNotificationsCount, 25000);
     }
 
     document.addEventListener('visibilitychange', () => {
@@ -3366,6 +3392,9 @@
       try {
         if ('Notification' in window && Notification.permission === 'default') {
           await Notification.requestPermission();
+        }
+        if (window.AndroidBridge && window.AndroidBridge.requestNotifPermission) {
+          window.AndroidBridge.requestNotifPermission();
         }
         const res = await api('/notifications/test', { method: 'POST' });
         const title = res.title || '🎯 Size uygun 1 yeni ilan çıktı!';
@@ -3600,15 +3629,13 @@
     function openExternalUrl(url) {
       if (!url) return;
       let clean = url.trim();
-      // Kariyer kapısı DNS hatası ve e-Devlet 404 düzeltmesi:
-      // isealimkariyerkapisi.cbiko.gov.tr, kariyerkapisi.gov.tr veya eski turkiye.gov.tr slug'ları -> doğrudan çalışan kariyerkapisi.cbiko.gov.tr
+      // Kariyer kapısı ve kamu işe alım linklerini doğrudan resmi e-Devlet Kariyer Kapısı Kamu İşe Alım ekranına yönlendir
       if (
         /isealimkariyerkapisi/i.test(clean) ||
         /kariyerkapisi\.gov\.tr/i.test(clean) ||
-        (/kariyerkapisi/i.test(clean) && !clean.includes('cbiko.gov.tr')) ||
-        /turkiye\.gov\.tr\/(cumhurbaskanligi-)?kamu-ise-alim/i.test(clean)
+        (/kariyerkapisi/i.test(clean) && !clean.includes('turkiye.gov.tr'))
       ) {
-        clean = 'https://kariyerkapisi.cbiko.gov.tr';
+        clean = 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim';
       }
       if (window.AndroidBridge && window.AndroidBridge.openExternal) {
         window.AndroidBridge.openExternal(clean);
@@ -3624,78 +3651,143 @@
       const inst = (j.institution || '').toLowerCase();
       const combined = `${title} ${inst} ${desc}`;
 
-      // 1. İŞKUR Alımları
-      if (/i[şs]kur|esube\.iskur/i.test(combined) || j.source === 'iskur' || j.jobType === 'isci') {
+      // 1. Askeri / Millî Savunma Bakanlığı (MSB) Alımları
+      if (
+        (/personeltemin\.msb|milli\s*savunma\s*bakanl/i.test(combined) && /subay|astsubay|uzman\s*erba|personel\s*temin/i.test(combined)) ||
+        /deniz\s*kuvvetleri|hava\s*kuvvetleri|kara\s*kuvvetleri/i.test(combined)
+      ) {
         return {
-          portalName: 'İŞKUR e-Şube Kamu İlanları Portalı',
-          primaryUrl: 'https://esube.iskur.gov.tr/Istihdam/AcikIsIlanAra.aspx',
-          edevletUrl: 'https://www.turkiye.gov.tr/iskur-acik-is-ilanlari',
-          tipText: `💡 <b>İŞKUR İlanı:</b> Başvurular İŞKUR e-Şube üzerinden alınmaktadır. e-Devlet şifrenizle giriş yaparak arama alanına <b>"${escapeHtml(j.institution || 'Kurum')}"</b> yazıp başvurabilirsiniz.`
-        };
-      }
-
-      // 2. ÖSYM Tercihleri
-      if (/[öo]sym|ais\.osym/i.test(combined) || /kpss\s*tercih/i.test(combined)) {
-        return {
-          portalName: 'ÖSYM Aday İşlemleri Sistemi (AİS)',
-          primaryUrl: 'https://ais.osym.gov.tr',
-          edevletUrl: 'https://ais.osym.gov.tr',
-          tipText: `💡 <b>ÖSYM Tercihi:</b> Tercih ve başvurular T.C. Kimlik No ve e-Devlet/ÖSYM şifrenizle ÖSYM AİS sistemi üzerinden yapılmaktadır.`
-        };
-      }
-
-      // 3. MSB Askeri Personel Temin
-      if (/personeltemin\.msb|milli\s*savunma|subay|astsubay|uzman\s*erba[şs]|msb\.gov/i.test(combined)) {
-        return {
-          portalName: 'MSB Personel Temin Dairesi Başkanlığı',
+          type: 'msb',
+          portalName: 'Millî Savunma Bakanlığı Personel Temin Portalı',
           primaryUrl: 'https://personeltemin.msb.gov.tr',
           edevletUrl: 'https://personeltemin.msb.gov.tr',
-          tipText: `💡 <b>MSB Alımı:</b> Başvurular e-Devlet şifresi ile Millî Savunma Bakanlığı Personel Temin Portalı üzerinden resmi olarak kabul edilmektedir.`
+          btnText: '🎖️ MSB Personel Temin ile Başvur ↗',
+          tipText: '💡 <b>MSB Alımı:</b> Başvurular Millî Savunma Bakanlığı Personel Temin Portalı üzerinden e-Devlet şifresi ile kabul edilmektedir.'
         };
       }
 
-      // 4. Polis Akademisi
-      if (/polis|pomem|pmyo|pa\.edu\.tr/i.test(combined)) {
+      // 2. Polis / EGM / Bekçi Alımları
+      if ((/pa\.edu\.tr|ais\.pa|pomem|pmyo|bekçi|polis\s*akademisi/i.test(combined)) && !/üniversite|universite/i.test(inst)) {
         return {
+          type: 'polis',
           portalName: 'Polis Akademisi Aday İşlemleri (AİS)',
           primaryUrl: 'https://ais.pa.edu.tr',
           edevletUrl: 'https://ais.pa.edu.tr',
-          tipText: `💡 <b>Polis Alımı:</b> Başvurular Polis Akademisi Başkanlığı AİS portalından e-Devlet ile giriş yapılarak tamamlanmaktadır.`
+          btnText: '👮 Polis Akademisi AİS ile Başvur ↗',
+          tipText: '💡 <b>Polis / Bekçi Alımı:</b> Başvurular Polis Akademisi Başkanlığı AİS portalından e-Devlet ile yapılmaktadır.'
         };
       }
 
-      // 5. Jandarma & Sahil Güvenlik
-      if (/jandarma|sahil\s*g[üu]venlik|jsga/i.test(combined)) {
+      // 3. Jandarma & Sahil Güvenlik
+      if (/vatandas\.jandarma|jandarma\s*ve\s*sahil|jsga|jandarma\s*genel/i.test(combined)) {
         return {
-          portalName: 'Jandarma & Sahil Güvenlik Personel Temin Portalı',
+          type: 'jandarma',
+          portalName: 'Jandarma & Sahil Güvenlik Personel Temin (PTS)',
           primaryUrl: 'https://vatandas.jandarma.gov.tr/PTM/Giris',
           edevletUrl: 'https://vatandas.jandarma.gov.tr/PTM/Giris',
-          tipText: `💡 <b>Jandarma Alımı:</b> Başvurular Jandarma Genel Komutanlığı Personel Temin Sistemi (PTS) üzerinden e-Devlet ile yapılmaktadır.`
+          btnText: '🛡️ Jandarma PTS ile Başvur ↗',
+          tipText: '💡 <b>Jandarma Alımı:</b> Başvurular Jandarma Genel Komutanlığı Personel Temin Sistemi (PTS) üzerinden e-Devlet ile yapılmaktadır.'
         };
       }
 
-      // 6. Üniversite veya Özel Kurum Spesifik Başvuru Sayfası
-      const matches = (j.description || '').match(/https?:\/\/[^\s)"',;<>]+/gi) || [];
-      for (const raw of matches) {
-        let u = raw.replace(/[.,;:]+$/, '').trim();
-        if (/basvuru|isealim|personelalimi|sinav\.gov\.tr/i.test(u) && !/kariyerkapisi/i.test(u)) {
-          if (!/[ığüşöç]/i.test(u) && u.length > 15 && u.includes('.')) {
-            return {
-              portalName: `${escapeHtml(j.institution || 'Kurum')} Başvuru Sayfası`,
-              primaryUrl: u,
-              edevletUrl: 'https://kariyerkapisi.cbiko.gov.tr',
-              tipText: `💡 <b>Kurum Portalı:</b> Başvuru doğrudan kurumun online sınav/başvuru ekranı veya Kariyer Kapısı üzerinden alınmaktadır.`
-            };
-          }
-        }
+      // 4. İŞKUR Kamu İlanları
+      if (
+        (/esube\.iskur|i[şs]kur\s*il\s*müd|toplum\s*yarar|typ|kamu\s*i[şs]çisi|sürekli\s*i[şs]çi/i.test(combined) || j.source === 'iskur' || j.jobType === 'isci') &&
+        !/kariyer\s*kap[ıi]s/i.test(desc)
+      ) {
+        return {
+          type: 'iskur',
+          portalName: 'İŞKUR e-Şube Kamu İlanları Portalı',
+          primaryUrl: 'https://esube.iskur.gov.tr/Istihdam/AcikIsIlanAra.aspx',
+          edevletUrl: 'https://www.turkiye.gov.tr/iskur-acik-is-ilanlari-ve-is-arayan-kaydi',
+          btnText: '🏢 İŞKUR e-Şube ile Başvur ↗',
+          tipText: `💡 <b>İŞKUR İlanı:</b> Başvurular İŞKUR e-Şube üzerinden alınmaktadır. e-Devlet ile giriş yapıp arama kutusuna <b>"${escapeHtml(j.institution || 'Kurum')}"</b> yazarak başvurabilirsiniz.`
+        };
       }
 
-      // 7. Genel Tüm Kamu İlanları (Cumhurbaşkanlığı Kariyer Kapısı)
+      // 5. ÖSYM Merkezi Tercih (Sadece gerçek ÖSYM Tercih Kılavuzları)
+      if (
+        /(ö|o)sym\s*ba[şs]kanl[ıi][ğg][ıi]/i.test(inst) ||
+        /kpss[- ]?202\d\/\d.*tercih/i.test(combined) ||
+        (/merkezi\s*yerle[şs]tirme/i.test(combined) && /tercih\s*k[ıi]lavuz/i.test(combined))
+      ) {
+        return {
+          type: 'osym',
+          portalName: 'ÖSYM Aday İşlemleri Sistemi (AİS)',
+          primaryUrl: 'https://ais.osym.gov.tr',
+          edevletUrl: 'https://ais.osym.gov.tr',
+          btnText: '📝 ÖSYM AİS Tercih Ekranı ↗',
+          tipText: '💡 <b>ÖSYM Tercihi:</b> Başvurular ÖSYM AİS portalı üzerinden T.C. kimlik numarası ve e-Devlet/ÖSYM şifresi ile yapılmaktadır.'
+        };
+      }
+
+      // 6. Açıkça Cumhurbaşkanlığı Kariyer Kapısı / İnsan Kaynakları Ofisi belirten ilanlar
+      if (/kariyer\s*kap[ıi]s[ıi]|isealimkariyerkapisi|cbiko\.gov\.tr/i.test(desc)) {
+        return {
+          type: 'kariyerkapisi',
+          portalName: 'e-Devlet Cumhurbaşkanlığı Kariyer Kapısı',
+          primaryUrl: 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim',
+          edevletUrl: 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim',
+          btnText: '🏛️ e-Devlet Kariyer Kapısı ile Başvur ↗',
+          tipText: `💡 <b>Kariyer Kapısı Alımı:</b> Başvuru Cumhurbaşkanlığı İnsan Kaynakları Ofisi resmi Kariyer Kapısı e-Devlet entegrasyonu üzerinden kabul edilmektedir. Yukarıdaki butona basarak doğrudan e-Devlet şifrenizle giriş yapıp <b>"${escapeHtml(j.institution || 'Kurum')}"</b> ilanını bularak başvurabilirsiniz.`
+        };
+      }
+
+      // Metin içindeki resmi web linklerini tara (memurlar.net, resmigazete, mevzuat hariç)
+      const rawUrls = (j.description || '').match(/https?:\/\/[^\s)"',;<>]+/gi) || [];
+      const cleanUrls = rawUrls.map(u => u.replace(/[.,;:]+$/, '').trim()).filter(u => {
+        return !/memurlar\.net|resmigazete\.gov\.tr|mevzuat\.gov\.tr/i.test(u);
+      });
+      const eduUrl = cleanUrls.find(u => /\.edu\.tr/i.test(u));
+      const govOrBelUrl = cleanUrls.find(u => /\.gov\.tr|\.bel\.tr|\.org\.tr/i.test(u));
+
+      // 7. Üniversite Akademik & İdari Kadroları
+      if (/üniversite|universite|rektörlük|akademik|öğretim\s*(üyesi|görevlisi|elemanı)|enstitü/i.test(inst) || /üniversite|universite/i.test(title)) {
+        const targetUrl = eduUrl || cleanUrls[0] || j.url;
+        return {
+          type: 'universite',
+          portalName: `${escapeHtml(j.institution || 'Üniversite')} Başvuru Ekranı`,
+          primaryUrl: targetUrl,
+          edevletUrl: 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim',
+          btnText: `🎓 ${escapeHtml((j.institution || 'Üniversite').slice(0, 26))} Başvuru Portalı ↗`,
+          tipText: `💡 <b>Üniversite Kadrosu:</b> Üniversite akademik kadro başvuruları Rektörlük Personel Daire Başkanlığı veya üniversitenin online başvuru portalı üzerinden şahsen/posta/elektronik ortamda kabul edilir. Başvuru şartları ve evraklarını resmi kılavuzdan inceleyebilirsiniz.`
+        };
+      }
+
+      // 8. Belediyeler & Mahalli İdareler (Zabıta, İtfaiye, Memur vb.)
+      if (/belediye|il\s*özel\s*idaresi|büyükşehir/i.test(inst) || /belediye|zab[ıi]ta|itfaiye/i.test(title)) {
+        const targetUrl = govOrBelUrl || cleanUrls[0] || j.url;
+        return {
+          type: 'belediye',
+          portalName: `${escapeHtml(j.institution || 'Belediye')} İlan & Başvuru Sayfası`,
+          primaryUrl: targetUrl,
+          edevletUrl: 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim',
+          btnText: `🏛️ ${escapeHtml((j.institution || 'Belediye').slice(0, 26))} İlan & Başvuru Sayfası ↗`,
+          tipText: `💡 <b>Belediye / Mahalli İdare Alımı:</b> Mahalli idare, zabıta ve memur başvuruları ilgili belediyenin Yazı İşleri/İnsan Kaynakları birimine şahsen veya posta ile yapılmaktadır. İlan kılavuzundaki başvuru formunu ve evrak listesini kontrol ediniz.`
+        };
+      }
+
+      // 9. Metin içinde doğrudan resmi bir kurum URL'si tespit edilmişse
+      if (govOrBelUrl || eduUrl || cleanUrls[0]) {
+        const chosenUrl = govOrBelUrl || eduUrl || cleanUrls[0];
+        return {
+          type: 'kurum',
+          portalName: `${escapeHtml(j.institution || 'Kurum')} Resmi Sayfası`,
+          primaryUrl: chosenUrl,
+          edevletUrl: 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim',
+          btnText: `🚀 ${escapeHtml((j.institution || 'Kurum').slice(0, 26))} Başvuru Sayfası ↗`,
+          tipText: `💡 <b>Kurum Başvurusu:</b> Bu kadro için başvurular doğrudan kurumun resmi web portalı veya sınav ekranı üzerinden alınmaktadır.`
+        };
+      }
+
+      // 10. Genel Merkezi Kamu Alımı (Cumhurbaşkanlığı Kariyer Kapısı e-Devlet Portalı)
       return {
-        portalName: 'Cumhurbaşkanlığı Kariyer Kapısı (Resmi Portal)',
-        primaryUrl: 'https://kariyerkapisi.cbiko.gov.tr',
-        edevletUrl: 'https://kariyerkapisi.cbiko.gov.tr',
-        tipText: `💡 <b>Kariyer Kapısı:</b> T.C. Cumhurbaşkanlığı İnsan Kaynakları Ofisi resmi sistemidir. e-Devlet ile giriş yaptıktan sonra kurumlar listesinden <b>"${escapeHtml(j.institution || 'Kurum')}"</b> seçerek başvurunuzu 2 dakikada tamamlayabilirsiniz.`
+        type: 'genel',
+        portalName: 'e-Devlet ile Doğrudan Başvuru Ekranı (Kariyer Kapısı)',
+        primaryUrl: 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim',
+        edevletUrl: 'https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim',
+        btnText: '🏛️ e-Devlet ile Başvuru Ekranına Git ↗',
+        tipText: `💡 <b>e-Devlet ile Doğrudan Başvuru:</b> İlan başvurusu Cumhurbaşkanlığı Kariyer Kapısı resmi e-Devlet entegrasyonu üzerinden alınmaktadır. e-Devlet şifrenizle giriş yaparak başvurunuzu kolayca tamamlayabilirsiniz.`
       };
     }
 
@@ -3712,7 +3804,7 @@
       }
       const j = (currentOpenJob && currentOpenJob.id === jobId) ? currentOpenJob : null;
       if (!j) {
-        openExternalUrl('https://kariyerkapisi.cbiko.gov.tr');
+        openExternalUrl('https://www.turkiye.gov.tr/cumhurbaskanligi-kamu-ise-alim');
         return;
       }
       const officialInfo = resolveOfficialApplyInfo(j);
@@ -3729,16 +3821,22 @@
       if (instEl) instEl.innerText = j.institution || 'Resmi Kurum';
       
       if (primaryBtn) {
-        primaryBtn.innerHTML = `<span>🚀</span> <span>${officialInfo.portalName} ↗</span>`;
+        primaryBtn.innerHTML = `<span>🚀</span> <span>${officialInfo.btnText || (officialInfo.portalName + ' ↗')}</span>`;
         primaryBtn.onclick = () => openExternalUrl(officialInfo.primaryUrl);
       }
       if (edevletBtn) {
-        edevletBtn.innerHTML = `<span>🏛️</span> <span>e-Devlet Kapısı Üzerinden Giriş ↗</span>`;
-        edevletBtn.onclick = () => openExternalUrl(officialInfo.edevletUrl);
+        if (officialInfo.primaryUrl === officialInfo.edevletUrl) {
+          edevletBtn.classList.add('hidden');
+        } else {
+          edevletBtn.classList.remove('hidden');
+          edevletBtn.innerHTML = `<span>🏛️</span> <span>Alternatif: e-Devlet Kamu İşe Alım Portalı ↗</span>`;
+          edevletBtn.onclick = () => openExternalUrl(officialInfo.edevletUrl);
+        }
       }
       if (guideBtn) {
         if (j.url && safeUrl(j.url)) {
           guideBtn.classList.remove('hidden');
+          guideBtn.innerHTML = `<span>📄</span> <span>Resmi İlan Metni & Başvuru Kılavuzu ↗</span>`;
           guideBtn.onclick = () => openExternalUrl(j.url);
         } else {
           guideBtn.classList.add('hidden');
@@ -3747,6 +3845,9 @@
       if (tipEl) {
         tipEl.innerHTML = officialInfo.tipText;
       }
+      
+      if (modal) modal.classList.remove('hidden');
+    }
       
       if (modal) modal.classList.remove('hidden');
     }
@@ -3862,7 +3963,7 @@
     function isVipActive() {
       if (previewTierOverride === 'standart') return false;
       if (previewTierOverride === 'vip') return true;
-      return Boolean(currentUserIsSubscribed);
+      return Boolean(currentUserIsSubscribed || currentAppIsAdmin);
     }
 
     function toggleUserTier() {
@@ -5043,11 +5144,11 @@
           </div>
           ${!isVipActive() ? `
             <div style="font-size:11.5px;color:#b45309;margin-top:8px;display:flex;align-items:center;gap:5px;cursor:pointer;" onclick="promptVipApply()">
-              <span>👑</span><span>Kariyer Kapısı & e-Devlet resmi başvuru ekranına tek tıkla direkt geçmek için <b>VIP'ye yükseltin ↗</b></span>
+              <span>👑</span><span>Resmi başvuru ekranına (e-Devlet / Kurum Portalı) tek tıkla direkt geçmek için <b>VIP'ye yükseltin ↗</b></span>
             </div>
           ` : `
             <div style="font-size:11.5px;color:#7c3aed;margin-top:8px;display:flex;align-items:center;gap:5px;cursor:pointer;" onclick="openApplyGateway(${j.id})">
-              <span>⭐</span><span><b>VIP Üye Ayrıcalığı:</b> T.C. resmi başvuru ekranı açılmıyorsa <b>buraya tıklayarak alternatif e-Devlet kapısına geçin ↗</b></span>
+              <span>⭐</span><span><b>VIP Üye Ayrıcalığı:</b> Doğrudan <b>${escapeHtml(resolveOfficialApplyInfo(j).portalName)}</b> açmak için dokunun ↗</span>
             </div>
           `}
 
